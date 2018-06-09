@@ -14,4 +14,4 @@ install:
 build: off
 
 test_script:
-  - npm test
+  - node_modules/.bin/mocha
