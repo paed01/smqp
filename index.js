@@ -103,9 +103,8 @@ export function Broker(source) {
 
     function getExchangeState() {
       return exchanges.reduce((result, exchange) => {
-        if (!exchange.options.durable) return;
+        if (!exchange.options.durable) return result;
         if (!result) result = [];
-
         result.push(exchange.getState());
         return result;
       }, undefined);
@@ -177,7 +176,7 @@ export function Broker(source) {
 
   function getQueuesState() {
     return queues.reduce((result, queue) => {
-      if (!queue.options.durable) return;
+      if (!queue.options.durable) return result;
       if (!result) result = [];
       result.push(queue.getState());
       return result;
@@ -551,7 +550,6 @@ export function Broker(source) {
 
     function purge() {
       queue.purging = true;
-      // publishQueue.queueMessage('queue.purged', {queueName});
       return messages.splice(0).length;
     }
 

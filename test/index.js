@@ -526,6 +526,63 @@ describe('Smqp', () => {
     });
   });
 
+  describe('consume()', () => {
+    it('returns consumer', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+      const consumer = broker.consume('test', () => {});
+      expect(consumer).to.be.ok;
+      expect(consumer).to.have.property('close').that.is.a('function');
+    });
+  });
+
+  describe('getState()', () => {
+    it('returns durable exchange', () => {
+      const broker = Broker();
+
+      broker.assertExchange('test', 'topic', {durable: true});
+
+      const state = broker.getState();
+      expect(state).to.have.property('exchanges').with.length(1);
+      expect(state.exchanges[0]).to.have.property('options').with.property('durable', true);
+    });
+
+    it('doesn´t return non-durable exchange', () => {
+      const broker = Broker();
+
+      broker.assertExchange('durable', 'topic');
+      broker.assertExchange('non-durable', 'topic', {durable: false});
+
+      const state = broker.getState();
+
+      expect(state).to.have.property('exchanges').with.length(1);
+      expect(state.exchanges[0]).to.have.property('name', 'durable');
+    });
+
+    it('returns durable queue', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test', {durable: true});
+
+      const state = broker.getState();
+      expect(state).to.have.property('queues').with.length(1);
+      expect(state.queues[0]).to.have.property('options').with.property('durable', true);
+    });
+
+    it('doesn´t return non-durable exchange', () => {
+      const broker = Broker();
+
+      broker.assertQueue('durable');
+      broker.assertQueue('non-durable', {durable: false});
+
+      const state = broker.getState();
+
+      expect(state).to.have.property('queues').with.length(1);
+      expect(state.queues[0]).to.have.property('name', 'durable');
+    });
+  });
+
   describe('subscribe', () => {
     it('supports subscribe with the same function and different pattern', (done) => {
       const broker = Broker();
