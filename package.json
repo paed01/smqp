@@ -30,7 +30,7 @@
   ],
   "scripts": {
     "test": "mocha && npm run dist &&  eslint . --cache",
-    "dist": "mkdir -p dist/ && babel index.js -d dist",
+    "dist": "babel index.js -d dist",
     "prepublish": "npm run dist"
   },
   "keywords": [
