@@ -1,0 +1,9 @@
+{
+  "presets": [
+    [
+      "latest-node", {
+        "target": "current"
+      }
+    ]
+  ]
+}

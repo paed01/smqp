@@ -1,0 +1,18 @@
+{
+  "env": {
+    "node": true
+  },
+  "parserOptions": {
+    "sourceType": "script",
+    "ecmaVersion": 8,
+    "ecmaFeatures": {
+      "experimentalObjectRestSpread": true
+    }
+  },
+  "rules": {
+    "quotes": 0,
+    "indent": 0,
+    "space-unary-ops": 0,
+    "eol-last": 0
+  }
+}

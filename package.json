@@ -1,0 +1,54 @@
+{
+  "name": "smqp",
+  "version": "0.0.1",
+  "description": "Synchronous message broker",
+  "author": {
+    "name": "Pål Edman",
+    "url": "https://github.com/paed01"
+  },
+  "main": "dist/index.js",
+  "module": "index.js",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/paed01/smqp"
+  },
+  "bugs": {
+    "url": "https://github.com/paed01/smqp/issues"
+  },
+  "engines": {
+    "node": ">=8.9"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "files": [
+    "dist/index.js",
+    "index.js",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "mocha && npm run dist &&  eslint . --cache",
+    "dist": "mkdir -p dist/ && babel index.js -d dist",
+    "prepublish": "npm run dist"
+  },
+  "keywords": [
+    "messaging",
+    "broker",
+    "wildcard",
+    "fifo",
+    "publish",
+    "subscribe",
+    "ack",
+    "nack",
+    "reject"
+  ],
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-latest-node": "^1.0.0",
+    "chai": "^4.1.2",
+    "eslint": "^4.19.1",
+    "mocha": "^5.2.0"
+  }
+}
