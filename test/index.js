@@ -10,6 +10,23 @@ describe('Smqp', () => {
         expect(exchange).to.be.ok;
       });
 
+      it('throws if type is not topic or direct', () => {
+        const broker = Broker();
+
+        expect(() => {
+          broker.assertExchange('test', 'fanout');
+        }).to.throw(/topic or direct/);
+        expect(() => {
+          broker.assertExchange('test', new Date());
+        }).to.throw(/topic or direct/);
+        expect(() => {
+          broker.assertExchange('test', {});
+        }).to.throw(/topic or direct/);
+        expect(() => {
+          broker.assertExchange('test', () => {});
+        }).to.throw(/topic or direct/);
+      });
+
       it('returns the same exchange if it exists', () => {
         const broker = Broker();
 
@@ -39,7 +56,7 @@ describe('Smqp', () => {
     describe('direct exchange', () => {
       it('delivers message to a single queue', () => {
         const broker = Broker();
-        broker.assertExchange('test', 'topic');
+        broker.assertExchange('test', 'direct');
 
         broker.assertQueue('testq');
         broker.bindQueue('testq', 'test', 'test.#');
@@ -220,71 +237,6 @@ describe('Smqp', () => {
     });
 
     describe('durable', () => {
-      it('recovers topic exchange', () => {
-        const broker1 = Broker();
-
-        broker1.assertExchange('test', 'topic', {durable: true});
-        broker1.subscribe('test', 'test.#', 'testq', () => {});
-
-        const broker2 = Broker().recover(broker1.getState());
-
-        const recoveredExchange = broker2.getExchange('test');
-        expect(recoveredExchange).to.be.ok;
-        expect(recoveredExchange).to.have.property('type', 'topic');
-        expect(recoveredExchange).to.have.property('queuesCount', 1);
-      });
-
-      it('recovers direct exchange', (done) => {
-        const broker1 = Broker();
-
-        broker1.assertExchange('test', 'direct', {durable: true, autoDelete: false});
-        broker1.assertQueue('testq', {durable: true, autoDelete: false});
-
-        const messages = [];
-        broker1.subscribe('test', 'test.*', 'testq', (routingKey, message) => {
-          messages.push(routingKey);
-          message.ack();
-          if (routingKey !== 'test.2') return;
-
-          broker1.publish('test', 'test.3');
-          broker1.publish('test', 'test.4');
-
-          messages.push('-close');
-          broker1.close();
-
-          recover(broker1.getState());
-        });
-
-        broker1.publish('test', 'test.1');
-        broker1.publish('test', 'test.2');
-
-        function recover(state) {
-          const broker2 = Broker().recover(state);
-
-          const recoveredExchange = broker2.getExchange('test');
-          expect(recoveredExchange).to.be.ok;
-          expect(recoveredExchange).to.have.property('type', 'direct');
-          expect(recoveredExchange).to.have.property('queuesCount', 1);
-
-          expect(broker2.getQueue('testq')).to.have.property('length', 2);
-
-          broker2.subscribe('test', 'test.*', 'testq', (routingKey, message) => {
-            messages.push(routingKey);
-            message.ack();
-          });
-
-          expect(messages).to.eql([
-            'test.1',
-            'test.2',
-            '-close',
-            'test.3',
-            'test.4',
-          ]);
-
-          done();
-        }
-      });
-
       it('falsey doesn´t recover exchange', () => {
         const broker1 = Broker();
 
@@ -526,6 +478,98 @@ describe('Smqp', () => {
     });
   });
 
+  describe('messages', () => {
+    it('takes content', (done) => {
+      const broker = Broker();
+
+      broker.subscribeTmp('test', '#', onMessage);
+
+      broker.publish('test', 'test.1', {
+        num: 1
+      });
+
+      function onMessage(routingKey, message) {
+        expect(message).to.have.property('content').that.eql({num: 1});
+        done();
+      }
+    });
+
+    it('releases next message when acked', () => {
+      const broker = Broker();
+
+      broker.subscribeTmp('test', '#', onMessage);
+
+      let firstMessage, secondMessage;
+
+      broker.publish('test', 'test1');
+      broker.publish('test', 'test2');
+
+      expect(firstMessage, 'message #1').to.be.ok;
+      expect(secondMessage, 'message #2').to.not.be.ok;
+
+      firstMessage.ack();
+
+      expect(secondMessage, 'message #2').to.be.ok;
+
+      function onMessage(routingKey, message) {
+        if (routingKey === 'test1') {
+          firstMessage = message;
+        }
+        if (routingKey === 'test2') {
+          secondMessage = message;
+        }
+      }
+    });
+
+    it('releases next message when nacked', () => {
+      const broker = Broker();
+
+      broker.subscribeTmp('test', '#', onMessage);
+
+      const messages = [];
+
+      broker.publish('test', 'test1');
+      broker.publish('test', 'test2');
+
+      expect(messages).to.have.length(1);
+
+      const [message1] = messages;
+
+      message1.nack();
+
+      expect(messages).to.have.length(2);
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+      }
+    });
+
+    it('releases message back to original position if nacked with requeue', () => {
+      const broker = Broker();
+
+      broker.subscribe('test', '#', 'testq', onMessage, {autoDelete: false});
+
+      const messages = [];
+
+      broker.publish('test', 'test1');
+      broker.publish('test', 'test2');
+
+      expect(messages).to.have.length(1);
+
+      const [message1] = messages;
+
+      broker.unsubscribe('#', onMessage);
+
+      message1.nack(null, true);
+
+      expect(broker.getQueue('testq').length).to.equal(2);
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+      }
+    });
+  });
+
   describe('consume()', () => {
     it('returns consumer', () => {
       const broker = Broker();
@@ -580,6 +624,380 @@ describe('Smqp', () => {
 
       expect(state).to.have.property('queues').with.length(1);
       expect(state.queues[0]).to.have.property('name', 'durable');
+    });
+  });
+
+  describe('stop()', () => {
+    let broker;
+    beforeEach('setup exchanges and queues', () => {
+      broker = Broker();
+      broker.assertExchange('event', 'topic', {autoDelete: false});
+      broker.assertExchange('load', 'direct', {autoDelete: false});
+
+      broker.assertQueue('events', {autoDelete: false});
+      broker.assertQueue('loads', {autoDelete: false});
+
+      broker.bindQueue('events', 'event', '#');
+      broker.bindQueue('loads', 'load', '#');
+    });
+
+    it('stops publishing messages and consumption', () => {
+      const messages = [];
+
+      broker.consume('events', onMessage);
+      broker.consume('loads', onMessage);
+
+      broker.publish('event', 'event.1');
+      broker.publish('load', 'load.1');
+
+      broker.stop();
+
+      broker.publish('event', 'event.2');
+      broker.publish('load', 'load.2');
+
+      broker.getQueue('events').queueMessage('event.stopped');
+      broker.getQueue('loads').queueMessage('load.stopped');
+
+      expect(messages).to.eql([
+        'event.1',
+        'load.1',
+      ]);
+
+      function onMessage(routingKey, message) {
+        messages.push(routingKey);
+        message.ack();
+      }
+    });
+
+    it('keeps consumers', () => {
+      const messages = [];
+
+      const consumer = broker.subscribeTmp('event', '#', onMessage);
+
+      broker.publish('event', 'event.1');
+      broker.publish('event', 'event.2');
+
+      broker.stop();
+
+      broker.publish('event', 'event.3');
+
+      const tmpQueue = broker.getQueue(consumer.queueName);
+      expect(tmpQueue).to.be.ok;
+      expect(tmpQueue).to.have.property('consumersCount', 1);
+
+      tmpQueue.queueMessage('event.queued');
+
+      expect(messages).to.eql([
+        'event.1',
+        'event.2',
+      ]);
+
+      function onMessage(routingKey, message) {
+        messages.push(routingKey);
+        message.ack();
+      }
+    });
+
+    it('keeps same state before and after stop', () => {
+      const messages = [];
+
+      broker.consume('events', onMessage);
+      broker.consume('loads', onMessage);
+
+      broker.publish('event', 'event.1');
+      broker.publish('load', 'load.1');
+
+      const state = broker.getState();
+
+      broker.stop();
+
+      expect(broker.getState()).to.eql(state);
+
+      function onMessage(routingKey, message) {
+        messages.push(routingKey);
+        message.ack();
+      }
+    });
+  });
+
+  describe('recover()', () => {
+    let broker;
+    beforeEach('setup exchanges and queues', () => {
+      broker = Broker();
+      broker.assertExchange('event', 'topic', {autoDelete: false});
+      broker.assertExchange('load', 'direct', {autoDelete: false});
+
+      broker.assertQueue('events', {autoDelete: false});
+      broker.assertQueue('loads', {autoDelete: false});
+
+      broker.bindQueue('events', 'event', '#');
+      broker.bindQueue('loads', 'load', 'load.#');
+    });
+
+    it('recovers topic exchange', () => {
+      const recoveredBroker = Broker().recover(broker.getState());
+
+      const recoveredExchange = recoveredBroker.getExchange('event');
+      expect(recoveredExchange).to.be.ok;
+      expect(recoveredExchange).to.have.property('type', 'topic');
+      expect(recoveredExchange).to.have.property('bindingsCount', 1);
+    });
+
+    it('peek returns first recovered message', () => {
+      broker.publish('event', 'event.0', {data: 1});
+      broker.publish('event', 'event.1', {data: 2});
+
+      broker.consume('events', onMessage);
+
+      const recoveredBroker = Broker();
+      recoveredBroker.recover(broker.getState());
+
+      recoveredBroker.consume('events', onMessage);
+
+      const recoveredMessage = recoveredBroker.getQueue('events').peek();
+
+      expect(recoveredMessage).to.have.property('routingKey', 'event.0');
+      expect(recoveredMessage).to.have.property('content').that.eql({data: 1});
+
+      function onMessage() {}
+    });
+
+    it('recovers topic exchange in stopped broker', (done) => {
+      const messages = [];
+
+      broker.consume('events', onMessage);
+      broker.subscribeTmp('event', 'event.1', stop);
+
+      broker.publish('event', 'event.0');
+      broker.publish('event', 'event.1');
+      broker.publish('event', 'event.2');
+
+      function onMessage(routingKey) {
+        messages.push(routingKey);
+      }
+
+      function onRecoveredMessage(routingKey, message) {
+        messages.push(routingKey);
+        message.ack();
+      }
+
+      function stop() {
+        broker.stop();
+        broker.publish('event', 'event.ignored');
+
+        broker.recover();
+
+        broker.publish('event', 'event.2');
+
+        broker.consume('events', onRecoveredMessage);
+
+        expect(messages).to.eql([
+          'event.0',
+          'event.1',
+          'event.2',
+        ]);
+
+        done();
+      }
+    });
+
+    it('recovers direct exchange in stopped broker', (done) => {
+      const messages = [];
+
+      broker.subscribeTmp('load', 'stop', stop);
+      broker.consume('loads', onMessage);
+
+      broker.publish('load', 'load.0');
+      broker.publish('load', 'load.1');
+      broker.publish('load', 'stop');
+
+      function onMessage(routingKey) {
+        messages.push(routingKey);
+      }
+
+      function onRecoveredMessage(routingKey, message) {
+        messages.push(routingKey);
+        message.ack();
+      }
+
+      function stop() {
+        broker.stop();
+        broker.publish('load', 'load.ignored');
+
+        broker.recover();
+
+        broker.publish('load', 'load.2');
+
+        broker.consume('loads', onRecoveredMessage);
+
+        expect(messages).to.eql([
+          'load.0',
+          'load.1',
+          'load.2',
+        ]);
+
+        done();
+      }
+    });
+
+    it('continues consumption', () => {
+      const messages = [];
+
+      const consumer = broker.subscribeTmp('event', '#', onMessage);
+
+      broker.publish('event', 'event.1');
+      broker.publish('event', 'event.2');
+
+      broker.stop();
+
+      broker.publish('event', 'event.3');
+
+      const tmpQueue = broker.getQueue(consumer.queueName);
+      expect(tmpQueue).to.be.ok;
+      expect(tmpQueue).to.have.property('consumersCount', 1);
+
+      broker.recover();
+
+      broker.publish('event', 'event.4');
+
+      expect(messages).to.eql([
+        'event.1',
+        'event.2',
+        'event.4',
+      ]);
+
+      function onMessage(routingKey, message) {
+        messages.push(routingKey);
+        message.ack();
+      }
+    });
+  });
+
+  describe('multiple exchanges and queues', () => {
+    let broker;
+    beforeEach('setup exchanges and queues', () => {
+      broker = Broker();
+
+      broker.assertExchange('load', 'direct');
+      broker.assertQueue('loadq1', {autoDelete: false});
+      broker.assertQueue('loadq2', {autoDelete: false});
+
+      broker.assertExchange('event', 'topic');
+      broker.assertQueue('events', {autoDelete: false});
+
+      broker.bindQueue('events', 'event', '#');
+      broker.bindQueue('loadq1', 'load', '#');
+      broker.bindQueue('loadq2', 'load', '#');
+    });
+
+    it('are recovered with bindings', () => {
+      const state = broker.getState();
+      const newBroker = Broker().recover(state);
+
+      newBroker.publish('event', 'event.1');
+      newBroker.publish('load', 'heavy.1');
+      newBroker.publish('load', 'heavy.1');
+
+      expect(newBroker.getQueue('events').length).to.equal(1);
+      expect(newBroker.getQueue('loadq1').length).to.equal(1);
+      expect(newBroker.getQueue('loadq2').length).to.equal(1);
+    });
+
+    it('are recovered with messages', () => {
+      broker.publish('event', 'event.1');
+      broker.publish('load', 'heavy.1');
+      broker.publish('load', 'heavy.1');
+
+      const state = broker.getState();
+      const newBroker = Broker().recover(state);
+
+      expect(newBroker.getQueue('events').length).to.equal(1);
+      expect(newBroker.getQueue('loadq1').length).to.equal(1);
+      expect(newBroker.getQueue('loadq2').length).to.equal(1);
+    });
+
+    it('recovers the same broker with bindings', () => {
+      const state = broker.getState();
+      broker.recover(state);
+
+      broker.publish('event', 'event.1');
+      broker.publish('load', 'heavy.1');
+      broker.publish('load', 'heavy.1');
+
+      expect(broker.getQueue('events').length).to.equal(1);
+      expect(broker.getQueue('loadq1').length).to.equal(1);
+      expect(broker.getQueue('loadq2').length).to.equal(1);
+    });
+
+    it('recovers the same broker with messages', () => {
+      broker.publish('event', 'event.1');
+      broker.publish('load', 'heavy.1');
+      broker.publish('load', 'heavy.1');
+
+      const state = broker.getState();
+      broker.recover(state);
+
+      expect(broker.getQueue('events').length).to.equal(1);
+      expect(broker.getQueue('loadq1').length).to.equal(1);
+      expect(broker.getQueue('loadq2').length).to.equal(1);
+    });
+
+    it('recoveres multiple direct exchange messages', (done) => {
+      const messages = [];
+
+      broker.consume('loadq1', onLoad1);
+      broker.consume('loadq2', onLoad2);
+      broker.consume('events', onEvent);
+
+      broker.subscribeTmp('event', 'event.start', onStart, {noAck: true});
+
+      broker.publish('load', 'start');
+      broker.publish('load', 'complete');
+      broker.publish('load', 'end');
+
+      function onStart() {
+        messages.push('-stop');
+        broker.stop();
+        const state = broker.getState();
+        recover(state);
+      }
+
+      function onLoad1(routingKey, message) {
+        messages.push(routingKey);
+        broker.publish('event', `event.${routingKey}`);
+        message.ack();
+      }
+
+      function onLoad2(routingKey, message) {
+        messages.push(routingKey);
+        broker.publish('event', `event.${routingKey}`);
+        message.ack();
+      }
+
+      function onEvent(routingKey, message) {
+        messages.push(routingKey);
+        message.ack();
+      }
+
+      function recover(state) {
+        broker = Broker().recover(state);
+
+        broker.consume('loadq1', onLoad1);
+        broker.consume('loadq2', onLoad2);
+
+        setImmediate(() => {
+          expect(messages).to.eql([
+            'start',
+            'event.start',
+            '-stop',
+            'start',
+            'complete',
+            'end',
+          ]);
+
+          done();
+        });
+      }
     });
   });
 
@@ -760,6 +1178,28 @@ describe('Smqp', () => {
       function onMessage2() {}
     });
 
+    it('subscribeOnce() closes consumer immediately after message is received', () => {
+      const broker = Broker();
+
+      const exchange = broker.assertExchange('event');
+      broker.subscribeOnce('event', '#', onMessage);
+
+      expect(exchange).to.have.property('bindingsCount', 1);
+
+      const messages = [];
+
+      broker.publish('event', 'once');
+      broker.publish('event', 'twice');
+
+      expect(exchange).to.have.property('bindingsCount', 0);
+
+      expect(messages).to.eql(['once']);
+
+      function onMessage(routingKey) {
+        messages.push(routingKey);
+      }
+    });
+
     describe('prefetch', () => {
       it('prefetch 2 consumes two messages at a time', () => {
         const broker = Broker();
@@ -883,98 +1323,6 @@ describe('Smqp', () => {
     });
   });
 
-  describe('messages', () => {
-    it('takes content', (done) => {
-      const broker = Broker();
-
-      broker.subscribeTmp('test', '#', onMessage);
-
-      broker.publish('test', 'test.1', {
-        num: 1
-      });
-
-      function onMessage(routingKey, message) {
-        expect(message).to.have.property('content').that.eql({num: 1});
-        done();
-      }
-    });
-
-    it('releases next message when acked', () => {
-      const broker = Broker();
-
-      broker.subscribeTmp('test', '#', onMessage);
-
-      let firstMessage, secondMessage;
-
-      broker.publish('test', 'test1');
-      broker.publish('test', 'test2');
-
-      expect(firstMessage, 'message #1').to.be.ok;
-      expect(secondMessage, 'message #2').to.not.be.ok;
-
-      firstMessage.ack();
-
-      expect(secondMessage, 'message #2').to.be.ok;
-
-      function onMessage(routingKey, message) {
-        if (routingKey === 'test1') {
-          firstMessage = message;
-        }
-        if (routingKey === 'test2') {
-          secondMessage = message;
-        }
-      }
-    });
-
-    it('releases next message when nacked', () => {
-      const broker = Broker();
-
-      broker.subscribeTmp('test', '#', onMessage);
-
-      const messages = [];
-
-      broker.publish('test', 'test1');
-      broker.publish('test', 'test2');
-
-      expect(messages).to.have.length(1);
-
-      const [message1] = messages;
-
-      message1.nack();
-
-      expect(messages).to.have.length(2);
-
-      function onMessage(routingKey, message) {
-        messages.push(message);
-      }
-    });
-
-    it('releases message back to original position if nacked with requeue', () => {
-      const broker = Broker();
-
-      broker.subscribe('test', '#', 'testq', onMessage, {autoDelete: false});
-
-      const messages = [];
-
-      broker.publish('test', 'test1');
-      broker.publish('test', 'test2');
-
-      expect(messages).to.have.length(1);
-
-      const [message1] = messages;
-
-      broker.unsubscribe('#', onMessage);
-
-      message1.nack(null, true);
-
-      expect(broker.getQueue('testq').length).to.equal(2);
-
-      function onMessage(routingKey, message) {
-        messages.push(message);
-      }
-    });
-  });
-
   describe('peek', () => {
     it('returns undefined if no messages', () => {
       const broker = Broker();
@@ -1024,54 +1372,6 @@ describe('Smqp', () => {
       expect(broker.getQueue(consumer.queueName).peek(true)).to.be.undefined;
 
       function onMessage() {}
-    });
-  });
-
-  describe('recover queues', () => {
-    it('peek returns first recovered message', () => {
-      const broker = Broker();
-
-      broker.subscribe('test', 'test.#', 'testq', onMessage);
-
-      broker.publish('test', 'test.0', {data: 1});
-      broker.publish('test', 'test.1', {data: 2});
-
-      const recoveredBroker = Broker();
-      recoveredBroker.recover(broker.getState());
-
-      recoveredBroker.subscribe('test', 'test.#', 'testq', onMessage);
-
-      const recoveredMessage = recoveredBroker.getQueue('testq').peek();
-
-      expect(recoveredMessage).to.have.property('routingKey', 'test.0');
-      expect(recoveredMessage).to.have.property('content').that.eql({data: 1});
-
-      function onMessage() {}
-    });
-
-    it('resume consumption fires message callback', (done) => {
-      const broker = Broker();
-
-      broker.subscribe('test', 'test.#', 'testq', onMessage);
-
-      broker.publish('test', 'test.0');
-      broker.publish('test', 'test.1');
-
-      const recoveredBroker = Broker();
-      recoveredBroker.recover(broker.getState());
-
-      let resumedMessages = 0;
-
-      recoveredBroker.subscribe('test', 'test.#', 'testq', onResumeMessage);
-      expect(resumedMessages).to.equal(2);
-
-      done();
-
-      function onMessage() {}
-      function onResumeMessage(_, {ack}) {
-        ++resumedMessages;
-        ack();
-      }
     });
   });
 

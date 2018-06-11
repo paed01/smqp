@@ -1,7 +1,7 @@
 {
   "name": "smqp",
-  "version": "0.0.3",
-  "description": "Synchronous message broker",
+  "version": "0.1.0",
+  "description": "Synchronous message queuing package",
   "author": {
     "name": "Pål Edman",
     "url": "https://github.com/paed01"
@@ -31,7 +31,7 @@
   "scripts": {
     "test": "mocha && npm run dist &&  eslint . --cache",
     "dist": "babel index.js -d dist",
-    "prepublish": "npm run dist"
+    "prepare": "npm run dist"
   },
   "keywords": [
     "messaging",

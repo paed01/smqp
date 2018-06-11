@@ -24,9 +24,10 @@ function Broker(source) {
     publish,
     purgeQueue,
     recover,
-    resumeConsumption,
     sendToQueue,
+    stop,
     subscribe,
+    subscribeOnce,
     subscribeTmp,
     unbindExchange,
     unbindQueue,
@@ -44,6 +45,32 @@ function Broker(source) {
   });
 
   return broker;
+
+  function subscribeTmp(exchangeName, routingKey, onMessage, options = {}) {
+    return subscribe(exchangeName, routingKey, generateId(), onMessage, { ...options, durable: false });
+  }
+
+  function subscribeOnce(exchangeName, routingKey, onMessage) {
+    const onceQueueName = generateId();
+    const onceConsumer = subscribe(exchangeName, routingKey, onceQueueName, wrappedOnMessage, { noAck: true });
+    return onceConsumer;
+
+    function wrappedOnMessage(...args) {
+      unsubscribe(onceQueueName, wrappedOnMessage);
+      onMessage(...args);
+    }
+  }
+
+  function subscribe(exchangeName, pattern, queueName, onMessage, options = { durable: true }) {
+    if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and onMessage are required');
+
+    assertExchange(exchangeName);
+    const queue = assertQueue(queueName, options);
+
+    bindQueue(queueName, exchangeName, pattern);
+
+    return queue.addConsumer(onMessage, options);
+  }
 
   function assertExchange(exchangeName, type, options) {
     let exchange = getExchangeByName(exchangeName);
@@ -82,6 +109,15 @@ function Broker(source) {
     return queue.addConsumer(onMessage, options);
   }
 
+  function unsubscribe(queueName, onMessage) {
+    const queue = getQueue(queueName);
+    if (!queue) return;
+    queue.removeConsumer(onMessage);
+    if (!queue.options.autoDelete) return true;
+    if (!queue.consumersCount) deleteQueue(queueName);
+    return true;
+  }
+
   function getExchange(exchangeName) {
     return exchanges.find(({ name }) => name === exchangeName);
   }
@@ -94,6 +130,11 @@ function Broker(source) {
 
     if (ifUnused && exchange.queuesCount) return;
     exchanges.splice(idx, 1);
+  }
+
+  function stop() {
+    exchanges.forEach(exchange => exchange.stop());
+    queues.forEach(queue => queue.stop());
   }
 
   function close() {
@@ -118,20 +159,28 @@ function Broker(source) {
   }
 
   function recover(state) {
-    if (!state) return;
+    if (!state) {
+      queues.forEach(queue => queue.recover());
+      exchanges.forEach(exchange => exchange.recover());
+      return;
+    }
+
     if (state.queues) state.queues.forEach(recoverQueue);
+    queues.forEach(queue => queue.stopped && queue.recover());
+
     if (state.exchanges) state.exchanges.forEach(recoverExchange);
+    exchanges.forEach(exchange => exchange.stopped && exchange.recover());
 
     return broker;
-
-    function recoverExchange(eState) {
-      const exchange = assertExchange(eState.name, eState.type, eState.options);
-      exchange.recover(eState);
-    }
 
     function recoverQueue(qState) {
       const queue = assertQueue(qState.name, qState.options);
       queue.recover(qState);
+    }
+
+    function recoverExchange(eState) {
+      const exchange = assertExchange(eState.name, eState.type, eState.options);
+      exchange.recover(eState);
     }
   }
 
@@ -156,30 +205,6 @@ function Broker(source) {
     return queue.queueMessage(routingKey, content, options);
   }
 
-  function subscribeTmp(exchangeName, routingKey, onMessage, options = {}) {
-    return subscribe(exchangeName, routingKey, generateId(), onMessage, { ...options, durable: false });
-  }
-
-  function subscribe(exchangeName, pattern, queueName, onMessage, options = { durable: true }) {
-    if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and onMessage are required');
-
-    assertExchange(exchangeName);
-    const queue = assertQueue(queueName, options);
-
-    bindQueue(queueName, exchangeName, pattern);
-
-    return queue.addConsumer(onMessage, options);
-  }
-
-  function unsubscribe(queueName, onMessage) {
-    const queue = getQueue(queueName);
-    if (!queue) return;
-    queue.removeConsumer(onMessage);
-    if (!queue.options.autoDelete) return true;
-    if (!queue.consumersCount) deleteQueue(queueName);
-    return true;
-  }
-
   function getQueuesState() {
     return queues.reduce((result, queue) => {
       if (!queue.options.durable) return result;
@@ -187,10 +212,6 @@ function Broker(source) {
       result.push(queue.getState());
       return result;
     }, undefined);
-  }
-
-  function resumeConsumption() {
-    queues.forEach(queue => queue.resume());
   }
 
   function createQueue(queueName, options) {
@@ -221,13 +242,22 @@ function Broker(source) {
     if (!queueName) return false;
 
     const idx = queues.findIndex(queue => queue.name === queueName);
-    if (idx > -1) queues.splice(idx, 1);
+    if (idx === -1) return;
 
+    const queue = queues[idx];
+    if (queue.exchangeName) {
+      const exchange = getExchangeByName(queue.exchangeName);
+      if (exchange) exchange.unbindQueueByName(queue.name);
+    }
+    queues.splice(idx, 1);
     return true;
   }
 
   function Exchange(exchangeName, type = 'topic', options = {}) {
-    const boundQueues = [];
+    if (['topic', 'direct'].indexOf(type) === -1) throw Error('Exchange type must be one of topic or direct');
+
+    const bindings = [];
+    let stopped;
     options = Object.assign({ durable: true, autoDelete: true }, options);
 
     const directQueue = Queue('messages-queue', { autoDelete: false });
@@ -242,25 +272,34 @@ function Broker(source) {
       getState: getExchangeState,
       publish: publishToQueues,
       recover: recoverExchange,
-      unbind
+      stop: stopExchange,
+      unbind,
+      unbindQueueByName
     };
 
-    Object.defineProperty(exchange, 'queuesCount', {
+    Object.defineProperty(exchange, 'bindingsCount', {
       enumerable: true,
-      get: () => boundQueues.length
+      get: () => bindings.length
     });
 
-    Object.defineProperty(exchange, 'queues', {
+    Object.defineProperty(exchange, 'bindings', {
       enumerable: true,
-      get: () => boundQueues.slice()
+      get: () => bindings.slice()
+    });
+
+    Object.defineProperty(exchange, 'stopped', {
+      enumerable: true,
+      get: () => stopped
     });
 
     return exchange;
 
     function publishToQueues(routingKey, content, msgOptions) {
+      if (stopped) return;
+
       if (type === 'direct') return directQueue.queueMessage(routingKey, content, msgOptions);
 
-      const deliverTo = boundQueues.reduce((result, { queue, testPattern }) => {
+      const deliverTo = bindings.reduce((result, { queue, testPattern }) => {
         if (testPattern(routingKey)) result.push(queue);
         return result;
       }, []);
@@ -271,43 +310,51 @@ function Broker(source) {
     }
 
     function direct(routingKey, message) {
-      const deliverTo = boundQueues.reduce((result, bound) => {
+      const deliverTo = bindings.reduce((result, bound) => {
         if (bound.testPattern(routingKey)) result.push(bound);
         return result;
       }, []);
 
       const first = deliverTo[0];
-      if (!first) return 0;
+      if (!first) {
+        message.ack();
+        return 0;
+      }
       if (deliverTo.length > 1) shift(deliverTo[0]);
-
-      first.queue.queueMessage(routingKey, message.content, message.options);
-      message.ack();
+      first.queue.queueMessage(routingKey, message.content, message.options, message.ack);
     }
 
     function shift(bound) {
-      const idx = boundQueues.indexOf(bound);
-      boundQueues.splice(idx, 1);
-      boundQueues.push(bound);
+      const idx = bindings.indexOf(bound);
+      bindings.splice(idx, 1);
+      bindings.push(bound);
     }
 
     function bind(queue, pattern) {
-      const bound = boundQueues.find(bq => bq.queue === queue && bq.pattern === pattern);
+      const bound = bindings.find(bq => bq.queue === queue && bq.pattern === pattern);
       if (bound) return bound;
 
       const binding = BoundQueue(queue, pattern);
-      boundQueues.push(binding);
+      bindings.push(binding);
       return binding;
     }
 
     function unbind(queue, pattern) {
-      const idx = boundQueues.findIndex(bq => bq.queue === queue && bq.pattern === pattern);
+      const idx = bindings.findIndex(bq => bq.queue === queue && bq.pattern === pattern);
       if (idx === -1) return;
-      boundQueues.splice(idx, 1);
+      bindings.splice(idx, 1);
       if (options.autoDelete) deleteExchange(exchangeName, true);
     }
 
+    function unbindQueueByName(queueName) {
+      const bounds = bindings.filter(bq => bq.queue.name === queueName);
+      bounds.forEach(bound => {
+        unbind(bound.queue, bound.pattern);
+      });
+    }
+
     function closeExchange() {
-      boundQueues.forEach(q => q.close());
+      bindings.forEach(q => q.close());
       directQueue.removeConsumer(direct, false);
       directQueue.close();
     }
@@ -322,7 +369,7 @@ function Broker(source) {
       };
 
       function getBoundState() {
-        return boundQueues.reduce((result, bound) => {
+        return bindings.reduce((result, bound) => {
           if (!bound.queue.options.durable) return;
           if (!result) result = [];
           result.push({
@@ -339,10 +386,22 @@ function Broker(source) {
       }
     }
 
+    function stopExchange() {
+      stopped = true;
+    }
+
     function recoverExchange(state) {
+      stopped = false;
+      if (!state) {
+        if (type === 'direct') {
+          directQueue.recover();
+        }
+        return;
+      }
+
       recoverBindings();
 
-      if (type === 'direct') {
+      if (state && type === 'direct') {
         directQueue.recover({ messages: state.undelivered });
       }
 
@@ -387,7 +446,7 @@ function Broker(source) {
   function Queue(queueName, options = {}) {
     const messages = [],
           queueConsumers = [];
-    let pendingResume, exclusive, exchangeName;
+    let pendingResume, exclusive, exchangeName, stopped;
     options = Object.assign({ autoDelete: true }, options);
 
     const queue = {
@@ -398,12 +457,12 @@ function Broker(source) {
       close: closeQueue,
       get,
       getState: getQueueState,
-      nackAll,
       peek,
       purge,
       queueMessage,
       removeConsumer,
       recover: recoverQueue,
+      stop: stopQueue,
       unbind
     };
 
@@ -425,6 +484,11 @@ function Broker(source) {
     Object.defineProperty(queue, 'exclusive', {
       enumerable: true,
       get: () => exclusive
+    });
+
+    Object.defineProperty(queue, 'stopped', {
+      enumerable: true,
+      get: () => stopped
     });
 
     return queue;
@@ -471,17 +535,26 @@ function Broker(source) {
 
       const consumerMessages = messages.filter(message => message.consumerTag === consumer.options.consumerTag);
       for (let i = 0; i < consumerMessages.length; i++) {
-        consumerMessages[i].nack(null, !!requeue);
+        consumerMessages[i].unsetConsumer();
+        nack(consumerMessages[i], requeue);
       }
     }
 
-    function queueMessage(routingKey, content, msgOptions) {
-      const message = createMessage(generateId(), routingKey, content, msgOptions, onConsumed);
+    function nack(message, requeue) {
+      message.unsetConsumer();
+      message.nack(false, requeue);
+    }
+
+    function queueMessage(routingKey, content, msgOptions, onMessageQueued) {
+      const message = Message(generateId(), routingKey, content, msgOptions, onConsumed);
       messages.push(message);
+      if (onMessageQueued) onMessageQueued(message);
       return consumeNext();
     }
 
     function consumeNext() {
+      if (stopped) return;
+
       if (!messages.length) return;
       const activeConsumers = queueConsumers.slice();
 
@@ -547,13 +620,7 @@ function Broker(source) {
       }
     }
 
-    function nackAll(channel, requeue) {
-      const channelMessages = messages.filter(message => message.consumerTag === channel.consumerTag);
-      channelMessages.forEach(message => message.nack(null, requeue));
-    }
-
     function purge() {
-      queue.purging = true;
       return messages.splice(0).length;
     }
 
@@ -583,17 +650,23 @@ function Broker(source) {
     }
 
     function recoverQueue(state) {
+      stopped = false;
       if (!state) return;
       messages.splice(0);
       state.messages.forEach(({ messageId, routingKey, content, options: msgOptions }) => {
-        const msg = createMessage(messageId, routingKey, content, msgOptions, onConsumed);
+        const msg = Message(messageId, routingKey, content, msgOptions, onConsumed);
         messages.push(msg);
       });
       consumeNext();
     }
 
     function closeQueue() {
+      exclusive = false;
       queueConsumers.splice(0).forEach(consumer => consumer.close());
+    }
+
+    function stopQueue() {
+      stopped = true;
     }
   }
 
@@ -629,7 +702,7 @@ function Broker(source) {
 
       messages.push(...newMessages);
       newMessages.forEach(message => {
-        message.pendingAck(consumerTag, onDequeued);
+        message.setConsumer(consumerTag, onConsumed);
       });
 
       newMessages.forEach(message => {
@@ -659,16 +732,16 @@ function Broker(source) {
       messages[0].nack(allUpTo, requeue);
     }
 
-    function onDequeued(message) {
+    function onConsumed(message) {
       const idx = messages.indexOf(message);
       if (idx === -1) return;
       messages.splice(idx, 1);
       return true;
     }
 
-    function closeConsumer() {
+    function closeConsumer(requeue = true) {
       unsubscribe(consumer.queueName, onMessage);
-      nackAll(true);
+      nackAll(requeue);
       consumer.queueName = undefined;
     }
   }
@@ -677,39 +750,45 @@ function Broker(source) {
     return b.options.priority - a.options.priority;
   }
 
-  function createMessage(messageId, routingKey, content = {}, msgOptions = {}, onConsumed) {
+  function Message(messageId, routingKey, content = {}, msgOptions = {}, onConsumed) {
     let pending = false,
-        consumerTag,
-        consumerCallback;
+        consumerTag;
+    let consumedCallback;
 
-    const envelope = {
+    const message = {
       options: { ...msgOptions },
       messageId,
       routingKey,
-      pendingAck,
+      setConsumer,
       ack,
       nack,
-      reject
+      reject,
+      unsetConsumer
     };
 
-    Object.defineProperty(envelope, 'pending', {
+    Object.defineProperty(message, 'pending', {
       enumerable: true,
       get: () => pending
     });
 
-    Object.defineProperty(envelope, 'consumerTag', {
+    Object.defineProperty(message, 'consumerTag', {
       enumerable: true,
       get: () => consumerTag
     });
 
-    if (content) envelope.content = { ...content };
+    if (content) message.content = { ...content };
 
-    return envelope;
+    return message;
 
-    function pendingAck(consumedByTag, ackCallback) {
+    function setConsumer(consumedByTag, consumedCb) {
       pending = true;
       consumerTag = consumedByTag;
-      consumerCallback = ackCallback;
+      consumedCallback = consumedCb;
+    }
+
+    function unsetConsumer() {
+      pending = false;
+      consumedCallback = undefined;
     }
 
     function reject(requeue) {
@@ -734,9 +813,8 @@ function Broker(source) {
     }
 
     function consumed(operation, allUpTo, requeue) {
-      [consumerCallback, onConsumed].forEach(fn => {
-        if (!fn) return;
-        fn(envelope, operation, allUpTo, requeue);
+      [consumedCallback, onConsumed].forEach(fn => {
+        if (fn) fn(message, operation, allUpTo, requeue);
       });
     }
   }
