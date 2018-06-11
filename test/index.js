@@ -1182,7 +1182,14 @@ describe('Smqp', () => {
       const broker = Broker();
 
       const exchange = broker.assertExchange('event');
-      broker.subscribeOnce('event', '#', onMessage);
+      const onceConsumer = broker.subscribeOnce('event', '#', onMessage);
+      expect(onceConsumer).to.be.ok;
+      expect(onceConsumer.options).to.have.property('noAck', true);
+
+      const onceQueue = broker.getQueue(onceConsumer.queueName);
+      expect(onceQueue).to.be.ok;
+      expect(onceQueue.options).to.have.property('durable', false);
+      expect(onceQueue.options).to.have.property('autoDelete', true);
 
       expect(exchange).to.have.property('bindingsCount', 1);
 

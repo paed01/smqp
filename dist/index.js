@@ -51,8 +51,10 @@ function Broker(source) {
   }
 
   function subscribeOnce(exchangeName, routingKey, onMessage) {
+    if (typeof onMessage !== 'function') throw new Error('message callback is required');
+
     const onceQueueName = generateId();
-    const onceConsumer = subscribe(exchangeName, routingKey, onceQueueName, wrappedOnMessage, { noAck: true });
+    const onceConsumer = subscribe(exchangeName, routingKey, onceQueueName, wrappedOnMessage, { durable: false, noAck: true });
     return onceConsumer;
 
     function wrappedOnMessage(...args) {
@@ -62,7 +64,7 @@ function Broker(source) {
   }
 
   function subscribe(exchangeName, pattern, queueName, onMessage, options = { durable: true }) {
-    if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and onMessage are required');
+    if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and message callback are required');
 
     assertExchange(exchangeName);
     const queue = assertQueue(queueName, options);
