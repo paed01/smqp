@@ -6,3 +6,6 @@ SMQP
 Synchronous message queuing package
 
 Basically a synchronous amqp broker.
+
+# Documentation
+- [API](/API.md)
