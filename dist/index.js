@@ -9,6 +9,10 @@ function Broker(source) {
   const queues = [];
 
   const broker = {
+    subscribe,
+    subscribeOnce,
+    subscribeTmp,
+    unsubscribe,
     assertExchange,
     close,
     deleteExchange,
@@ -26,12 +30,8 @@ function Broker(source) {
     recover,
     sendToQueue,
     stop,
-    subscribe,
-    subscribeOnce,
-    subscribeTmp,
     unbindExchange,
-    unbindQueue,
-    unsubscribe
+    unbindQueue
   };
 
   Object.defineProperty(broker, 'exchangesCount', {
@@ -45,6 +45,17 @@ function Broker(source) {
   });
 
   return broker;
+
+  function subscribe(exchangeName, pattern, queueName, onMessage, options = { durable: true }) {
+    if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and message callback are required');
+
+    assertExchange(exchangeName);
+    const queue = assertQueue(queueName, options);
+
+    bindQueue(queueName, exchangeName, pattern, options);
+
+    return queue.addConsumer(onMessage, options);
+  }
 
   function subscribeTmp(exchangeName, routingKey, onMessage, options = {}) {
     return subscribe(exchangeName, routingKey, generateId(), onMessage, { ...options, durable: false });
@@ -63,15 +74,13 @@ function Broker(source) {
     }
   }
 
-  function subscribe(exchangeName, pattern, queueName, onMessage, options = { durable: true }) {
-    if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and message callback are required');
-
-    assertExchange(exchangeName);
-    const queue = assertQueue(queueName, options);
-
-    bindQueue(queueName, exchangeName, pattern, options);
-
-    return queue.addConsumer(onMessage, options);
+  function unsubscribe(queueName, onMessage) {
+    const queue = getQueue(queueName);
+    if (!queue) return;
+    queue.removeConsumer(onMessage);
+    if (!queue.options.autoDelete) return true;
+    if (!queue.consumersCount) deleteQueue(queueName);
+    return true;
   }
 
   function assertExchange(exchangeName, type, options) {
@@ -109,15 +118,6 @@ function Broker(source) {
   function consume(queueName, onMessage, options) {
     const queue = getQueue(queueName);
     return queue.addConsumer(onMessage, options);
-  }
-
-  function unsubscribe(queueName, onMessage) {
-    const queue = getQueue(queueName);
-    if (!queue) return;
-    queue.removeConsumer(onMessage);
-    if (!queue.options.autoDelete) return true;
-    if (!queue.consumersCount) deleteQueue(queueName);
-    return true;
   }
 
   function getExchange(exchangeName) {
