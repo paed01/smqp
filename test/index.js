@@ -157,7 +157,7 @@ describe('Smqp', () => {
         }
       });
 
-      it('sends copy of messages each in multiple queues', () => {
+      it('sends copy of message to each queue', () => {
         const broker = Broker();
         broker.assertExchange('test', 'topic');
 

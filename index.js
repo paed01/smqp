@@ -3,6 +3,10 @@ export function Broker(source) {
   const queues = [];
 
   const broker = {
+    subscribe,
+    subscribeOnce,
+    subscribeTmp,
+    unsubscribe,
     assertExchange,
     close,
     deleteExchange,
@@ -20,12 +24,8 @@ export function Broker(source) {
     recover,
     sendToQueue,
     stop,
-    subscribe,
-    subscribeOnce,
-    subscribeTmp,
     unbindExchange,
     unbindQueue,
-    unsubscribe,
   };
 
   Object.defineProperty(broker, 'exchangesCount', {
@@ -39,6 +39,17 @@ export function Broker(source) {
   });
 
   return broker;
+
+  function subscribe(exchangeName, pattern, queueName, onMessage, options = {durable: true}) {
+    if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and message callback are required');
+
+    assertExchange(exchangeName);
+    const queue = assertQueue(queueName, options);
+
+    bindQueue(queueName, exchangeName, pattern, options);
+
+    return queue.addConsumer(onMessage, options);
+  }
 
   function subscribeTmp(exchangeName, routingKey, onMessage, options = {}) {
     return subscribe(exchangeName, routingKey, generateId(), onMessage, {...options, durable: false});
@@ -57,15 +68,13 @@ export function Broker(source) {
     }
   }
 
-  function subscribe(exchangeName, pattern, queueName, onMessage, options = {durable: true}) {
-    if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and message callback are required');
-
-    assertExchange(exchangeName);
-    const queue = assertQueue(queueName, options);
-
-    bindQueue(queueName, exchangeName, pattern);
-
-    return queue.addConsumer(onMessage, options);
+  function unsubscribe(queueName, onMessage) {
+    const queue = getQueue(queueName);
+    if (!queue) return;
+    queue.removeConsumer(onMessage);
+    if (!queue.options.autoDelete) return true;
+    if (!queue.consumersCount) deleteQueue(queueName);
+    return true;
   }
 
   function assertExchange(exchangeName, type, options) {
@@ -84,10 +93,10 @@ export function Broker(source) {
     return exchanges.find((exchange) => exchange.name === exchangeName);
   }
 
-  function bindQueue(queueName, exchangeName, pattern) {
+  function bindQueue(queueName, exchangeName, pattern, bindOptions) {
     const exchange = getExchange(exchangeName);
     const queue = getQueue(queueName);
-    exchange.bind(queue, pattern);
+    exchange.bind(queue, pattern, bindOptions);
     queue.bind(exchangeName);
   }
 
@@ -103,15 +112,6 @@ export function Broker(source) {
   function consume(queueName, onMessage, options) {
     const queue = getQueue(queueName);
     return queue.addConsumer(onMessage, options);
-  }
-
-  function unsubscribe(queueName, onMessage) {
-    const queue = getQueue(queueName);
-    if (!queue) return;
-    queue.removeConsumer(onMessage);
-    if (!queue.options.autoDelete) return true;
-    if (!queue.consumersCount) deleteQueue(queueName);
-    return true;
   }
 
   function getExchange(exchangeName) {
@@ -326,12 +326,13 @@ export function Broker(source) {
       bindings.push(bound);
     }
 
-    function bind(queue, pattern) {
+    function bind(queue, pattern, bindOptions) {
       const bound = bindings.find((bq) => bq.queue === queue && bq.pattern === pattern);
       if (bound) return bound;
 
-      const binding = BoundQueue(queue, pattern);
+      const binding = Binding(queue, pattern, bindOptions);
       bindings.push(binding);
+      bindings.sort(sortByPriority);
       return binding;
     }
 
@@ -413,13 +414,14 @@ export function Broker(source) {
       }
     }
 
-    function BoundQueue(queue, pattern) {
+    function Binding(queue, pattern, bindOptions = {priority: 0}) {
       const rPattern = getRPattern();
       return {
         id: `${queue.name}/${pattern}`,
-        queue,
+        options: {...bindOptions},
         pattern,
-        close: closeBoundQueue,
+        queue,
+        close: closeBinding,
         testPattern,
       };
 
@@ -427,7 +429,7 @@ export function Broker(source) {
         return rPattern.test(routingKey);
       }
 
-      function closeBoundQueue() {
+      function closeBinding() {
         queue.close();
       }
 
@@ -670,13 +672,14 @@ export function Broker(source) {
 
   function Consumer(queueName, onMessage, options) {
     const consumerOptions = Object.assign({consumerTag: generateId(), prefetch: 1, priority: 0}, options);
-    const {consumerTag, prefetch, noAck, priority} = consumerOptions;
+    const {consumerTag, noAck, priority} = consumerOptions;
+    let prefetch;
+    setPrefetch(consumerOptions.prefetch);
     const messages = [];
 
     const consumer = {
       consumerTag,
       noAck,
-      prefetch,
       priority,
       queueName,
       messages,
@@ -688,6 +691,7 @@ export function Broker(source) {
       onMessage,
       consume: getMessages,
       nackAll,
+      prefetch: setPrefetch
     };
 
     return consumer;
@@ -741,6 +745,16 @@ export function Broker(source) {
       unsubscribe(consumer.queueName, onMessage);
       nackAll(requeue);
       consumer.queueName = undefined;
+    }
+
+    function setPrefetch(value) {
+      const val = parseInt(value);
+      if (!val) {
+        prefetch = 1;
+        return;
+      }
+      prefetch = val;
+      return prefetch;
     }
   }
 

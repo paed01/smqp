@@ -69,7 +69,7 @@ function Broker(source) {
     assertExchange(exchangeName);
     const queue = assertQueue(queueName, options);
 
-    bindQueue(queueName, exchangeName, pattern);
+    bindQueue(queueName, exchangeName, pattern, options);
 
     return queue.addConsumer(onMessage, options);
   }
@@ -90,10 +90,10 @@ function Broker(source) {
     return exchanges.find(exchange => exchange.name === exchangeName);
   }
 
-  function bindQueue(queueName, exchangeName, pattern) {
+  function bindQueue(queueName, exchangeName, pattern, bindOptions) {
     const exchange = getExchange(exchangeName);
     const queue = getQueue(queueName);
-    exchange.bind(queue, pattern);
+    exchange.bind(queue, pattern, bindOptions);
     queue.bind(exchangeName);
   }
 
@@ -332,12 +332,13 @@ function Broker(source) {
       bindings.push(bound);
     }
 
-    function bind(queue, pattern) {
+    function bind(queue, pattern, bindOptions) {
       const bound = bindings.find(bq => bq.queue === queue && bq.pattern === pattern);
       if (bound) return bound;
 
-      const binding = BoundQueue(queue, pattern);
+      const binding = Binding(queue, pattern, bindOptions);
       bindings.push(binding);
+      bindings.sort(sortByPriority);
       return binding;
     }
 
@@ -419,13 +420,14 @@ function Broker(source) {
       }
     }
 
-    function BoundQueue(queue, pattern) {
+    function Binding(queue, pattern, bindOptions = { priority: 0 }) {
       const rPattern = getRPattern();
       return {
         id: `${queue.name}/${pattern}`,
-        queue,
+        options: { ...bindOptions },
         pattern,
-        close: closeBoundQueue,
+        queue,
+        close: closeBinding,
         testPattern
       };
 
@@ -433,7 +435,7 @@ function Broker(source) {
         return rPattern.test(routingKey);
       }
 
-      function closeBoundQueue() {
+      function closeBinding() {
         queue.close();
       }
 
@@ -674,13 +676,14 @@ function Broker(source) {
 
   function Consumer(queueName, onMessage, options) {
     const consumerOptions = Object.assign({ consumerTag: generateId(), prefetch: 1, priority: 0 }, options);
-    const { consumerTag, prefetch, noAck, priority } = consumerOptions;
+    const { consumerTag, noAck, priority } = consumerOptions;
+    let prefetch;
+    setPrefetch(consumerOptions.prefetch);
     const messages = [];
 
     const consumer = {
       consumerTag,
       noAck,
-      prefetch,
       priority,
       queueName,
       messages,
@@ -691,7 +694,8 @@ function Broker(source) {
       nack,
       onMessage,
       consume: getMessages,
-      nackAll
+      nackAll,
+      prefetch: setPrefetch
     };
 
     return consumer;
@@ -745,6 +749,16 @@ function Broker(source) {
       unsubscribe(consumer.queueName, onMessage);
       nackAll(requeue);
       consumer.queueName = undefined;
+    }
+
+    function setPrefetch(value) {
+      const val = parseInt(value);
+      if (!val) {
+        prefetch = 1;
+        return;
+      }
+      prefetch = val;
+      return prefetch;
     }
   }
 
