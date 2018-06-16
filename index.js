@@ -662,7 +662,7 @@ export function Broker(source) {
 
     function closeQueue() {
       exclusive = false;
-      queueConsumers.splice(0).forEach((consumer) => consumer.close());
+      queueConsumers.splice(0).forEach((consumer) => consumer.cancel());
     }
 
     function stopQueue() {
@@ -686,7 +686,7 @@ export function Broker(source) {
       options: consumerOptions,
       ack,
       ackAll,
-      close: closeConsumer,
+      cancel: cancelConsumer,
       nack,
       onMessage,
       consume: getMessages,
@@ -741,7 +741,7 @@ export function Broker(source) {
       return true;
     }
 
-    function closeConsumer(requeue = true) {
+    function cancelConsumer(requeue = true) {
       unsubscribe(consumer.queueName, onMessage);
       nackAll(requeue);
       consumer.queueName = undefined;

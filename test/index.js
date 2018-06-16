@@ -408,8 +408,8 @@ describe('Smqp', () => {
       expect(queue.options).to.have.property('autoDelete', true);
       expect(queue.options).to.have.property('durable', true);
 
-      consumer1.close();
-      consumer2.close();
+      consumer1.cancel();
+      consumer2.cancel();
 
       expect(broker.getQueue('persist')).to.be.undefined;
 
@@ -577,7 +577,7 @@ describe('Smqp', () => {
       broker.assertQueue('test');
       const consumer = broker.consume('test', () => {});
       expect(consumer).to.be.ok;
-      expect(consumer).to.have.property('close').that.is.a('function');
+      expect(consumer).to.have.property('cancel').that.is.a('function');
     });
   });
 
