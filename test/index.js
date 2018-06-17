@@ -476,6 +476,71 @@ describe('Smqp', () => {
         messages.push('vip');
       }
     });
+
+    describe('dead letters', () => {
+      it('sends rejected message to dead letter exchange', () => {
+        const broker = Broker();
+
+        broker.assertExchange('test');
+        broker.assertExchange('dead-letter');
+        const deadLetterQueue = broker.assertQueue('dead-letters');
+        broker.bindQueue('dead-letters', 'dead-letter', '#');
+
+        broker.subscribe('test', 'test.#', 'testq', onMessage, {deadLetterExchange: 'dead-letter'});
+
+        broker.publish('test', 'test.1');
+
+        expect(deadLetterQueue.length).to.equal(1);
+
+        function onMessage(_, message) {
+          message.reject();
+        }
+      });
+
+      it('sends nacked message to dead letter exchange', () => {
+        const broker = Broker();
+
+        broker.assertExchange('test');
+        broker.assertExchange('dead-letter');
+        const deadLetterQueue = broker.assertQueue('dead-letters');
+        broker.bindQueue('dead-letters', 'dead-letter', '#');
+
+        broker.subscribe('test', 'test.#', 'testq', onMessage, {deadLetterExchange: 'dead-letter'});
+
+        broker.publish('test', 'test.1');
+        broker.publish('test', 'test.2');
+
+        expect(deadLetterQueue.length).to.equal(2);
+
+        function onMessage(_, message) {
+          message.nack();
+        }
+      });
+
+      it('requeued message is not sent to dead letter exchange', () => {
+        const broker = Broker();
+
+        broker.assertExchange('test');
+        broker.assertExchange('dead-letter');
+        const deadLetterQueue = broker.assertQueue('dead-letters');
+        broker.bindQueue('dead-letters', 'dead-letter', '#');
+
+        broker.subscribe('test', 'test.#', 'testq', onMessage, {deadLetterExchange: 'dead-letter'});
+
+        const messages = [];
+        broker.publish('test', 'test.reject');
+        broker.publish('test', 'test.nack');
+
+        expect(deadLetterQueue.length).to.equal(0);
+
+        function onMessage(routingKey, message) {
+          if (messages.indexOf(message)) return;
+          messages.push(message);
+          if (routingKey === 'test.reject') message.reject(true);
+          message.nack(false, true);
+        }
+      });
+    });
   });
 
   describe('messages', () => {

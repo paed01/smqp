@@ -448,9 +448,12 @@ export function Broker(source) {
     const messages = [], queueConsumers = [];
     let pendingResume, exclusive, exchangeName, stopped;
     options = Object.assign({autoDelete: true}, options);
+    const {deadLetterExchange} = options;
+    if (deadLetterExchange) assertExchange(deadLetterExchange);
 
     const queue = {
       name: queueName,
+      deadLetterExchange,
       options,
       addConsumer,
       bind,
@@ -576,8 +579,14 @@ export function Broker(source) {
 
     function onConsumed(message, operation, allUpTo, requeue) {
       switch (operation) {
+        case 'reject':
         case 'nack':
-          if (!requeue) dequeue(message);
+          if (requeue) break;
+
+          dequeue(message);
+          if (deadLetterExchange) {
+            publish(deadLetterExchange, message.routingKey, message.content);
+          }
           break;
         default:
           dequeue(message);
