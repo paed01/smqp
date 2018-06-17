@@ -1,12 +1,12 @@
 <!-- version -->
-# 0.3.0 API Reference
+# 0.4.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
 
 <!-- toc -->
 
-- [Utility](#utility)
+- [API reference](#api-reference)
   - [`subscribe(exchangeName, pattern, queueName, onMessage[, options])`](#subscribeexchangename-pattern-queuename-onmessage-options)
   - [`subscribeTmp(exchangeName, pattern, onMessage[, options])`](#subscribetmpexchangename-pattern-onmessage-options)
   - [`subscribeOnce(exchangeName, pattern, onMessage)`](#subscribeonceexchangename-pattern-onmessage)
@@ -19,7 +19,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [`unbindExchange()`](#unbindexchange)
   - [`bindQueue(queueName, exchangeName, pattern[, options])`](#bindqueuequeuename-exchangename-pattern-options)
   - [`unbindQueue(queueName, exchangeName, pattern)`](#unbindqueuequeuename-exchangename-pattern)
-  - [`assertQueue()`](#assertqueue)
+  - [`assertQueue(queueName[, options])`](#assertqueuequeuename-options)
   - [`consume(queueName, onMessage[, options])`](#consumequeuename-onmessage-options)
   - [`createQueue()`](#createqueue)
   - [`deleteQueue()`](#deletequeue)
