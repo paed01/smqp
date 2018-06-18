@@ -8,40 +8,40 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
 
 - [API reference](#api-reference)
   - [`Broker([owner])`](#brokerowner)
-  - [`subscribe(exchangeName, pattern, queueName, onMessage[, options])`](#subscribeexchangename-pattern-queuename-onmessage-options)
-  - [`subscribeTmp(exchangeName, pattern, onMessage[, options])`](#subscribetmpexchangename-pattern-onmessage-options)
-  - [`subscribeOnce(exchangeName, pattern, onMessage)`](#subscribeonceexchangename-pattern-onmessage)
-  - [`unsubscribe(queueName, onMessage)`](#unsubscribequeuename-onmessage)
-  - [`publish(exchangeName, routingKey[, content, options])`](#publishexchangename-routingkey-content-options)
-  - [`close()`](#close)
-  - [`assertExchange(exchangeName[, type = topic, options])`](#assertexchangeexchangename-type--topic-options)
-  - [`deleteExchange(exchangeName[, ifUnused])`](#deleteexchangeexchangename-ifunused)
-  - [`bindExchange()`](#bindexchange)
-  - [`unbindExchange()`](#unbindexchange)
-  - [`assertQueue(queueName[, options])`](#assertqueuequeuename-options)
-  - [`bindQueue(queueName, exchangeName, pattern[, options])`](#bindqueuequeuename-exchangename-pattern-options)
-  - [`unbindQueue(queueName, exchangeName, pattern)`](#unbindqueuequeuename-exchangename-pattern)
-  - [`consume(queueName, onMessage[, options])`](#consumequeuename-onmessage-options)
-  - [`cancel(consumerTag)`](#cancelconsumertag)
-  - [`createQueue()`](#createqueue)
-  - [`deleteQueue()`](#deletequeue)
-  - [`getExchange()`](#getexchange)
-  - [`getQueue()`](#getqueue)
-  - [`getState()`](#getstate)
-  - [`recover(state)`](#recoverstate)
-  - [`purgeQueue()`](#purgequeue)
-  - [`sendToQueue()`](#sendtoqueue)
-  - [`stop()`](#stop)
-- [Consumer](#consumer)
-  - [`ack([allUpTo = false])`](#ackallupto--false)
-  - [`ackAll()`](#ackall)
-  - [`nack()`](#nack)
-  - [`nackAll([requeue])`](#nackallrequeue)
-  - [`cancel()`](#cancel)
-- [Message](#message)
-  - [`nack([allUpTo = false, requeue = false])`](#nackallupto--false-requeue--false)
-  - [`ack([allUpTo = false])`](#ackallupto--false)
-  - [`reject([requeue = false])`](#rejectrequeue--false)
+    - [`broker.subscribe(exchangeName, pattern, queueName, onMessage[, options])`](#brokersubscribeexchangename-pattern-queuename-onmessage-options)
+    - [`broker.subscribeTmp(exchangeName, pattern, onMessage[, options])`](#brokersubscribetmpexchangename-pattern-onmessage-options)
+    - [`broker.subscribeOnce(exchangeName, pattern, onMessage)`](#brokersubscribeonceexchangename-pattern-onmessage)
+    - [`broker.unsubscribe(queueName, onMessage)`](#brokerunsubscribequeuename-onmessage)
+    - [`broker.publish(exchangeName, routingKey[, content, options])`](#brokerpublishexchangename-routingkey-content-options)
+    - [`broker.close()`](#brokerclose)
+    - [`broker.assertExchange(exchangeName[, type = topic, options])`](#brokerassertexchangeexchangename-type--topic-options)
+    - [`broker.deleteExchange(exchangeName[, ifUnused])`](#brokerdeleteexchangeexchangename-ifunused)
+    - [`broker.bindExchange()`](#brokerbindexchange)
+    - [`broker.unbindExchange()`](#brokerunbindexchange)
+    - [`broker.assertQueue(queueName[, options])`](#brokerassertqueuequeuename-options)
+    - [`broker.bindQueue(queueName, exchangeName, pattern[, options])`](#brokerbindqueuequeuename-exchangename-pattern-options)
+    - [`broker.unbindQueue(queueName, exchangeName, pattern)`](#brokerunbindqueuequeuename-exchangename-pattern)
+    - [`broker.consume(queueName, onMessage[, options])`](#brokerconsumequeuename-onmessage-options)
+    - [`broker.cancel(consumerTag)`](#brokercancelconsumertag)
+    - [`broker.createQueue()`](#brokercreatequeue)
+    - [`broker.deleteQueue()`](#brokerdeletequeue)
+    - [`broker.getExchange()`](#brokergetexchange)
+    - [`broker.getQueue()`](#brokergetqueue)
+    - [`broker.getState()`](#brokergetstate)
+    - [`broker.recover(state)`](#brokerrecoverstate)
+    - [`broker.purgeQueue()`](#brokerpurgequeue)
+    - [`broker.sendToQueue()`](#brokersendtoqueue)
+    - [`broker.stop()`](#brokerstop)
+  - [Consumer](#consumer)
+    - [`consumer.ack([allUpTo = false])`](#consumerackallupto--false)
+    - [`consumer.ackAll()`](#consumerackall)
+    - [`consumer.nack()`](#consumernack)
+    - [`consumer.nackAll([requeue])`](#consumernackallrequeue)
+    - [`consumer.cancel()`](#consumercancel)
+  - [Message](#message)
+    - [`nack([allUpTo = false, requeue = false])`](#nackallupto--false-requeue--false)
+    - [`ack([allUpTo = false])`](#ackallupto--false)
+    - [`reject([requeue = false])`](#rejectrequeue--false)
 
 <!-- tocstop -->
 
@@ -50,7 +50,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
 ## `Broker([owner])`
 Start new broker owned by optional `owner`.
 
-## `subscribe(exchangeName, pattern, queueName, onMessage[, options])`
+### `broker.subscribe(exchangeName, pattern, queueName, onMessage[, options])`
 Asserts an exchange, a named queue and returns a new [consumer](#consumer) to that queue.
 
 - `exchangeName`: exchange name
@@ -84,7 +84,7 @@ function onMessage(routingKey, message, brokerOwner) {
 }
 ```
 
-## `subscribeTmp(exchangeName, pattern, onMessage[, options])`
+### `broker.subscribeTmp(exchangeName, pattern, onMessage[, options])`
 Asserts exchange and creates a temporary queue with random name, i.e. not durable, and returns a new [consumer](#consumer).
 
 - `exchangeName`: exchange name
@@ -98,7 +98,7 @@ Asserts exchange and creates a temporary queue with random name, i.e. not durabl
   - `prefetch`: integer, defaults to `1`, number of messages to consume at a time
   - `priority`: integer, defaults to `0`, higher value gets messages first
 
-## `subscribeOnce(exchangeName, pattern, onMessage)`
+### `broker.subscribeOnce(exchangeName, pattern, onMessage)`
 Same as `subscribeTmp` and will immediately close consumer when first message arrive.
 
 - `exchangeName`: exchange name
@@ -107,10 +107,10 @@ Same as `subscribeTmp` and will immediately close consumer when first message ar
 
 Oh, btw, option `noAck` will be set to `true` so there is no need to ack message in message callback.
 
-## `unsubscribe(queueName, onMessage)`
+### `broker.unsubscribe(queueName, onMessage)`
 Remove consumer with message callback from queue.
 
-## `publish(exchangeName, routingKey[, content, options])`
+### `broker.publish(exchangeName, routingKey[, content, options])`
 Publish message to exchange.
 
 - `exchangeName`: exchange name
@@ -118,23 +118,23 @@ Publish message to exchange.
 - `content`: object containing message content
 - `options`: Message options, actually not used at the moment but will be accessible with the message
 
-## `close()`
+### `broker.close()`
 Close exchanges, queues, and all consumers
 
-## `assertExchange(exchangeName[, type = topic, options])`
+### `broker.assertExchange(exchangeName[, type = topic, options])`
 Creates exchange with name.
 
 Type must be one of `topic` or `direct`, defaults to `topic`.
 
-## `deleteExchange(exchangeName[, ifUnused])`
+### `broker.deleteExchange(exchangeName[, ifUnused])`
 
-## `bindExchange()`
+### `broker.bindExchange()`
 Not yet implemented
 
-## `unbindExchange()`
+### `broker.unbindExchange()`
 Not yet implemented
 
-## `assertQueue(queueName[, options])`
+### `broker.assertQueue(queueName[, options])`
 Assert a queue into existence.
 
 - `options`:
@@ -142,10 +142,10 @@ Assert a queue into existence.
   - `autoDelete`: boolean, defaults to `true`, the queue will be removed when all consumers are down
   - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange if not exists
 
-## `bindQueue(queueName, exchangeName, pattern[, options])`
-## `unbindQueue(queueName, exchangeName, pattern)`
+### `broker.bindQueue(queueName, exchangeName, pattern[, options])`
+### `broker.unbindQueue(queueName, exchangeName, pattern)`
 
-## `consume(queueName, onMessage[, options])`
+### `broker.consume(queueName, onMessage[, options])`
 Consume queue. Returns a [consumer](#consumer). If the message callback is already used for consumption, the existing consumer will be returned.
 
 - `queueName`: queue name
@@ -155,26 +155,26 @@ Consume queue. Returns a [consumer](#consumer). If the message callback is alrea
   - `prefetch`: integer, defaults to `1`, number of messages to consume at a time
   - `priority`: integer, defaults to `0`, higher value gets messages first
 
-## `cancel(consumerTag)`
+### `broker.cancel(consumerTag)`
 Cancel consumption by consumer tag.
 
-## `createQueue()`
-## `deleteQueue()`
+### `broker.createQueue()`
+### `broker.deleteQueue()`
 
-## `getExchange()`
-## `getQueue()`
+### `broker.getExchange()`
+### `broker.getQueue()`
 
-## `getState()`
+### `broker.getState()`
 Return serializable object containg durable exchanges, bindings, and durable queues with messages.
 
-## `recover(state)`
+### `broker.recover(state)`
 Recovers exchanges, bindings, and queues with messages. Preferably from `getState()`.
 
-## `purgeQueue()`
-## `sendToQueue()`
-## `stop()`
+### `broker.purgeQueue()`
+### `broker.sendToQueue()`
+### `broker.stop()`
 
-# Consumer
+## Consumer
 Queue consumer
 
 **Properties**:
@@ -185,18 +185,18 @@ Queue consumer
 - `priority`
 - `queueName`: consuming queue name
 
-## `ack([allUpTo = false])`
-## `ackAll()`
-## `nack()`
-## `nackAll([requeue])`
-## `cancel()`
+### `consumer.ack([allUpTo = false])`
+### `consumer.ackAll()`
+### `consumer.nack()`
+### `consumer.nackAll([requeue])`
+### `consumer.cancel()`
 Cancel consumption and unsubscribe from queue
 
-# Message
+## Message
 Beware of `requeue` argument since the message will immmediately be returned to queue and consumed, ergo an infinit loop and maximum call stack size exceeded error unless some precatautions are made.
 
-## `nack([allUpTo = false, requeue = false])`
+### `nack([allUpTo = false, requeue = false])`
 
-## `ack([allUpTo = false])`
-## `reject([requeue = false])`
+### `ack([allUpTo = false])`
+### `reject([requeue = false])`
 
