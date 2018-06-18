@@ -544,7 +544,7 @@ describe('Smqp', () => {
   });
 
   describe('messages', () => {
-    it('takes content', (done) => {
+    it('delivers content', (done) => {
       const broker = Broker();
 
       broker.subscribeTmp('test', '#', onMessage);
@@ -643,6 +643,19 @@ describe('Smqp', () => {
       const consumer = broker.consume('test', () => {});
       expect(consumer).to.be.ok;
       expect(consumer).to.have.property('cancel').that.is.a('function');
+    });
+
+    it('keeps count of consumers', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+      const consumer1 = broker.consume('test', () => {});
+      broker.consume('test', () => {});
+
+      expect(broker).to.have.property('consumersCount', 2);
+
+      broker.cancel(consumer1.consumerTag);
+      expect(broker).to.have.property('consumersCount', 1);
     });
   });
 
@@ -1373,7 +1386,7 @@ describe('Smqp', () => {
       }
     });
 
-    it('unsubscribe from durable, keep queue nacks all messages', () => {
+    it('unsubscribe from durable queue nacks all messages', () => {
       const broker = Broker();
       const queue = broker.assertQueue('testq', {durable: true, autoDelete: false});
       broker.sendToQueue('testq', 'test.1');
@@ -1391,6 +1404,27 @@ describe('Smqp', () => {
       function onMessage(routingKey, message) {
         if (routingKey === 'test.2') return broker.unsubscribe('testq', onMessage);
         message.ack();
+      }
+    });
+
+    it('unsubscribe in message callback after ack stops receiving messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('testq', {durable: true, autoDelete: false});
+      broker.subscribe('test', 'test.*', 'testq', onMessage);
+
+      const messages = [];
+
+      broker.publish('test', 'test.1');
+      broker.publish('test', 'test.2');
+      broker.publish('test', 'test.3');
+
+      expect(messages).to.eql(['test.1']);
+      expect(queue.length).to.equal(2);
+
+      function onMessage(routingKey, message) {
+        messages.push(routingKey);
+        message.ack();
+        broker.unsubscribe('testq', onMessage);
       }
     });
   });

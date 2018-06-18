@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Synchronous message queuing package",
   "author": {
     "name": "Pål Edman",
@@ -43,7 +43,9 @@
     "subscribe",
     "ack",
     "nack",
-    "reject"
+    "reject",
+    "topic",
+    "direct"
   ],
   "devDependencies": {
     "babel-cli": "^6.26.0",

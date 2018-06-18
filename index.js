@@ -1,6 +1,7 @@
 export function Broker(source) {
   const exchanges = [];
   const queues = [];
+  const consumers = [];
 
   const broker = {
     subscribe,
@@ -8,6 +9,7 @@ export function Broker(source) {
     subscribeTmp,
     unsubscribe,
     assertExchange,
+    cancel,
     close,
     deleteExchange,
     bindExchange,
@@ -36,6 +38,11 @@ export function Broker(source) {
   Object.defineProperty(broker, 'queuesCount', {
     enumerable: true,
     get: () => queues.length
+  });
+
+  Object.defineProperty(broker, 'consumersCount', {
+    enumerable: true,
+    get: () => consumers.length
   });
 
   return broker;
@@ -112,6 +119,13 @@ export function Broker(source) {
   function consume(queueName, onMessage, options) {
     const queue = getQueue(queueName);
     return queue.addConsumer(onMessage, options);
+  }
+
+  function cancel(consumerTag) {
+    const consumer = consumers.find((c) => c.consumerTag === consumerTag);
+    if (!consumer) return false;
+    consumer.cancel(false);
+    return true;
   }
 
   function getExchange(exchangeName) {
@@ -512,6 +526,7 @@ export function Broker(source) {
       }
 
       consumer = Consumer(queueName, onMessage, consumeOptions);
+      consumers.push(consumer);
       queueConsumers.push(consumer);
       queueConsumers.sort(sortByPriority);
       consumeNext();
@@ -530,9 +545,15 @@ export function Broker(source) {
 
     function unbind(consumer, requeue) {
       if (!consumer) return;
+
       const idx = queueConsumers.indexOf(consumer);
       if (idx === -1) return;
       queueConsumers.splice(idx, 1);
+
+      const mainIdx = consumers.indexOf(consumer);
+      if (mainIdx > -1) {
+        consumers.splice(mainIdx, 1);
+      }
 
       exclusive = false;
 
