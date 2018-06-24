@@ -279,6 +279,7 @@ export function Broker(source) {
       options,
       bind,
       close: closeExchange,
+      getBinding,
       getState: getExchangeState,
       publish: publishToQueues,
       recover: recoverExchange,
@@ -380,13 +381,10 @@ export function Broker(source) {
       };
 
       function getBoundState() {
-        return bindings.reduce((result, bound) => {
-          if (!bound.queue.options.durable) return;
+        return bindings.reduce((result, binding) => {
+          if (!binding.queue.options.durable) return result;
           if (!result) result = [];
-          result.push({
-            pattern: bound.pattern,
-            queueName: bound.queue.name,
-          });
+          result.push(binding.getState());
           return result;
         }, undefined);
       }
@@ -420,12 +418,16 @@ export function Broker(source) {
 
       function recoverBindings() {
         if (!state.bindings) return;
-        state.bindings.forEach((binding) => {
-          const queue = getQueue(binding.queueName);
+        state.bindings.forEach((bindingState) => {
+          const queue = getQueue(bindingState.queueName);
           if (!queue) return;
-          bind(queue, binding.pattern);
+          bind(queue, bindingState.pattern, bindingState.options);
         });
       }
+    }
+
+    function getBinding(queueName, pattern) {
+      return bindings.find((binding) => binding.queue.name === queueName && binding.pattern === pattern);
     }
 
     function Binding(queue, pattern, bindOptions = {priority: 0}) {
@@ -436,6 +438,7 @@ export function Broker(source) {
         pattern,
         queue,
         close: closeBinding,
+        getState: getBindingState,
         testPattern,
       };
 
@@ -454,6 +457,14 @@ export function Broker(source) {
           .replace('#', '.+?');
 
         return new RegExp(`^${rpattern}$`);
+      }
+
+      function getBindingState() {
+        return {
+          pattern: pattern,
+          queueName: queue.name,
+          options: Object.assign({}, bindOptions)
+        };
       }
     }
   }

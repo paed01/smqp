@@ -821,6 +821,18 @@ describe('Smqp', () => {
       expect(recoveredExchange).to.have.property('bindingsCount', 1);
     });
 
+    it('recovers bindings', () => {
+      broker.bindQueue('events', 'event', 'event.#', {priority: 30});
+
+      const recoveredBroker = Broker().recover(broker.getState());
+
+      const {bindingsCount, bindings} = recoveredBroker.getExchange('event');
+      expect(bindingsCount).to.equal(2);
+      expect(bindings[0]).to.have.property('pattern', 'event.#');
+      expect(bindings[0].options).to.have.property('priority', 30);
+      expect(bindings[1]).to.have.property('pattern', '#');
+    });
+
     it('peek returns first recovered message', () => {
       broker.publish('event', 'event.0', {data: 1});
       broker.publish('event', 'event.1', {data: 2});

@@ -4,10 +4,7 @@
   },
   "parserOptions": {
     "sourceType": "script",
-    "ecmaVersion": 8,
-    "ecmaFeatures": {
-      "experimentalObjectRestSpread": true
-    }
+    "ecmaVersion": 2018
   },
   "rules": {
     "quotes": 0,
