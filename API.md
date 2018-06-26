@@ -29,7 +29,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.getQueue()`](#brokergetqueue)
     - [`broker.getState()`](#brokergetstate)
     - [`broker.recover(state)`](#brokerrecoverstate)
-    - [`broker.purgeQueue()`](#brokerpurgequeue)
+    - [`broker.purgeQueue(queueName)`](#brokerpurgequeuequeuename)
     - [`broker.sendToQueue()`](#brokersendtoqueue)
     - [`broker.stop()`](#brokerstop)
   - [Consumer](#consumer)
@@ -170,7 +170,10 @@ Return serializable object containg durable exchanges, bindings, and durable que
 ### `broker.recover(state)`
 Recovers exchanges, bindings, and queues with messages. Preferably from `getState()`.
 
-### `broker.purgeQueue()`
+### `broker.purgeQueue(queueName)`
+
+Purge queue by name if found
+
 ### `broker.sendToQueue()`
 ### `broker.stop()`
 

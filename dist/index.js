@@ -276,8 +276,8 @@ function Broker(source) {
     let stopped;
     options = Object.assign({ durable: true, autoDelete: true }, options);
 
-    const directQueue = Queue('messages-queue', { autoDelete: false });
-    directQueue.addConsumer(direct);
+    const publishQueue = Queue('messages-queue', { autoDelete: false });
+    publishQueue.addConsumer(type === 'topic' ? topic : direct);
 
     const exchange = {
       name: exchangeName,
@@ -313,32 +313,37 @@ function Broker(source) {
 
     function publishToQueues(routingKey, content, msgOptions) {
       if (stopped) return;
+      return publishQueue.queueMessage(routingKey, content, msgOptions);
+    }
 
-      if (type === 'direct') return directQueue.queueMessage(routingKey, content, msgOptions);
+    function topic(routingKey, message) {
+      const deliverTo = getConcernedBindings(routingKey);
+      if (!deliverTo.length) {
+        message.ack();
+        return 0;
+      }
 
-      const deliverTo = bindings.reduce((result, { queue, testPattern }) => {
-        if (testPattern(routingKey)) result.push(queue);
-        return result;
-      }, []);
-
-      if (!deliverTo.length) return 0;
-
-      deliverTo.forEach(queue => queue.queueMessage(routingKey, content, msgOptions));
+      deliverTo.forEach(({ queue }) => queue.queueMessage(routingKey, message.content, message.options));
+      message.ack();
     }
 
     function direct(routingKey, message) {
-      const deliverTo = bindings.reduce((result, bound) => {
-        if (bound.testPattern(routingKey)) result.push(bound);
-        return result;
-      }, []);
-
+      const deliverTo = getConcernedBindings(routingKey);
       const first = deliverTo[0];
       if (!first) {
         message.ack();
         return 0;
       }
+
       if (deliverTo.length > 1) shift(deliverTo[0]);
       first.queue.queueMessage(routingKey, message.content, message.options, message.ack);
+    }
+
+    function getConcernedBindings(routingKey) {
+      return bindings.reduce((result, bound) => {
+        if (bound.testPattern(routingKey)) result.push(bound);
+        return result;
+      }, []);
     }
 
     function shift(bound) {
@@ -373,8 +378,8 @@ function Broker(source) {
 
     function closeExchange() {
       bindings.forEach(q => q.close());
-      directQueue.removeConsumer(direct, false);
-      directQueue.close();
+      publishQueue.removeConsumer(type === 'topic' ? topic : direct, false);
+      publishQueue.close();
     }
 
     function getExchangeState() {
@@ -396,8 +401,7 @@ function Broker(source) {
       }
 
       function getUndelivered() {
-        if (type !== 'direct') return;
-        return directQueue.getState().messages;
+        return publishQueue.getState().messages;
       }
     }
 
@@ -407,23 +411,16 @@ function Broker(source) {
 
     function recoverExchange(state) {
       stopped = false;
-      if (!state) {
-        if (type === 'direct') {
-          directQueue.recover();
-        }
-        return;
-      }
 
       recoverBindings();
-
-      if (state && type === 'direct') {
-        directQueue.recover({ messages: state.undelivered });
+      if (state) {
+        publishQueue.recover({ messages: state.undelivered });
       }
 
       return exchange;
 
       function recoverBindings() {
-        if (!state.bindings) return;
+        if (!state || !state.bindings) return;
         state.bindings.forEach(bindingState => {
           const queue = getQueue(bindingState.queueName);
           if (!queue) return;

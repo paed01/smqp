@@ -159,23 +159,23 @@ describe('Smqp', () => {
 
       it('sends copy of message to each queue', () => {
         const broker = Broker();
-        broker.assertExchange('test', 'topic');
+        broker.assertExchange('event', 'topic');
 
-        broker.assertQueue('testq1');
-        broker.assertQueue('testq2');
-        broker.bindQueue('testq1', 'test', 'test.#');
-        broker.bindQueue('testq2', 'test', 'test.#');
+        broker.assertQueue('eventq1');
+        broker.assertQueue('eventq2');
+        broker.bindQueue('eventq1', 'event', 'test.#');
+        broker.bindQueue('eventq2', 'event', 'test.#');
 
         const messages1 = [];
         const messages2 = [];
 
-        broker.consume('testq1', onMessage1);
-        broker.consume('testq2', onMessage2);
+        broker.consume('eventq1', onMessage1);
+        broker.consume('eventq2', onMessage2);
 
-        broker.publish('test', 'test.1.1');
-        broker.publish('test', 'test.1.2');
-        broker.publish('test', 'test.2.1');
-        broker.publish('test', 'test.2.2');
+        broker.publish('event', 'test.1.1');
+        broker.publish('event', 'test.1.2');
+        broker.publish('event', 'test.2.1');
+        broker.publish('event', 'test.2.2');
 
         expect(messages1.map(({routingKey}) => routingKey)).to.eql([
           'test.1.1',
@@ -198,6 +198,61 @@ describe('Smqp', () => {
         function onMessage2(routingKey, message) {
           messages2.push(message);
           message.ack();
+        }
+      });
+
+      it('sends copy of message to each queue in sequence', (done) => {
+        const broker = Broker();
+        broker.assertExchange('event', 'topic');
+
+        broker.assertQueue('eventq1');
+        broker.assertQueue('eventq2');
+        broker.bindQueue('eventq1', 'event', 'test.*');
+        broker.bindQueue('eventq2', 'event', 'test.#');
+
+        broker.assertQueue('done');
+        broker.bindQueue('done', 'event', '#');
+
+        const messages1 = [];
+        const messages2 = [];
+
+        broker.consume('eventq1', onMessage1);
+        broker.consume('eventq2', onMessage2);
+
+        broker.consume('done', assertMessages);
+
+        broker.publish('event', 'test.1');
+
+        function onMessage1(routingKey, message) {
+          messages1.push(message);
+          message.ack();
+          if (routingKey === 'test.1') {
+            broker.publish('event', 'test.2');
+          }
+        }
+
+        function onMessage2(routingKey, message) {
+          messages2.push(message);
+          message.ack();
+          if (routingKey === 'test.2') {
+            broker.publish('event', 'done');
+          }
+        }
+
+        function assertMessages(key, message) {
+          if (key !== 'done') return message.ack();
+
+          expect(messages1.map(({routingKey}) => routingKey)).to.eql([
+            'test.1',
+            'test.2',
+          ]);
+
+          expect(messages2.map(({routingKey}) => routingKey)).to.eql([
+            'test.1',
+            'test.2',
+          ]);
+
+          done();
         }
       });
     });
@@ -866,11 +921,6 @@ describe('Smqp', () => {
         messages.push(routingKey);
       }
 
-      function onRecoveredMessage(routingKey, message) {
-        messages.push(routingKey);
-        message.ack();
-      }
-
       function stop() {
         broker.stop();
         broker.publish('event', 'event.ignored');
@@ -886,7 +936,9 @@ describe('Smqp', () => {
           'event.1',
           'event.2',
         ]);
+      }
 
+      function onRecoveredMessage() {
         done();
       }
     });
