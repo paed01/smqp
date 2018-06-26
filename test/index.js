@@ -712,6 +712,41 @@ describe('Smqp', () => {
       broker.cancel(consumer1.consumerTag);
       expect(broker).to.have.property('consumersCount', 1);
     });
+
+    it('consume exclusive disallows others to consume same queue', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+      broker.consume('test', () => {}, {exclusive: true});
+
+      expect(() => {
+        broker.consume('test', () => {});
+      }).to.throw(/exclusive/);
+    });
+
+    it('exclusive consumption is released when consumer is cancelled', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test', {autoDelete: false});
+      const exclusive = broker.consume('test', () => {}, {exclusive: true});
+
+      expect(() => {
+        broker.consume('test', () => {});
+      }).to.throw(/exclusive/);
+
+      exclusive.cancel();
+      broker.consume('test', () => {});
+    });
+
+    it('the same consumer onMessage will be ignored even by exclusive consumer', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+      broker.consume('test', onMessage, {exclusive: true});
+      broker.consume('test', onMessage);
+
+      function onMessage() {}
+    });
   });
 
   describe('getState()', () => {
