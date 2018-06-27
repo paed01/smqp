@@ -24,13 +24,13 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.consume(queueName, onMessage[, options])`](#brokerconsumequeuename-onmessage-options)
     - [`broker.cancel(consumerTag)`](#brokercancelconsumertag)
     - [`broker.createQueue()`](#brokercreatequeue)
-    - [`broker.deleteQueue()`](#brokerdeletequeue)
-    - [`broker.getExchange()`](#brokergetexchange)
-    - [`broker.getQueue()`](#brokergetqueue)
+    - [`broker.deleteQueue(queueName)`](#brokerdeletequeuequeuename)
+    - [`broker.getExchange(exchangeName)`](#brokergetexchangeexchangename)
+    - [`broker.getQueue(queueName)`](#brokergetqueuequeuename)
     - [`broker.getState()`](#brokergetstate)
-    - [`broker.recover(state)`](#brokerrecoverstate)
+    - [`broker.recover([state])`](#brokerrecoverstate)
     - [`broker.purgeQueue(queueName)`](#brokerpurgequeuequeuename)
-    - [`broker.sendToQueue()`](#brokersendtoqueue)
+    - [`broker.sendToQueue(queueName, routingKey[, content, options])`](#brokersendtoqueuequeuename-routingkey-content-options)
     - [`broker.stop()`](#brokerstop)
   - [Consumer](#consumer)
     - [`consumer.ack([allUpTo = false])`](#consumerackallupto--false)
@@ -61,6 +61,7 @@ Asserts an exchange, a named queue and returns a new [consumer](#consumer) to th
   - `autoDelete`: boolean, defaults to `true`, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down
   - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange
   - `durable`: boolean, defaults to `false`, makes exchange and queue durable, i.e. will be returned when getting state
+  - `exclusive`: boolean, defaults to `false`, queue is exclusively consumed
   - `noAck`: boolean, defaults to `false`
   - `prefetch`: integer, defaults to `1`, number of messages to consume at a time
   - `priority`: integer, defaults to `0`, higher value gets messages first
@@ -151,6 +152,7 @@ Consume queue. Returns a [consumer](#consumer). If the message callback is alrea
 - `queueName`: queue name
 - `onMessage`: message callback
 - `options`:
+  - `exclusive`: boolean, defaults to `false`, queue is exclusively consumed
   - `noAck`: boolean, defaults to `false`
   - `prefetch`: integer, defaults to `1`, number of messages to consume at a time
   - `priority`: integer, defaults to `0`, higher value gets messages first
@@ -159,34 +161,37 @@ Consume queue. Returns a [consumer](#consumer). If the message callback is alrea
 Cancel consumption by consumer tag.
 
 ### `broker.createQueue()`
-### `broker.deleteQueue()`
+### `broker.deleteQueue(queueName)`
 
-### `broker.getExchange()`
-### `broker.getQueue()`
+### `broker.getExchange(exchangeName)`
+### `broker.getQueue(queueName)`
+Get queue by name. Returns existing queue or nothing
 
 ### `broker.getState()`
-Return serializable object containg durable exchanges, bindings, and durable queues with messages.
+Return serializable object containing durable exchanges, bindings, and durable queues with messages.
 
-### `broker.recover(state)`
-Recovers exchanges, bindings, and queues with messages. Preferably from `getState()`.
+### `broker.recover([state])`
+Recovers exchanges, bindings, and queues with messages. A state can be passed, preferably from [`getState()`](#brokergetstate).
 
 ### `broker.purgeQueue(queueName)`
-
 Purge queue by name if found
 
-### `broker.sendToQueue()`
+### `broker.sendToQueue(queueName, routingKey[, content, options])`
+Send message directly to queue, bypassing routing key patterns etc.
+
 ### `broker.stop()`
+No more messages through this broker, i.e. publish will be ignored. Use [`broker.recover()`](#brokerrecoverstate) to resume.
 
 ## Consumer
 Queue consumer
 
 **Properties**:
 - `consumerTag`: random tag
-- `noAck`
+- `noAck`: getter, returns value of option with the same name
 - `onMessage`: message callback
-- `options`
-- `priority`
-- `queueName`: consuming queue name
+- `options`: returns passed options
+- `priority`: priority option value
+- `queueName`: consuming queue with name
 
 ### `consumer.ack([allUpTo = false])`
 ### `consumer.ackAll()`

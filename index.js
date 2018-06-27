@@ -527,13 +527,14 @@ export function Broker(source) {
       let consumer = getConsumer(onMessage);
       if (consumer) return consumer;
 
-      if (exclusive) throw new Error(`Queue ${queueName} is exclusively consumed`);
+      if (exclusive) throw new Error(`Queue ${queueName} is exclusively consumed by ${queueConsumers[0].consumerTag}`);
       if (consumeOptions && consumeOptions.exclusive) {
         if (queueConsumers.length) throw new Error(`Cannot exclusively subscribe to queue ${queueName} since it is already consumed`);
         exclusive = true;
       }
 
       consumer = Consumer(queueName, onMessage, consumeOptions);
+
       consumers.push(consumer);
       queueConsumers.push(consumer);
       queueConsumers.sort(sortByPriority);
