@@ -433,11 +433,11 @@ function Broker(source) {
       return bindings.find(binding => binding.queue.name === queueName && binding.pattern === pattern);
     }
 
-    function Binding(queue, pattern, bindOptions = { priority: 0 }) {
+    function Binding(queue, pattern, bindOptions = {}) {
       const rPattern = getRPattern();
       return {
         id: `${queue.name}/${pattern}`,
-        options: { ...bindOptions },
+        options: { priority: 0, ...bindOptions },
         pattern,
         queue,
         close: closeBinding,
