@@ -1017,6 +1017,44 @@ describe('Smqp', () => {
       }
     });
 
+    it('recovers bindings with descending priority', () => {
+      const messages = [];
+
+      broker.assertQueue('events-prio');
+      broker.bindQueue('events-prio', 'event', '#', {priority: 100});
+
+      broker.consume('events', onMessage);
+      broker.consume('events-prio', onPrioMessage);
+
+      broker.publish('event', 'event.0');
+
+      broker.stop();
+      const recovered = Broker().recover(broker.getState());
+
+      expect(broker.getState()).to.eql(recovered.getState());
+
+      recovered.consume('events', onMessage);
+      recovered.consume('events-prio', onPrioMessage);
+
+      recovered.publish('event', 'event.1');
+
+      expect(messages).to.eql([
+        'prio-event.0',
+        'event.0',
+        'prio-event.1',
+        'event.1',
+      ]);
+
+      function onMessage(routingKey, message) {
+        messages.push(routingKey);
+        message.ack();
+      }
+      function onPrioMessage(routingKey, message) {
+        messages.push(['prio', routingKey].join('-'));
+        message.ack();
+      }
+    });
+
     it('continues consumption', () => {
       const messages = [];
 
