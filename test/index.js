@@ -748,6 +748,19 @@ describe('Smqp', () => {
       function onMessage() {}
     });
 
+    it('consumer tag must be unique', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+      broker.consume('test', onMessage, {consumerTag: 'guid'});
+
+      expect(() => {
+        broker.consume('test', () => {}, {consumerTag: 'guid'});
+      }).to.throw(Error, /guid/);
+
+      function onMessage() {}
+    });
+
     it('passes consumerTag option to the consumer', () => {
       const broker = Broker();
       broker.assertQueue('test');

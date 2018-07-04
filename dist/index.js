@@ -715,7 +715,10 @@ function Broker(source) {
 
   function Consumer(queueName, onMessage, options) {
     const consumerOptions = Object.assign({ prefetch: 1, priority: 0 }, options);
-    if (!consumerOptions.consumerTag) consumerOptions.consumerTag = generateId();
+    if (!consumerOptions.consumerTag) consumerOptions.consumerTag = generateId();else if (consumers.find(c => c.consumerTag === consumerOptions.consumerTag)) {
+      throw new Error(`Consumer tag must be unique, ${consumerOptions.consumerTag} is occupied`);
+    }
+
     const { consumerTag, noAck, priority } = consumerOptions;
 
     let prefetch;

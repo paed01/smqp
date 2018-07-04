@@ -7,9 +7,10 @@
     "ecmaVersion": 2018
   },
   "rules": {
-    "quotes": 0,
+    "eol-last": 0,
     "indent": 0,
-    "space-unary-ops": 0,
-    "eol-last": 0
+    "quotes": 0,
+    "semi-spacing": 0,
+    "space-unary-ops": 0
   }
 }
