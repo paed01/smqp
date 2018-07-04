@@ -747,6 +747,15 @@ describe('Smqp', () => {
 
       function onMessage() {}
     });
+
+    it('passes consumerTag option to the consumer', () => {
+      const broker = Broker();
+      broker.assertQueue('test');
+      const consumer = broker.consume('test', onMessage, {exclusive: true, consumerTag: 'guid'});
+      expect(consumer).to.have.property('consumerTag', 'guid');
+
+      function onMessage() {}
+    });
   });
 
   describe('getState()', () => {
@@ -1464,6 +1473,39 @@ describe('Smqp', () => {
       function onMessage(routingKey) {
         messages.push(routingKey);
       }
+    });
+
+    it('subscribeTmp with consumer tag passes tag to consumer', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      const consumer = broker.subscribeTmp('event', '#', onMessage, {consumerTag: 'guid'});
+
+      expect(consumer).to.have.property('consumerTag', 'guid');
+
+      function onMessage() {}
+    });
+
+    it('subscribeOnce with consumer tag passes tag to consumer', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      const consumer = broker.subscribeOnce('event', '#', onMessage, {consumerTag: 'guid'});
+
+      expect(consumer).to.have.property('consumerTag', 'guid');
+
+      function onMessage() {}
+    });
+
+    it('subscribeOnce with falsey consumer tag sets unique tag to consumer', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      const consumer = broker.subscribeOnce('event', '#', onMessage, {consumerTag: ''});
+
+      expect(consumer).to.have.property('consumerTag').that.is.ok;
+
+      function onMessage() {}
     });
 
     describe('prefetch', () => {

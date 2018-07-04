@@ -62,11 +62,11 @@ export function Broker(source) {
     return subscribe(exchangeName, routingKey, generateId(), onMessage, {...options, durable: false});
   }
 
-  function subscribeOnce(exchangeName, routingKey, onMessage) {
+  function subscribeOnce(exchangeName, routingKey, onMessage, options = {}) {
     if (typeof onMessage !== 'function') throw new Error('message callback is required');
 
     const onceQueueName = generateId();
-    const onceConsumer = subscribe(exchangeName, routingKey, onceQueueName, wrappedOnMessage, {durable: false, noAck: true});
+    const onceConsumer = subscribe(exchangeName, routingKey, onceQueueName, wrappedOnMessage, {durable: false, noAck: true, consumerTag: options.consumerTag});
     return onceConsumer;
 
     function wrappedOnMessage(...args) {
@@ -566,7 +566,7 @@ export function Broker(source) {
 
       exclusive = false;
 
-      const consumerMessages = messages.filter((message) => message.consumerTag === consumer.options.consumerTag);
+      const consumerMessages = messages.filter((message) => message.consumerTag === consumer.consumerTag);
       for (let i = 0; i < consumerMessages.length; i++) {
         consumerMessages[i].unsetConsumer();
         nack(consumerMessages[i], requeue);
@@ -710,8 +710,10 @@ export function Broker(source) {
   }
 
   function Consumer(queueName, onMessage, options) {
-    const consumerOptions = Object.assign({consumerTag: generateId(), prefetch: 1, priority: 0}, options);
+    const consumerOptions = Object.assign({prefetch: 1, priority: 0}, options);
+    if (!consumerOptions.consumerTag) consumerOptions.consumerTag = generateId();
     const {consumerTag, noAck, priority} = consumerOptions;
+
     let prefetch;
     setPrefetch(consumerOptions.prefetch);
     const messages = [];

@@ -1,5 +1,5 @@
 <!-- version -->
-# 0.6.1 API Reference
+# 0.6.2 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -10,7 +10,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [`Broker([owner])`](#brokerowner)
     - [`broker.subscribe(exchangeName, pattern, queueName, onMessage[, options])`](#brokersubscribeexchangename-pattern-queuename-onmessage-options)
     - [`broker.subscribeTmp(exchangeName, pattern, onMessage[, options])`](#brokersubscribetmpexchangename-pattern-onmessage-options)
-    - [`broker.subscribeOnce(exchangeName, pattern, onMessage)`](#brokersubscribeonceexchangename-pattern-onmessage)
+    - [`broker.subscribeOnce(exchangeName, pattern, onMessage[, options])`](#brokersubscribeonceexchangename-pattern-onmessage-options)
     - [`broker.unsubscribe(queueName, onMessage)`](#brokerunsubscribequeuename-onmessage)
     - [`broker.publish(exchangeName, routingKey[, content, options])`](#brokerpublishexchangename-routingkey-content-options)
     - [`broker.close()`](#brokerclose)
@@ -59,12 +59,13 @@ Asserts an exchange, a named queue and returns a new [consumer](#consumer) to th
 - `onMessage`: message callback
 - `options`:
   - `autoDelete`: boolean, defaults to `true`, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down
+  - `consumerTag`: unique consumer tag
   - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange
   - `durable`: boolean, defaults to `false`, makes exchange and queue durable, i.e. will be returned when getting state
   - `exclusive`: boolean, defaults to `false`, queue is exclusively consumed
   - `noAck`: boolean, defaults to `false`
   - `prefetch`: integer, defaults to `1`, number of messages to consume at a time
-  - `priority`: integer, defaults to `0`, higher value gets messages first
+  - `priority`: integer, defaults to `0`, higher value gets messages first,
 
 The message callback signature:
 ```javascript
@@ -93,18 +94,21 @@ Asserts exchange and creates a temporary queue with random name, i.e. not durabl
 - `onMessage`: message callback
 - `options`:
   - `autoDelete`: boolean, defaults to `true`, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down
+  - `consumerTag`: unique consumer tag
   - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange
   - **`durable`**: set to `false` with no option to override
   - `noAck`: boolean, defaults to `false`
   - `prefetch`: integer, defaults to `1`, number of messages to consume at a time
   - `priority`: integer, defaults to `0`, higher value gets messages first
 
-### `broker.subscribeOnce(exchangeName, pattern, onMessage)`
+### `broker.subscribeOnce(exchangeName, pattern, onMessage[, options])`
 Same as `subscribeTmp` and will immediately close consumer when first message arrive.
 
 - `exchangeName`: exchange name
 - `pattern`: queue binding pattern
 - `onMessage`: message callback
+- `options`:
+  - `consumerTag`: unique consumer tag
 
 Oh, btw, option `noAck` will be set to `true` so there is no need to ack message in message callback.
 
