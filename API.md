@@ -51,7 +51,9 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
 Start new broker owned by optional `owner`.
 
 ### `broker.subscribe(exchangeName, pattern, queueName, onMessage[, options])`
-Asserts an exchange, a named queue and returns a new [consumer](#consumer) to that queue.
+Asserts an exvhange, a named queue and returns a new [consumer](#consumer) to that queue.
+
+To make sure the exchange, and or queue has the desired behaviour, please use [`assertExchange()`](#brokerassertexchangeexchangename-type--topic-options) and [`assertQueue()`](#brokerassertqueuequeuename-options)
 
 - `exchangeName`: exchange name
 - `pattern`: queue binding pattern
@@ -61,11 +63,11 @@ Asserts an exchange, a named queue and returns a new [consumer](#consumer) to th
   - `autoDelete`: boolean, defaults to `true`, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down
   - `consumerTag`: unique consumer tag
   - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange
-  - `durable`: boolean, defaults to `false`, makes exchange and queue durable, i.e. will be returned when getting state
-  - `exclusive`: boolean, defaults to `false`, queue is exclusively consumed
-  - `noAck`: boolean, defaults to `false`
+  - `durable`: boolean, defaults to `true`, makes exchange and queue durable, i.e. will be returned when getting state
+  - `exclusive`: boolean, queue is exclusively consumed
+  - `noAck`: boolean, set to `true` if there is no need to acknowledge message
   - `prefetch`: integer, defaults to `1`, number of messages to consume at a time
-  - `priority`: integer, defaults to `0`, higher value gets messages first,
+  - `priority`: integer, defaults to `0`, higher value gets messages first
 
 The message callback signature:
 ```javascript
@@ -97,7 +99,7 @@ Asserts exchange and creates a temporary queue with random name, i.e. not durabl
   - `consumerTag`: unique consumer tag
   - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange
   - **`durable`**: set to `false` with no option to override
-  - `noAck`: boolean, defaults to `false`
+  - `noAck`: boolean, set to `true` if there is no need to acknowledge message
   - `prefetch`: integer, defaults to `1`, number of messages to consume at a time
   - `priority`: integer, defaults to `0`, higher value gets messages first
 
@@ -129,7 +131,10 @@ Close exchanges, queues, and all consumers
 ### `broker.assertExchange(exchangeName[, type = topic, options])`
 Creates exchange with name.
 
-Type must be one of `topic` or `direct`, defaults to `topic`.
+- `type`: type of exchange, must be one of `topic` or `direct`, defaults to `topic`.
+- `options`:
+  - `durable`: boolean, defaults to `true`, makes queue durable, i.e. will be returned when getting state
+  - `autoDelete`: boolean, defaults to `true`, the exchange will be removed when all consumers are down
 
 ### `broker.deleteExchange(exchangeName[, ifUnused])`
 
@@ -145,7 +150,7 @@ Assert a queue into existence.
 - `options`:
   - `durable`: boolean, defaults to `true`, makes queue durable, i.e. will be returned when getting state
   - `autoDelete`: boolean, defaults to `true`, the queue will be removed when all consumers are down
-  - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange if not exists
+  - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange if non-existing
 
 ### `broker.bindQueue(queueName, exchangeName, pattern[, options])`
 ### `broker.unbindQueue(queueName, exchangeName, pattern)`
