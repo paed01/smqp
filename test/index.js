@@ -688,6 +688,48 @@ describe('Smqp', () => {
         messages.push(message);
       }
     });
+
+    it('ack allUpTo argument acknowledges all outstanding messages up to the current one', () => {
+      const broker = Broker();
+
+      broker.subscribe('test', '#', 'testq', onMessage, {prefetch: 2});
+
+      const messages = [];
+
+      broker.publish('test', 'test1');
+      broker.publish('test', 'test2');
+      broker.publish('test', 'test3');
+
+      expect(messages).to.eql(['test2', 'test3']);
+      expect(broker.getQueue('testq').length).to.equal(0);
+
+      function onMessage(routingKey, message) {
+        if (routingKey === 'test1') return;
+        messages.push(routingKey);
+        message.ack(true);
+      }
+    });
+
+    it('nack allUpTo argument acknowledges all outstanding messages up to the current one', () => {
+      const broker = Broker();
+
+      broker.subscribe('test', '#', 'testq', onMessage, {prefetch: 2});
+
+      const messages = [];
+
+      broker.publish('test', 'test1');
+      broker.publish('test', 'test2');
+      broker.publish('test', 'test3');
+
+      expect(messages).to.eql(['test2', 'test3']);
+      expect(broker.getQueue('testq').length).to.equal(0);
+
+      function onMessage(routingKey, message) {
+        if (routingKey === 'test1') return;
+        messages.push(routingKey);
+        message.nack(true);
+      }
+    });
   });
 
   describe('consume()', () => {

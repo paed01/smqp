@@ -613,17 +613,19 @@ function Broker(source) {
 
     function onConsumed(message, operation, allUpTo, requeue) {
       switch (operation) {
+        case 'ack':
+          {
+            dequeue(message, allUpTo);
+            break;
+          }
         case 'reject':
         case 'nack':
           if (requeue) break;
 
-          dequeue(message);
+          dequeue(message, allUpTo);
           if (deadLetterExchange) {
             publish(deadLetterExchange, message.routingKey, message.content);
           }
-          break;
-        default:
-          dequeue(message);
           break;
       }
 
@@ -667,10 +669,16 @@ function Broker(source) {
       return messages.splice(0).length;
     }
 
-    function dequeue(message) {
+    function dequeue(message, allUpTo) {
       const msgIdx = messages.indexOf(message);
       if (msgIdx === -1) return;
-      messages.splice(msgIdx, 1);
+
+      if (allUpTo) {
+        messages.splice(0, msgIdx + 1);
+      } else {
+        messages.splice(msgIdx, 1);
+      }
+
       return true;
     }
 

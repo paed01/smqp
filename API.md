@@ -1,5 +1,5 @@
 <!-- version -->
-# 0.6.2 API Reference
+# 0.6.3 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -33,15 +33,15 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.sendToQueue(queueName, routingKey[, content, options])`](#brokersendtoqueuequeuename-routingkey-content-options)
     - [`broker.stop()`](#brokerstop)
   - [Consumer](#consumer)
-    - [`consumer.ack([allUpTo = false])`](#consumerackallupto--false)
+    - [`consumer.ack([allUpTo])`](#consumerackallupto)
     - [`consumer.ackAll()`](#consumerackall)
-    - [`consumer.nack()`](#consumernack)
+    - [`consumer.nack([allUpTo, requeue])`](#consumernackallupto-requeue)
     - [`consumer.nackAll([requeue])`](#consumernackallrequeue)
     - [`consumer.cancel()`](#consumercancel)
   - [Message](#message)
-    - [`nack([allUpTo = false, requeue = false])`](#nackallupto--false-requeue--false)
-    - [`ack([allUpTo = false])`](#ackallupto--false)
-    - [`reject([requeue = false])`](#rejectrequeue--false)
+    - [`ack([allUpTo])`](#ackallupto)
+    - [`nack([allUpTo, requeue])`](#nackallupto-requeue)
+    - [`reject([requeue])`](#rejectrequeue)
 
 <!-- tocstop -->
 
@@ -197,18 +197,27 @@ Queue consumer
 - `priority`: priority option value
 - `queueName`: consuming queue with name
 
-### `consumer.ack([allUpTo = false])`
+### `consumer.ack([allUpTo])`
 ### `consumer.ackAll()`
-### `consumer.nack()`
+### `consumer.nack([allUpTo, requeue])`
 ### `consumer.nackAll([requeue])`
 ### `consumer.cancel()`
 Cancel consumption and unsubscribe from queue
 
 ## Message
-Beware of `requeue` argument since the message will immmediately be returned to queue and consumed, ergo an infinit loop and maximum call stack size exceeded error unless some precatautions are made.
 
-### `nack([allUpTo = false, requeue = false])`
+### `ack([allUpTo])`
+Acknowledge message
 
-### `ack([allUpTo = false])`
-### `reject([requeue = false])`
+- `allUpTo`: boolean, consider all messages above this one to be acknowledged as well
 
+### `nack([allUpTo, requeue])`
+Reject message.
+
+NB! Beware of `requeue` argument since the message will immmediately be returned to queue and consumed, ergo an infinit loop and maximum call stack size exceeded error unless some precautions are made.
+
+- `allUpTo`: boolean, consider all messages above this one to be rejected as well
+- `requeue`: boolean, requeue messages
+
+### `reject([requeue])`
+Same as `nack(false, true)`
