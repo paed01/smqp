@@ -51,11 +51,11 @@ export function Broker(source) {
     if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and message callback are required');
 
     assertExchange(exchangeName);
-    const queue = assertQueue(queueName, options);
+    assertQueue(queueName, options);
 
     bindQueue(queueName, exchangeName, pattern, options);
 
-    return queue.addConsumer(onMessage, options);
+    return consume(queueName, onMessage, options);
   }
 
   function subscribeTmp(exchangeName, routingKey, onMessage, options = {}) {
@@ -118,6 +118,9 @@ export function Broker(source) {
 
   function consume(queueName, onMessage, options) {
     const queue = getQueue(queueName);
+    if (options && options.consumerTag && consumers.find((c) => c.consumerTag === options.consumerTag)) {
+      throw new Error(`Consumer tag must be unique, ${options.consumerTag} is occupied`);
+    }
     return queue.addConsumer(onMessage, options);
   }
 
@@ -719,15 +722,12 @@ export function Broker(source) {
   function Consumer(queueName, onMessage, options) {
     const consumerOptions = Object.assign({prefetch: 1, priority: 0}, options);
     if (!consumerOptions.consumerTag) consumerOptions.consumerTag = generateId();
-    else if (consumers.find((c) => c.consumerTag === consumerOptions.consumerTag)) {
-      throw new Error(`Consumer tag must be unique, ${consumerOptions.consumerTag} is occupied`);
-    }
 
     const {consumerTag, noAck, priority} = consumerOptions;
 
     let prefetch;
     setPrefetch(consumerOptions.prefetch);
-    const messages = [];
+    let messages = [], pendingMessages = [];
 
     const consumer = {
       consumerTag,
@@ -754,16 +754,24 @@ export function Broker(source) {
       const newMessages = queue.get(prefetch - messages.length);
       if (!newMessages.length) return 0;
 
-      messages.push(...newMessages);
+      messages = messages.concat(newMessages);
+      pendingMessages = pendingMessages.concat(newMessages);
+
       newMessages.forEach((message) => {
         message.setConsumer(consumerTag, onConsumed);
       });
 
-      newMessages.forEach((message) => {
-        onMessage(message.routingKey, message, source);
-      });
+      const noOfMessages = newMessages.length;
+      consumePendingMessages();
 
-      return newMessages.length;
+      return noOfMessages;
+    }
+
+    function consumePendingMessages() {
+      while (pendingMessages.length) {
+        const message = pendingMessages.shift();
+        onMessage(message.routingKey, message, source);
+      }
     }
 
     function nackAll(requeue) {

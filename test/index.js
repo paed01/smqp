@@ -857,6 +857,22 @@ describe('Smqp', () => {
       expect(state).to.have.property('queues').with.length(1);
       expect(state.queues[0]).to.have.property('name', 'durable');
     });
+
+    it('doesn´t return non-durable binding to exchange', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event', 'topic', {durable: true, autoDelete: false});
+      broker.assertQueue('durable', {durable: true});
+      broker.assertQueue('non-durable', {durable: false});
+      broker.bindQueue('durable', 'event', '#');
+      broker.bindQueue('non-durable', 'event', '#');
+
+      const state = broker.getState();
+
+      expect(state).to.have.property('queues').with.length(1);
+      expect(state).to.have.property('exchanges').with.length(1);
+      expect(state.exchanges[0]).to.have.property('bindings').with.length(1);
+    });
   });
 
   describe('stop()', () => {
@@ -1590,7 +1606,7 @@ describe('Smqp', () => {
         }
       });
 
-      it('prefetch 2 consumes takes two published messages at a time', (done) => {
+      it('prefetch 2 takes two published messages at a time', (done) => {
         const broker = Broker();
 
         broker.assertQueue('test');
@@ -1618,6 +1634,38 @@ describe('Smqp', () => {
           }
 
           if (messages.length === 5) cb();
+        }
+      });
+
+      it('prefetch consumes messages in sequence', () => {
+        const broker = Broker();
+
+        broker.assertExchange('event');
+        broker.assertQueue('events-q');
+        broker.bindQueue('events-q', 'event', '#');
+
+        broker.publish('event', 'event.1');
+        broker.publish('event', 'event.2');
+
+        const messages = [];
+        broker.consume('events-q', onMessage, {prefetch: 10, consumerTag: 'test-prefetch'});
+
+        expect(messages).to.eql([
+          'event.1',
+          'event.2',
+          'event.3',
+        ]);
+
+        function onMessage(routingKey, message) {
+          messages.push(routingKey);
+
+          switch (routingKey) {
+            case 'event.1':
+              broker.publish('event', 'event.3');
+              break;
+          }
+
+          message.ack();
         }
       });
     });
