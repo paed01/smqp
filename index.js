@@ -104,7 +104,6 @@ export function Broker(source) {
     const exchange = getExchange(exchangeName);
     const queue = getQueue(queueName);
     exchange.bind(queue, pattern, bindOptions);
-    queue.bind(exchangeName);
   }
 
   function unbindQueue(queueName, exchangeName, pattern) {
@@ -112,7 +111,6 @@ export function Broker(source) {
     if (!exchange) return;
     const queue = getQueue(queueName);
     if (!queue) return;
-    queue.unbind(exchangeName);
     exchange.unbind(queue, pattern);
   }
 
@@ -137,12 +135,14 @@ export function Broker(source) {
 
   function deleteExchange(exchangeName, ifUnused) {
     const idx = exchanges.findIndex((exchange) => exchange.name === exchangeName);
-    if (idx === -1) return;
+    if (idx === -1) return false;
 
     const exchange = exchanges[idx];
+    if (ifUnused && exchange.bindingsCount) return false;
 
-    if (ifUnused && exchange.queuesCount) return;
     exchanges.splice(idx, 1);
+    exchange.close();
+    return true;
   }
 
   function stop() {
@@ -258,9 +258,9 @@ export function Broker(source) {
     if (idx === -1) return;
 
     const queue = queues[idx];
-    if (queue.exchangeName) {
-      const exchange = getExchangeByName(queue.exchangeName);
-      if (exchange) exchange.unbindQueueByName(queue.name);
+    const bindings = queue.bindings;
+    for (const binding of bindings) {
+      binding.close();
     }
     queues.splice(idx, 1);
     return true;
@@ -282,6 +282,7 @@ export function Broker(source) {
       options,
       bind,
       close: closeExchange,
+      delete: () => deleteExchange(exchangeName),
       getBinding,
       getState: getExchangeState,
       publish: publishToQueues,
@@ -362,8 +363,10 @@ export function Broker(source) {
     function unbind(queue, pattern) {
       const idx = bindings.findIndex((bq) => bq.queue === queue && bq.pattern === pattern);
       if (idx === -1) return;
-      bindings.splice(idx, 1);
-      if (options.autoDelete) deleteExchange(exchangeName, true);
+
+      const [binding] = bindings.splice(idx, 1);
+      binding.close();
+      if (options.autoDelete && !bindings.length) deleteExchange(exchangeName, true);
     }
 
     function unbindQueueByName(queueName) {
@@ -374,7 +377,7 @@ export function Broker(source) {
     }
 
     function closeExchange() {
-      bindings.forEach((q) => q.close());
+      bindings.slice().forEach((binding) => binding.close());
       publishQueue.removeConsumer(type === 'topic' ? topic : direct, false);
       publishQueue.close();
     }
@@ -432,22 +435,29 @@ export function Broker(source) {
 
     function Binding(queue, pattern, bindOptions = {}) {
       const rPattern = getRPattern();
-      return {
+
+      const binding = {
         id: `${queue.name}/${pattern}`,
         options: {priority: 0, ...bindOptions},
         pattern,
+        exchange,
         queue,
         close: closeBinding,
         getState: getBindingState,
         testPattern,
       };
 
+      queue.addBinding(binding);
+
+      return binding;
+
       function testPattern(routingKey) {
         return rPattern.test(routingKey);
       }
 
       function closeBinding() {
-        queue.close();
+        queue.removeBinding(binding);
+        unbind(queue, pattern);
       }
 
       function getRPattern() {
@@ -470,8 +480,8 @@ export function Broker(source) {
   }
 
   function Queue(queueName, options = {}) {
-    const messages = [], queueConsumers = [];
-    let pendingResume, exclusive, exchangeName, stopped;
+    const messages = [], queueConsumers = [], bindings = [];
+    let pendingResume, exclusive, stopped;
     options = Object.assign({autoDelete: true}, options);
     const {deadLetterExchange} = options;
     if (deadLetterExchange) assertExchange(deadLetterExchange);
@@ -481,7 +491,8 @@ export function Broker(source) {
       deadLetterExchange,
       options,
       addConsumer,
-      bind,
+      addBinding,
+      removeBinding,
       close: closeQueue,
       get,
       getState: getQueueState,
@@ -504,9 +515,9 @@ export function Broker(source) {
       get: () => queueConsumers.length
     });
 
-    Object.defineProperty(queue, 'exchangeName', {
+    Object.defineProperty(queue, 'bindings', {
       enumerable: true,
-      get: () => exchangeName
+      get: () => bindings.slice()
     });
 
     Object.defineProperty(queue, 'exclusive', {
@@ -521,8 +532,37 @@ export function Broker(source) {
 
     return queue;
 
-    function bind(bindToExchange) {
-      exchangeName = bindToExchange;
+    function addBinding(binding) {
+      if (binding.queue !== queue) throw new Error('bindings are exclusive and cannot be passed around');
+      if (bindings.indexOf(binding) !== -1) return;
+      bindings.push(binding);
+    }
+
+    function removeBinding(binding) {
+      const idx = bindings.indexOf(binding);
+      if (idx === -1) return;
+      bindings.splice(idx, 1);
+    }
+
+    function unbind(consumer, requeue) {
+      if (!consumer) return;
+
+      const idx = queueConsumers.indexOf(consumer);
+      if (idx === -1) return;
+      queueConsumers.splice(idx, 1);
+
+      const mainIdx = consumers.indexOf(consumer);
+      if (mainIdx > -1) {
+        consumers.splice(mainIdx, 1);
+      }
+
+      exclusive = false;
+
+      const consumerMessages = messages.filter((message) => message.consumerTag === consumer.consumerTag);
+      for (let i = 0; i < consumerMessages.length; i++) {
+        consumerMessages[i].unsetConsumer();
+        nack(consumerMessages[i], requeue);
+      }
     }
 
     function addConsumer(onMessage, consumeOptions) {
@@ -553,27 +593,6 @@ export function Broker(source) {
 
     function getConsumer(onMessage) {
       return queueConsumers.find((consumer) => consumer.onMessage === onMessage);
-    }
-
-    function unbind(consumer, requeue) {
-      if (!consumer) return;
-
-      const idx = queueConsumers.indexOf(consumer);
-      if (idx === -1) return;
-      queueConsumers.splice(idx, 1);
-
-      const mainIdx = consumers.indexOf(consumer);
-      if (mainIdx > -1) {
-        consumers.splice(mainIdx, 1);
-      }
-
-      exclusive = false;
-
-      const consumerMessages = messages.filter((message) => message.consumerTag === consumer.consumerTag);
-      for (let i = 0; i < consumerMessages.length; i++) {
-        consumerMessages[i].unsetConsumer();
-        nack(consumerMessages[i], requeue);
-      }
     }
 
     function nack(message, requeue) {
