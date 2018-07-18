@@ -37,8 +37,9 @@
   "keywords": [
     "messaging",
     "broker",
-    "wildcard",
-    "fifo",
+    "routing",
+    "exchange",
+    "queue",
     "publish",
     "subscribe",
     "ack",
