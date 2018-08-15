@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Synchronous message queuing package",
   "author": {
     "name": "Pål Edman",
@@ -52,7 +52,7 @@
     "babel-cli": "^6.26.0",
     "babel-preset-latest-node": "^1.0.0",
     "chai": "^4.1.2",
-    "eslint": "^5.1.0",
+    "eslint": "^5.3.0",
     "markdown-toc": "^1.2.0",
     "mocha": "^5.2.0"
   }

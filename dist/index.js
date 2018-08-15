@@ -619,17 +619,11 @@ function Broker(source) {
       const activeConsumers = queueConsumers.slice();
 
       let consumed = 0;
-      const immediateAcks = [];
       for (const consumer of activeConsumers) {
-        if (consumer.options.noAck) immediateAcks.push(consumer);
         consumed += consumer.consume(queue);
       }
 
       if (!consumed) return consumed;
-
-      for (const consumer of immediateAcks) {
-        consumer.ack();
-      }
 
       return consumed;
     }
@@ -796,6 +790,7 @@ function Broker(source) {
     function consumePendingMessages() {
       while (pendingMessages.length) {
         const message = pendingMessages.shift();
+        if (noAck) message.ack();
         onMessage(message.routingKey, message, source);
       }
     }
