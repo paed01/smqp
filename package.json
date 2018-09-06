@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "0.7.1",
+  "version": "1.0.0",
   "description": "Synchronous message queuing package",
   "author": {
     "name": "Pål Edman",

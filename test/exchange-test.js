@@ -69,12 +69,12 @@ describe('exchange', () => {
       broker.publish('test', 'test.2.1');
       broker.publish('test', 'test.2.2');
 
-      expect(messages1.map(({routingKey}) => routingKey)).to.eql([
+      expect(messages1.map(({fields}) => fields.routingKey)).to.eql([
         'test.1.1',
         'test.2.1',
       ]);
 
-      expect(messages2.map(({routingKey}) => routingKey)).to.eql([
+      expect(messages2.map(({fields}) => fields.routingKey)).to.eql([
         'test.1.2',
         'test.2.2',
       ]);
@@ -142,14 +142,14 @@ describe('exchange', () => {
       broker.publish('event', 'test.2.1');
       broker.publish('event', 'test.2.2');
 
-      expect(messages1.map(({routingKey}) => routingKey)).to.eql([
+      expect(messages1.map(({fields}) => fields.routingKey)).to.eql([
         'test.1.1',
         'test.1.2',
         'test.2.1',
         'test.2.2',
       ]);
 
-      expect(messages2.map(({routingKey}) => routingKey)).to.eql([
+      expect(messages2.map(({fields}) => fields.routingKey)).to.eql([
         'test.1.1',
         'test.1.2',
         'test.2.1',
@@ -207,12 +207,12 @@ describe('exchange', () => {
       function assertMessages(key, message) {
         if (key !== 'done') return message.ack();
 
-        expect(messages1.map(({routingKey}) => routingKey)).to.eql([
+        expect(messages1.map(({fields}) => fields.routingKey)).to.eql([
           'test.1',
           'test.2',
         ]);
 
-        expect(messages2.map(({routingKey}) => routingKey)).to.eql([
+        expect(messages2.map(({fields}) => fields.routingKey)).to.eql([
           'test.1',
           'test.2',
         ]);

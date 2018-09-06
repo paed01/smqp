@@ -15,6 +15,8 @@ function Broker(source) {
     subscribeTmp,
     unsubscribe,
     assertExchange,
+    ack: ackMessage,
+    nack: nackMessage,
     cancel,
     close,
     deleteExchange,
@@ -27,6 +29,7 @@ function Broker(source) {
     getExchange,
     getQueue,
     getState,
+    prefetch: setPrefetch,
     publish,
     purgeQueue,
     recover,
@@ -52,6 +55,10 @@ function Broker(source) {
   });
 
   return broker;
+
+  function ackMessage() {}
+  function nackMessage() {}
+  function setPrefetch() {}
 
   function subscribe(exchangeName, pattern, queueName, onMessage, options = { durable: true }) {
     if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and message callback are required');
@@ -218,10 +225,10 @@ function Broker(source) {
     return queue.purge();
   }
 
-  function sendToQueue(queueName, routingKey, content, options) {
+  function sendToQueue(queueName, content, options) {
     const queue = getQueue(queueName);
     if (!queue) throw new Error(`Queue named ${queueName} doesn't exists`);
-    return queue.queueMessage(routingKey, content, options);
+    return queue.queueMessage(undefined, undefined, content, options);
   }
 
   function getQueuesState() {
@@ -317,7 +324,7 @@ function Broker(source) {
 
     function publishToQueues(routingKey, content, msgOptions) {
       if (stopped) return;
-      return publishQueue.queueMessage(routingKey, content, msgOptions);
+      return publishQueue.queueMessage(exchangeName, routingKey, content, msgOptions);
     }
 
     function topic(routingKey, message) {
@@ -327,7 +334,7 @@ function Broker(source) {
         return 0;
       }
 
-      deliverTo.forEach(({ queue }) => queue.queueMessage(routingKey, message.content, message.options));
+      deliverTo.forEach(({ queue }) => queue.queueMessage(exchangeName, routingKey, message.content, message.options));
       message.ack();
     }
 
@@ -340,7 +347,7 @@ function Broker(source) {
       }
 
       if (deliverTo.length > 1) shift(deliverTo[0]);
-      first.queue.queueMessage(routingKey, message.content, message.options, message.ack);
+      first.queue.queueMessage(exchangeName, routingKey, message.content, message.options, message.ack);
     }
 
     function getConcernedBindings(routingKey) {
@@ -605,8 +612,8 @@ function Broker(source) {
       message.nack(false, requeue);
     }
 
-    function queueMessage(routingKey, content, msgOptions, onMessageQueued) {
-      const message = Message(generateId(), routingKey, content, msgOptions, onConsumed);
+    function queueMessage(exchangeName, routingKey, content, msgOptions, onMessageQueued) {
+      const message = Message(generateId(), { exchangeName, routingKey }, content, msgOptions, onConsumed);
       messages.push(message);
       if (onMessageQueued) onMessageQueued(message);
       return consumeNext();
@@ -706,10 +713,10 @@ function Broker(source) {
       };
 
       result.messages = messages.map(message => {
-        const { routingKey, messageId, content } = message;
+        const { messageId, fields, content } = message;
         return {
-          routingKey,
           messageId,
+          fields,
           content
         };
       });
@@ -721,8 +728,8 @@ function Broker(source) {
       stopped = false;
       if (!state) return;
       messages.splice(0);
-      state.messages.forEach(({ messageId, routingKey, content, options: msgOptions }) => {
-        const msg = Message(messageId, routingKey, content, msgOptions, onConsumed);
+      state.messages.forEach(({ messageId, fields, content, options: msgOptions }) => {
+        const msg = Message(messageId, fields, content, msgOptions, onConsumed);
         messages.push(msg);
       });
       consumeNext();
@@ -740,12 +747,12 @@ function Broker(source) {
 
   function Consumer(queueName, onMessage, options) {
     const consumerOptions = Object.assign({ prefetch: 1, priority: 0 }, options);
-    if (!consumerOptions.consumerTag) consumerOptions.consumerTag = generateId();
+    if (!consumerOptions.consumerTag) consumerOptions.consumerTag = `smq.ctag-${generateId()}`;
 
     const { consumerTag, noAck, priority } = consumerOptions;
 
     let prefetch;
-    setPrefetch(consumerOptions.prefetch);
+    setConsumerPrefetch(consumerOptions.prefetch);
     let messages = [],
         pendingMessages = [];
 
@@ -763,7 +770,7 @@ function Broker(source) {
       onMessage,
       consume: getMessages,
       nackAll,
-      prefetch: setPrefetch
+      prefetch: setConsumerPrefetch
     };
 
     return consumer;
@@ -791,7 +798,7 @@ function Broker(source) {
       while (pendingMessages.length) {
         const message = pendingMessages.shift();
         if (noAck) message.ack();
-        onMessage(message.routingKey, message, source);
+        onMessage(message.fields.routingKey, message, source);
       }
     }
 
@@ -828,7 +835,7 @@ function Broker(source) {
       consumer.queueName = undefined;
     }
 
-    function setPrefetch(value) {
+    function setConsumerPrefetch(value) {
       const val = parseInt(value);
       if (!val) {
         prefetch = 1;
@@ -839,19 +846,20 @@ function Broker(source) {
     }
   }
 
-  function sortByPriority(a, b) {
-    return b.options.priority - a.options.priority;
-  }
-
-  function Message(messageId, routingKey, content = {}, msgOptions = {}, onConsumed) {
+  function Message(messageId, { exchangeName, routingKey }, content = {}, properties = {}, onConsumed) {
     let pending = false,
         consumerTag;
     let consumedCallback;
+    const fields = {
+      exchange: exchangeName,
+      routingKey
+    };
 
     const message = {
-      options: { ...msgOptions },
       messageId,
-      routingKey,
+      fields,
+      content,
+      properties: { ...properties },
       setConsumer,
       ack,
       nack,
@@ -869,18 +877,18 @@ function Broker(source) {
       get: () => consumerTag
     });
 
-    if (content) message.content = { ...content };
-
     return message;
 
     function setConsumer(consumedByTag, consumedCb) {
       pending = true;
       consumerTag = consumedByTag;
+      fields.consumerTag = consumerTag;
       consumedCallback = consumedCb;
     }
 
     function unsetConsumer() {
       pending = false;
+      consumerTag = undefined;
       consumedCallback = undefined;
     }
 
@@ -919,4 +927,8 @@ function generateId() {
   const rand = Math.floor(Math.random() * (max - min)) + min;
 
   return rand.toString(16);
+}
+
+function sortByPriority(a, b) {
+  return b.options.priority - a.options.priority;
 }

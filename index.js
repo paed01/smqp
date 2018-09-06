@@ -9,6 +9,8 @@ export function Broker(source) {
     subscribeTmp,
     unsubscribe,
     assertExchange,
+    ack: ackMessage,
+    nack: nackMessage,
     cancel,
     close,
     deleteExchange,
@@ -18,9 +20,11 @@ export function Broker(source) {
     consume,
     createQueue,
     deleteQueue,
+    get: getMessageFromQueue,
     getExchange,
     getQueue,
     getState,
+    prefetch: setPrefetch,
     publish,
     purgeQueue,
     recover,
@@ -212,10 +216,10 @@ export function Broker(source) {
     return queue.purge();
   }
 
-  function sendToQueue(queueName, routingKey, content, options) {
+  function sendToQueue(queueName, content, options) {
     const queue = getQueue(queueName);
     if (!queue) throw new Error(`Queue named ${queueName} doesn't exists`);
-    return queue.queueMessage(routingKey, content, options);
+    return queue.queueMessage(undefined, undefined, content, options);
   }
 
   function getQueuesState() {
@@ -266,6 +270,30 @@ export function Broker(source) {
     return true;
   }
 
+  function getMessageFromQueue(queueName, {noAck} = {}) {
+    const queue = getQueue(queueName);
+    if (!queue) return;
+
+    let message;
+    const tmpConsumer = queue.addConsumer(onceHandler, {noAck: false, prefetch: 1});
+    if (!message) {
+      tmpConsumer.cancel();
+      return message;
+    }
+
+    console.log('MSG', noAck, queue.length)
+
+    return message;
+
+    function onceHandler(_, msg) {
+      message = msg;
+    }
+  }
+
+  function ackMessage() {}
+  function nackMessage() {}
+  function setPrefetch() {}
+
   function Exchange(exchangeName, type = 'topic', options = {}) {
     if (['topic', 'direct'].indexOf(type) === -1) throw Error('Exchange type must be one of topic or direct');
 
@@ -311,7 +339,7 @@ export function Broker(source) {
 
     function publishToQueues(routingKey, content, msgOptions) {
       if (stopped) return;
-      return publishQueue.queueMessage(routingKey, content, msgOptions);
+      return publishQueue.queueMessage(exchangeName, routingKey, content, msgOptions);
     }
 
     function topic(routingKey, message) {
@@ -321,7 +349,7 @@ export function Broker(source) {
         return 0;
       }
 
-      deliverTo.forEach(({queue}) => queue.queueMessage(routingKey, message.content, message.options));
+      deliverTo.forEach(({queue}) => queue.queueMessage(exchangeName, routingKey, message.content, message.options));
       message.ack();
     }
 
@@ -334,7 +362,7 @@ export function Broker(source) {
       }
 
       if (deliverTo.length > 1) shift(deliverTo[0]);
-      first.queue.queueMessage(routingKey, message.content, message.options, message.ack);
+      first.queue.queueMessage(exchangeName, routingKey, message.content, message.options, message.ack);
     }
 
     function getConcernedBindings(routingKey) {
@@ -600,8 +628,8 @@ export function Broker(source) {
       message.nack(false, requeue);
     }
 
-    function queueMessage(routingKey, content, msgOptions, onMessageQueued) {
-      const message = Message(generateId(), routingKey, content, msgOptions, onConsumed);
+    function queueMessage(exchangeName, routingKey, content, msgOptions, onMessageQueued) {
+      const message = Message(generateId(), {exchangeName, routingKey}, content, msgOptions, onConsumed);
       messages.push(message);
       if (onMessageQueued) onMessageQueued(message);
       return consumeNext();
@@ -700,10 +728,10 @@ export function Broker(source) {
       };
 
       result.messages = messages.map((message) => {
-        const {routingKey, messageId, content} = message;
+        const {messageId, fields, content} = message;
         return {
-          routingKey,
           messageId,
+          fields,
           content,
         };
       });
@@ -715,8 +743,8 @@ export function Broker(source) {
       stopped = false;
       if (!state) return;
       messages.splice(0);
-      state.messages.forEach(({messageId, routingKey, content, options: msgOptions}) => {
-        const msg = Message(messageId, routingKey, content, msgOptions, onConsumed);
+      state.messages.forEach(({messageId, fields, content, options: msgOptions}) => {
+        const msg = Message(messageId, fields, content, msgOptions, onConsumed);
         messages.push(msg);
       });
       consumeNext();
@@ -734,12 +762,12 @@ export function Broker(source) {
 
   function Consumer(queueName, onMessage, options) {
     const consumerOptions = Object.assign({prefetch: 1, priority: 0}, options);
-    if (!consumerOptions.consumerTag) consumerOptions.consumerTag = generateId();
+    if (!consumerOptions.consumerTag) consumerOptions.consumerTag = `smq.ctag-${generateId()}`;
 
     const {consumerTag, noAck, priority} = consumerOptions;
 
     let prefetch;
-    setPrefetch(consumerOptions.prefetch);
+    setConsumerPrefetch(consumerOptions.prefetch);
     let messages = [], pendingMessages = [];
 
     const consumer = {
@@ -747,7 +775,6 @@ export function Broker(source) {
       noAck,
       priority,
       queueName,
-      messages,
       options: consumerOptions,
       ack,
       ackAll,
@@ -756,7 +783,7 @@ export function Broker(source) {
       onMessage,
       consume: getMessages,
       nackAll,
-      prefetch: setPrefetch
+      prefetch: setConsumerPrefetch
     };
 
     return consumer;
@@ -784,7 +811,7 @@ export function Broker(source) {
       while (pendingMessages.length) {
         const message = pendingMessages.shift();
         if (noAck) message.ack();
-        onMessage(message.routingKey, message, source);
+        onMessage(message.fields.routingKey, message, source);
       }
     }
 
@@ -821,7 +848,7 @@ export function Broker(source) {
       consumer.queueName = undefined;
     }
 
-    function setPrefetch(value) {
+    function setConsumerPrefetch(value) {
       const val = parseInt(value);
       if (!val) {
         prefetch = 1;
@@ -832,18 +859,19 @@ export function Broker(source) {
     }
   }
 
-  function sortByPriority(a, b) {
-    return b.options.priority - a.options.priority;
-  }
-
-  function Message(messageId, routingKey, content = {}, msgOptions = {}, onConsumed) {
+  function Message(messageId, {exchangeName, routingKey}, content = {}, properties = {}, onConsumed) {
     let pending = false, consumerTag;
     let consumedCallback;
+    const fields = {
+      exchange: exchangeName,
+      routingKey,
+    };
 
     const message = {
-      options: {...msgOptions},
       messageId,
-      routingKey,
+      fields,
+      content,
+      properties: {...properties},
       setConsumer,
       ack,
       nack,
@@ -861,18 +889,18 @@ export function Broker(source) {
       get: () => consumerTag
     });
 
-    if (content) message.content = {...content};
-
     return message;
 
     function setConsumer(consumedByTag, consumedCb) {
       pending = true;
       consumerTag = consumedByTag;
+      fields.consumerTag = consumerTag;
       consumedCallback = consumedCb;
     }
 
     function unsetConsumer() {
       pending = false;
+      consumerTag = undefined;
       consumedCallback = undefined;
     }
 
@@ -884,7 +912,9 @@ export function Broker(source) {
     }
 
     function ack(allUpTo) {
+      console.log('ACK', pending)
       if (!pending) return;
+
       pending = false;
       consumerTag = undefined;
       consumed('ack', allUpTo);
@@ -911,4 +941,8 @@ function generateId() {
   const rand = Math.floor(Math.random() * (max - min)) + min;
 
   return rand.toString(16);
+}
+
+function sortByPriority(a, b) {
+  return b.options.priority - a.options.priority;
 }

@@ -1,5 +1,5 @@
 <!-- version -->
-# 0.7.1 API Reference
+# 1.0.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -185,11 +185,21 @@ Recovers exchanges, bindings, and queues with messages. A state can be passed, p
 ### `broker.purgeQueue(queueName)`
 Purge queue by name if found
 
-### `broker.sendToQueue(queueName, routingKey[, content, options])`
+### `broker.sendToQueue(queueName, content[, options])`
 Send message directly to queue, bypassing routing key patterns etc.
 
 ### `broker.stop()`
 No more messages through this broker, i.e. publish will be ignored. Use [`broker.recover()`](#brokerrecoverstate) to resume.
+
+### `broker.get(queueName[, options])`
+Get message from queue.
+
+### `broker.ack(message[, allUpTo])`
+### `broker.ackAll()`
+### `broker.nack(message[, allUpTo, requeue])`
+### `broker.nackAll()`
+### `broker.reject(message[, requeue])`
+### `broker.prefetch(count)`
 
 ## Consumer
 Queue consumer
