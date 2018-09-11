@@ -281,8 +281,6 @@ export function Broker(source) {
       return message;
     }
 
-    console.log('MSG', noAck, queue.length)
-
     return message;
 
     function onceHandler(_, msg) {
@@ -513,6 +511,13 @@ export function Broker(source) {
     options = Object.assign({autoDelete: true}, options);
     const {deadLetterExchange} = options;
     if (deadLetterExchange) assertExchange(deadLetterExchange);
+
+    // const consumeQ = Queue(`consume-${queueName}`);
+    // consumeQ.addConsumer(onQueueMessage, {noAck: false});
+
+    // function onQueueMessage(routingKey, message) {
+    //   console.log(routingKey);
+    // }
 
     const queue = {
       name: queueName,

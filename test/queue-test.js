@@ -273,8 +273,59 @@ describe('queue', () => {
     });
   });
 
-  describe('behaviour', () => {
+  describe('peek()', () => {
+    it('returns undefined if no messages', () => {
+      const broker = Broker();
 
+      const consumer = broker.subscribeTmp('test', '#', onMessage);
+
+      expect(broker.getQueue(consumer.queueName).peek()).to.be.undefined;
+
+      function onMessage() {}
+    });
+
+    it('returns first message', () => {
+      const broker = Broker();
+
+      const consumer = broker.subscribeTmp('test', 'test.#', onMessage);
+
+      broker.publish('test', 'test.0');
+      broker.publish('test', 'test.1');
+      broker.publish('test', 'test.2');
+
+      expect(broker.getQueue(consumer.queueName).peek()).to.have.property('fields').with.property('routingKey', 'test.0');
+
+      function onMessage() {}
+    });
+
+    it('with ignore pending argument true returns message that is not pending ack', () => {
+      const broker = Broker();
+
+      const consumer = broker.subscribeTmp('test', 'test.#', onMessage);
+
+      broker.publish('test', 'test.0');
+      broker.publish('test', 'test.1');
+      broker.publish('test', 'test.2');
+
+      expect(broker.getQueue(consumer.queueName).peek(true)).to.have.property('fields').with.property('routingKey', 'test.1');
+
+      function onMessage() {}
+    });
+
+    it('with ignore pending argument true returns undefined if no queued messages beyond pending', () => {
+      const broker = Broker();
+
+      const consumer = broker.subscribeTmp('test', 'test.#', onMessage);
+
+      broker.publish('test', 'test.0');
+
+      expect(broker.getQueue(consumer.queueName).peek(true)).to.be.undefined;
+
+      function onMessage() {}
+    });
+  });
+
+  describe('behaviour', () => {
     it('can be bound to same exchange with different pattern', () => {
       const broker = Broker();
       const topic = broker.assertExchange('topic');
@@ -373,57 +424,17 @@ describe('queue', () => {
 
       expect(topic.bindingsCount).to.equal(0);
     });
-  });
 
-  describe('peek()', () => {
-    it('returns undefined if no messages', () => {
+    it('returns consumer before consuming message', () => {
       const broker = Broker();
+      const queue = broker.assertQueue('test-q');
 
-      const consumer = broker.subscribeTmp('test', '#', onMessage);
+      queue.queueMessage(undefined, 'test.1');
 
-      expect(broker.getQueue(consumer.queueName).peek()).to.be.undefined;
+      const consumer = queue.addConsumer(() => {
+        expect(consumer).to.be.ok;
+      });
 
-      function onMessage() {}
-    });
-
-    it('returns first message', () => {
-      const broker = Broker();
-
-      const consumer = broker.subscribeTmp('test', 'test.#', onMessage);
-
-      broker.publish('test', 'test.0');
-      broker.publish('test', 'test.1');
-      broker.publish('test', 'test.2');
-
-      expect(broker.getQueue(consumer.queueName).peek()).to.have.property('fields').with.property('routingKey', 'test.0');
-
-      function onMessage() {}
-    });
-
-    it('with ignore pending argument true returns message that is not pending ack', () => {
-      const broker = Broker();
-
-      const consumer = broker.subscribeTmp('test', 'test.#', onMessage);
-
-      broker.publish('test', 'test.0');
-      broker.publish('test', 'test.1');
-      broker.publish('test', 'test.2');
-
-      expect(broker.getQueue(consumer.queueName).peek(true)).to.have.property('fields').with.property('routingKey', 'test.1');
-
-      function onMessage() {}
-    });
-
-    it('with ignore pending argument true returns undefined if no queued messages beyond pending', () => {
-      const broker = Broker();
-
-      const consumer = broker.subscribeTmp('test', 'test.#', onMessage);
-
-      broker.publish('test', 'test.0');
-
-      expect(broker.getQueue(consumer.queueName).peek(true)).to.be.undefined;
-
-      function onMessage() {}
     });
   });
 });

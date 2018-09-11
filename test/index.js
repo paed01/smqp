@@ -2,6 +2,29 @@ import {Broker} from '../index';
 
 describe('Smqp', () => {
   describe('subscribe()', () => {
+    it('creates topic exchange with passed exchange name if not exists', () => {
+      const broker = Broker();
+
+      broker.subscribe('test', 'test.#', 'persist', () => {});
+
+      const exchange = broker.getExchange('test');
+      expect(exchange).to.be.ok;
+      expect(exchange).to.have.property('type', 'topic');
+    });
+
+    it('throws if subscribe without routingKey pattern', () => {
+      const broker = Broker();
+      broker.assertExchange('test');
+
+      expect(() => broker.subscribe('test', '', 'persist', () => {})).to.throw(Error);
+    });
+
+    it('throws if subscribe without onMessage callback', () => {
+      const broker = Broker();
+
+      expect(() => broker.subscribe('test', 'test.#', 'persist')).to.throw(Error);
+    });
+
     it('pass options to exchange and queue', () => {
       const broker = Broker();
 
@@ -20,35 +43,12 @@ describe('Smqp', () => {
       function onMessage() {}
     });
 
-    it('supports subscribe with the same function and different pattern', (done) => {
-      const broker = Broker();
-
-      broker.assertExchange('test');
-      broker.subscribeTmp('test', 'test1', onMessage);
-      broker.subscribeTmp('test', 'test', onMessage);
-
-      let messageCount = 0;
-
-      broker.publish('test', 'test');
-      broker.publish('test', 'test1');
-
-      function onMessage(routingKey, message) {
-        ++messageCount;
-        if (routingKey === 'test1') {
-          expect(messageCount).to.equal(2);
-          done();
-        } else {
-          message.ack();
-        }
-      }
-    });
-
     it('returns owner in message callback', (done) => {
       const owner = {};
       const broker = Broker(owner);
 
       broker.assertExchange('test');
-      broker.subscribeTmp('test', 'test.*', onMessage);
+      broker.subscribe('test', 'test.*', 'test-q', onMessage);
 
       broker.publish('test', 'test.1');
 
@@ -56,6 +56,34 @@ describe('Smqp', () => {
         expect(brokerOwner).to.equal(owner);
         done();
       }
+    });
+
+    it('returns existing consumer if the same queue, pattern, and handler are used when subscribing', (done) => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      const consumer1 = broker.subscribe('event', 'test.*', 'test-q', onMessage);
+      const consumer2 = broker.subscribe('event', 'test.*', 'test-q', onMessage);
+
+      expect(consumer1 === consumer2).to.be.true;
+
+      broker.publish('event', 'test.1');
+
+      function onMessage() {
+        done();
+      }
+    });
+
+    it('throws if subscribing with NOT durable to durable queue', () => {
+      const broker = Broker();
+      broker.subscribe('test', 'test.#', 'durableQueue', onMessage1, {durable: true});
+
+      expect(() => {
+        broker.subscribe('test', 'test.#', 'durableQueue', onMessage2, {durable: false, memem: 1});
+      }).to.throw(/durable/i);
+
+      function onMessage1() {}
+      function onMessage2() {}
     });
 
     it('supports subscribe with general wildcard hash (#)', (done) => {
@@ -78,79 +106,6 @@ describe('Smqp', () => {
           message.ack();
         }
       }
-    });
-
-    it('supports subscribe with suffixed wildcard hash (test.#)', (done) => {
-      const broker = Broker();
-
-      broker.assertExchange('test');
-      broker.subscribeTmp('test', 'test.#', onMessage);
-
-      let messageCount = 0;
-
-      broker.publish('test', 'test.0');
-      broker.publish('test', 'test.1');
-
-      function onMessage(routingKey, message) {
-        ++messageCount;
-        if (routingKey === 'test.1') {
-          expect(messageCount).to.equal(2);
-          done();
-        } else {
-          message.ack();
-        }
-      }
-    });
-
-    it('returns existing consumer if the same queue, pattern, and handler are used when subscribing', (done) => {
-      const broker = Broker();
-
-      broker.assertExchange('event');
-      const consumer1 = broker.subscribe('event', 'test.*', 'test-q', onMessage);
-      const consumer2 = broker.subscribe('event', 'test.*', 'test-q', onMessage);
-
-      expect(consumer1 === consumer2).to.be.true;
-
-      broker.publish('event', 'test.1');
-
-      function onMessage() {
-        done();
-      }
-    });
-
-    it('creates topic exchange with passed exchange name if not exists', () => {
-      const broker = Broker();
-
-      broker.subscribe('test', 'test.#', 'persist', () => {});
-
-      const exchange = broker.getExchange('test');
-      expect(exchange).to.be.ok;
-      expect(exchange).to.have.property('type', 'topic');
-    });
-
-    it('throws if subscribe without onMessage callback', () => {
-      const broker = Broker();
-
-      expect(() => broker.subscribe('test', 'test.#', 'persist')).to.throw(Error);
-    });
-
-    it('throws if subscribe without routingKey pattern', () => {
-      const broker = Broker();
-      broker.assertExchange('test');
-
-      expect(() => broker.subscribe('test', '', 'persist', () => {})).to.throw(Error);
-    });
-
-    it('throws if subscribing with NOT durable to durable queue', () => {
-      const broker = Broker();
-      broker.subscribe('test', 'test.#', 'durableQueue', onMessage1, {durable: true});
-
-      expect(() => {
-        broker.subscribe('test', 'test.#', 'durableQueue', onMessage2, {durable: false, memem: 1});
-      }).to.throw(/durable/i);
-
-      function onMessage1() {}
-      function onMessage2() {}
     });
 
     it('throws if subscribing to exclusively consumed queue', () => {
@@ -195,8 +150,117 @@ describe('Smqp', () => {
       function onMessage1() {}
       function onMessage2() {}
     });
+  });
 
-    it('subscribeOnce() closes consumer immediately after message is received', () => {
+  describe('subscribeTmp()', () => {
+    it('supports subscribe with suffixed wildcard hash (test.#)', (done) => {
+      const broker = Broker();
+
+      broker.assertExchange('test');
+      broker.subscribeTmp('test', 'test.#', onMessage);
+
+      let messageCount = 0;
+
+      broker.publish('test', 'test.0');
+      broker.publish('test', 'test.1');
+
+      function onMessage(routingKey, message) {
+        ++messageCount;
+        if (routingKey === 'test.1') {
+          expect(messageCount).to.equal(2);
+          done();
+        } else {
+          message.ack();
+        }
+      }
+    });
+
+    it('supports subscribe with the same function and different pattern', (done) => {
+      const broker = Broker();
+
+      broker.assertExchange('test');
+      broker.subscribeTmp('test', 'test1', onMessage);
+      broker.subscribeTmp('test', 'test', onMessage);
+
+      let messageCount = 0;
+
+      broker.publish('test', 'test');
+      broker.publish('test', 'test1');
+
+      function onMessage(routingKey, message) {
+        ++messageCount;
+        if (routingKey === 'test1') {
+          expect(messageCount).to.equal(2);
+          done();
+        } else {
+          message.ack();
+        }
+      }
+    });
+
+    it('with consumer tag passes tag to consumer', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      const consumer = broker.subscribeTmp('event', '#', onMessage, {consumerTag: 'guid'});
+
+      expect(consumer).to.have.property('consumerTag', 'guid');
+
+      function onMessage() {}
+    });
+  });
+
+  describe('subscribeOnce()', () => {
+    it('creates exchange and temporary queue', () => {
+      const broker = Broker();
+      const consumer = broker.subscribeOnce('event', 'test.#', onMessage);
+      expect(broker.assertExchange('event')).to.be.ok;
+      expect(broker.getQueue(consumer.queueName)).to.be.ok;
+      expect(broker.getQueue(consumer.queueName).options).to.include({durable: false, autoDelete: true});
+      function onMessage() {}
+    });
+
+    it('receives one message and then closes consumer and queue', () => {
+      const broker = Broker();
+      const consumer = broker.subscribeOnce('event', 'test.#', onMessage);
+
+      let message;
+      broker.publish('event', 'test.1');
+      broker.publish('event', 'test.2');
+
+      expect(message).to.be.ok;
+      expect(message.fields).to.have.property('routingKey', 'test.1');
+
+      expect(broker.getQueue(consumer.queueName)).to.not.be.ok;
+
+      function onMessage(_, msg) {
+        message = msg;
+      }
+    });
+
+    it('with consumer tag passes tag to consumer', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      const consumer = broker.subscribeOnce('event', '#', onMessage, {consumerTag: 'guid'});
+
+      expect(consumer).to.have.property('consumerTag', 'guid');
+
+      function onMessage() {}
+    });
+
+    it('subscribeOnce with falsey consumer tag sets unique tag to consumer', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      const consumer = broker.subscribeOnce('event', '#', onMessage, {consumerTag: ''});
+
+      expect(consumer).to.have.property('consumerTag').that.is.ok;
+
+      function onMessage() {}
+    });
+
+    it('closes consumer immediately after message is received', () => {
       const broker = Broker();
 
       const exchange = broker.assertExchange('event');
@@ -223,120 +287,6 @@ describe('Smqp', () => {
       function onMessage(routingKey) {
         messages.push(routingKey);
       }
-    });
-
-    it('subscribeTmp with consumer tag passes tag to consumer', () => {
-      const broker = Broker();
-
-      broker.assertExchange('event');
-      const consumer = broker.subscribeTmp('event', '#', onMessage, {consumerTag: 'guid'});
-
-      expect(consumer).to.have.property('consumerTag', 'guid');
-
-      function onMessage() {}
-    });
-
-    it('subscribeOnce with consumer tag passes tag to consumer', () => {
-      const broker = Broker();
-
-      broker.assertExchange('event');
-      const consumer = broker.subscribeOnce('event', '#', onMessage, {consumerTag: 'guid'});
-
-      expect(consumer).to.have.property('consumerTag', 'guid');
-
-      function onMessage() {}
-    });
-
-    it('subscribeOnce with falsey consumer tag sets unique tag to consumer', () => {
-      const broker = Broker();
-
-      broker.assertExchange('event');
-      const consumer = broker.subscribeOnce('event', '#', onMessage, {consumerTag: ''});
-
-      expect(consumer).to.have.property('consumerTag').that.is.ok;
-
-      function onMessage() {}
-    });
-  });
-
-  describe('consume()', () => {
-    it('returns consumer', () => {
-      const broker = Broker();
-
-      broker.assertQueue('test');
-      const consumer = broker.consume('test', () => {});
-      expect(consumer).to.be.ok;
-      expect(consumer).to.have.property('cancel').that.is.a('function');
-    });
-
-    it('keeps count of consumers', () => {
-      const broker = Broker();
-
-      broker.assertQueue('test');
-      const consumer1 = broker.consume('test', () => {});
-      broker.consume('test', () => {});
-
-      expect(broker).to.have.property('consumersCount', 2);
-
-      broker.cancel(consumer1.consumerTag);
-      expect(broker).to.have.property('consumersCount', 1);
-    });
-
-    it('consume exclusive disallows others to consume same queue', () => {
-      const broker = Broker();
-
-      broker.assertQueue('test');
-      broker.consume('test', () => {}, {exclusive: true});
-
-      expect(() => {
-        broker.consume('test', () => {});
-      }).to.throw(/exclusive/);
-    });
-
-    it('exclusive consumption is released when consumer is cancelled', () => {
-      const broker = Broker();
-
-      broker.assertQueue('test', {autoDelete: false});
-      const exclusive = broker.consume('test', () => {}, {exclusive: true});
-
-      expect(() => {
-        broker.consume('test', () => {});
-      }).to.throw(/exclusive/);
-
-      exclusive.cancel();
-      broker.consume('test', () => {});
-    });
-
-    it('the same consumer onMessage will be ignored even by exclusive consumer', () => {
-      const broker = Broker();
-
-      broker.assertQueue('test');
-      broker.consume('test', onMessage, {exclusive: true});
-      broker.consume('test', onMessage);
-
-      function onMessage() {}
-    });
-
-    it('consumer tag must be unique', () => {
-      const broker = Broker();
-
-      broker.assertQueue('test');
-      broker.consume('test', onMessage, {consumerTag: 'guid'});
-
-      expect(() => {
-        broker.consume('test', () => {}, {consumerTag: 'guid'});
-      }).to.throw(Error, /guid/);
-
-      function onMessage() {}
-    });
-
-    it('passes consumerTag option to the consumer', () => {
-      const broker = Broker();
-      broker.assertQueue('test');
-      const consumer = broker.consume('test', onMessage, {exclusive: true, consumerTag: 'guid'});
-      expect(consumer).to.have.property('consumerTag', 'guid');
-
-      function onMessage() {}
     });
   });
 
@@ -424,6 +374,88 @@ describe('Smqp', () => {
         message.ack();
         broker.unsubscribe('test-q', onMessage);
       }
+    });
+  });
+
+
+  describe('consume()', () => {
+    it('returns consumer', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+      const consumer = broker.consume('test', () => {});
+      expect(consumer).to.be.ok;
+      expect(consumer).to.have.property('cancel').that.is.a('function');
+    });
+
+    it('keeps count of consumers', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+      const consumer1 = broker.consume('test', () => {});
+      broker.consume('test', () => {});
+
+      expect(broker).to.have.property('consumersCount', 2);
+
+      broker.cancel(consumer1.consumerTag);
+      expect(broker).to.have.property('consumersCount', 1);
+    });
+
+    it('consume exclusive disallows others to consume same queue', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+      broker.consume('test', () => {}, {exclusive: true});
+
+      expect(() => {
+        broker.consume('test', () => {});
+      }).to.throw(/exclusive/);
+    });
+
+    it('exclusive consumption is released when consumer is cancelled', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test', {autoDelete: false});
+      const exclusive = broker.consume('test', () => {}, {exclusive: true});
+
+      expect(() => {
+        broker.consume('test', () => {});
+      }).to.throw(/exclusive/);
+
+      exclusive.cancel();
+      broker.consume('test', () => {});
+    });
+
+    it('the same consumer onMessage will be ignored even by exclusive consumer', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+      broker.consume('test', onMessage, {exclusive: true});
+      broker.consume('test', onMessage);
+
+      function onMessage() {}
+    });
+
+    it('consumer tag must be unique', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+      broker.consume('test', onMessage, {consumerTag: 'guid'});
+
+      expect(() => {
+        broker.consume('test', () => {}, {consumerTag: 'guid'});
+      }).to.throw(Error, /guid/);
+
+      function onMessage() {}
+    });
+
+    it('passes consumerTag option to the consumer', () => {
+      const broker = Broker();
+      broker.assertQueue('test');
+      const consumer = broker.consume('test', onMessage, {exclusive: true, consumerTag: 'guid'});
+      expect(consumer).to.have.property('consumerTag', 'guid');
+
+      function onMessage() {}
     });
   });
 
