@@ -34,7 +34,7 @@ function Message(fields = {}, content, properties = {}, onConsumed) {
 
   return message;
 
-  function consume({consumerTag}, consumedCb) {
+  function consume({consumerTag} = {}, consumedCb) {
     pending = true;
     message.fields.consumerTag = consumerTag;
     consumedCallback = consumedCb;
@@ -42,26 +42,20 @@ function Message(fields = {}, content, properties = {}, onConsumed) {
 
   function reset() {
     pending = false;
-    message.consumerTag = undefined;
-    consumedCallback = undefined;
-  }
-
-  function reject(requeue = true) {
-    if (!pending) return;
-    reset();
-    consumed('reject', null, requeue);
   }
 
   function ack(allUpTo) {
     if (!pending) return;
-    reset();
     consumed('ack', allUpTo);
   }
 
   function nack(allUpTo, requeue = true) {
     if (!pending) return;
-    reset();
     consumed('nack', allUpTo, requeue);
+  }
+
+  function reject(requeue = true) {
+    nack(false, requeue);
   }
 
   function consumed(operation, allUpTo, requeue) {

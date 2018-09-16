@@ -3,39 +3,46 @@ import {Message} from './Message';
 
 export {Queue};
 
-function Queue(name, options = {}) {
+function Queue(name, options = {}, {onMessage, onEmpty, onConsumed} = {}) {
   if (!name) name = `smq.qname-${generateId()}`;
   const {deadLetterExchange} = options;
   const messages = [], queueConsumers = [], bindings = [];
-  let pendingResume, exclusive, stopped;
+  let exclusive, stopped;
   options = Object.assign({autoDelete: true}, options);
 
   const queue = {
     name,
     options,
     messages,
+    bindConsumer,
     ack,
-    addConsumer,
+    ackAll,
     addBinding,
+    addConsumer,
     removeBinding,
     close,
     consume,
     get,
     getState,
     nack,
+    nackAll,
     peek,
     purge,
     queueMessage,
     reject,
-    removeConsumer,
+    unbindConsumer,
     recover: recoverQueue,
     stop,
     unbind,
   };
 
-  Object.defineProperty(queue, 'messagesCount', {
+  Object.defineProperty(queue, 'messageCount', {
     enumerable: true,
     get: () => messages.length
+  });
+
+  Object.defineProperty(queue, 'consumerCount', {
+    get: () => queueConsumers.length
   });
 
   Object.defineProperty(queue, 'stopped', {
@@ -47,19 +54,40 @@ function Queue(name, options = {}) {
   function queueMessage(fields, content, properties, onMessageQueued) {
     if (stopped) return;
 
-    const message = Message(fields, content, properties, onConsumed);
+    const message = Message(fields, content, properties, onMessageConsumed);
     messages.push(message);
     if (onMessageQueued) onMessageQueued(message);
+
+    if (onMessage) onMessage(fields.routingKey, message);
     return consumeNext();
   }
 
-  function get(consumeOptions = {}) {
-    return consume({...consumeOptions, prefetch: 1})[0];
+  function consumeNext() {
+    if (stopped) return;
+    if (!messages.length) return;
+    if (!queueConsumers.length) return;
+
+    const activeConsumers = queueConsumers.slice();
+
+    let consumed = 0;
+    for (const consumer of activeConsumers) {
+      consumed += consumer.consume();
+    }
+
+    if (!consumed) return consumed;
+
+    return consumed;
   }
 
-  function consume({prefetch = 1, consumerTag} = {}) {
+  function get(consumeOptions = {}) {
+    const message = consume({...consumeOptions, prefetch: 1})[0];
+    if (!message) return;
+    message.consume(consumeOptions);
+    return message;
+  }
+
+  function consume({prefetch = 1, noAck = false} = {}) {
     if (stopped) return [];
-    if (pendingResume) return [];
     if (!prefetch) return [];
 
     const msgs = [];
@@ -67,7 +95,7 @@ function Queue(name, options = {}) {
 
     for (const msg of messages) {
       if (msg.pending) continue;
-      msg.consume({consumerTag});
+      if (noAck) onMessageConsumed(msg, 'ack', false);
       msgs.push(msg);
       if (!--prefetch) break;
     }
@@ -76,18 +104,18 @@ function Queue(name, options = {}) {
   }
 
   function ack(message, allUpTo) {
-    onConsumed(message, 'ack', allUpTo);
+    onMessageConsumed(message, 'ack', allUpTo);
   }
 
   function nack(message, allUpTo, requeue = true) {
-    onConsumed(message, 'nack', allUpTo, requeue);
+    onMessageConsumed(message, 'nack', allUpTo, requeue);
   }
 
   function reject(message, requeue = true) {
-    onConsumed(message, 'reject', false, requeue);
+    onMessageConsumed(message, 'nack', false, requeue);
   }
 
-  function onConsumed(message, operation, allUpTo, requeue) {
+  function onMessageConsumed(message, operation, allUpTo, requeue) {
     if (stopped) return;
 
     switch (operation) {
@@ -95,7 +123,6 @@ function Queue(name, options = {}) {
         if (!dequeue(message, allUpTo)) return;
         break;
       }
-      case 'reject':
       case 'nack':
         if (requeue) {
           requeueMessage(message);
@@ -108,6 +135,18 @@ function Queue(name, options = {}) {
         }
         break;
     }
+
+    if (onEmpty && !messages.length) onEmpty(queue);
+  }
+
+  function ackAll() {
+    const pending = messages.filter((msg) => msg.pending);
+    pending.forEach((msg) => msg.ack(false));
+  }
+
+  function nackAll(requeue = true) {
+    const pending = messages.filter((msg) => msg.pending);
+    pending.forEach((msg) => msg.nack(false, requeue));
   }
 
   function requeueMessage(message) {
@@ -164,14 +203,35 @@ function Queue(name, options = {}) {
     }
   }
 
+  function bindConsumer(consumer) {
+    if (exclusive) throw new Error(`Queue ${name} is exclusively consumed by ${queueConsumers[0].consumerTag}`);
+    if (consumer.options.exclusive) {
+      if (queueConsumers.length) throw new Error(`Cannot exclusively subscribe to queue ${name} since it is already consumed`);
+      exclusive = true;
+    }
+
+    queueConsumers.push(consumer);
+  }
+
+  function unbindConsumer(consumer) {
+    const idx = queueConsumers.indexOf(consumer);
+    if (idx === -1) return;
+
+    queueConsumers.splice(idx, 1);
+
+    if (consumer.options.exclusive) {
+      exclusive = false;
+    }
+  }
+
   function addConsumer(onMessage, consumeOptions) {
     if (typeof onMessage !== 'function') throw new TypeError('Message callback is mandatory');
     let consumer = getConsumer(onMessage);
     if (consumer) return consumer;
 
-    if (exclusive) throw new Error(`Queue ${queueName} is exclusively consumed by ${queueConsumers[0].consumerTag}`);
+    if (exclusive) throw new Error(`Queue ${name} is exclusively consumed by ${queueConsumers[0].consumerTag}`);
     if (consumeOptions && consumeOptions.exclusive) {
-      if (queueConsumers.length) throw new Error(`Cannot exclusively subscribe to queue ${queueName} since it is already consumed`);
+      if (queueConsumers.length) throw new Error(`Cannot exclusively subscribe to queue ${name} since it is already consumed`);
       exclusive = true;
     }
 
@@ -190,22 +250,6 @@ function Queue(name, options = {}) {
 
   function getConsumer(onMessage) {
     return queueConsumers.find((consumer) => consumer.onMessage === onMessage);
-  }
-
-  function consumeNext() {
-    if (stopped) return;
-
-    if (!messages.length) return;
-    const activeConsumers = queueConsumers.slice();
-
-    let consumed = 0;
-    for (const consumer of activeConsumers) {
-      consumed += consumer.consume(queue);
-    }
-
-    if (!consumed) return consumed;
-
-    return consumed;
   }
 
   function purge() {
@@ -236,7 +280,7 @@ function Queue(name, options = {}) {
     name = queue.name = state.name;
     messages.splice(0);
     state.messages.forEach(({fields, content, properties}) => {
-      const msg = Message(fields, content, properties, onConsumed);
+      const msg = Message(fields, content, properties, onMessageConsumed);
       messages.push(msg);
     });
   }
