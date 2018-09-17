@@ -6,24 +6,24 @@ describe('Consumer', () => {
     const queue = Queue();
 
     it('generates tag if not passed', () => {
-      const consumer = Consumer({}, queue);
+      const consumer = Consumer(queue);
       expect(consumer).to.have.property('consumerTag').that.is.ok;
     });
 
     it('default prefetch to 1', () => {
-      const consumer = Consumer({}, queue);
+      const consumer = Consumer(queue);
       expect(consumer).to.have.property('options');
       expect(consumer.options).to.have.property('prefetch', 1);
     });
 
     it('default noAck to false', () => {
-      const consumer = Consumer({}, queue);
+      const consumer = Consumer(queue);
       expect(consumer).to.have.property('options');
       expect(consumer.options).to.have.property('noAck', false);
     });
 
     it('extends options with consumerTag', () => {
-      const consumer = Consumer({}, queue, null, {prefetch: 2});
+      const consumer = Consumer(queue, null, {prefetch: 2});
       expect(consumer).to.have.property('options');
       expect(consumer.options).to.have.property('consumerTag').that.is.ok;
       expect(consumer.options).to.have.property('prefetch', 2);
@@ -37,7 +37,7 @@ describe('Consumer', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
-      const consumer = Consumer({}, queue, onMessage);
+      const consumer = Consumer(queue, onMessage);
       consumer.consume();
 
       expect(messages).to.have.length(1);
@@ -55,7 +55,7 @@ describe('Consumer', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
-      const consumer = Consumer({}, queue, onMessage);
+      const consumer = Consumer(queue, onMessage);
       consumer.consume();
 
       queue.queueMessage({routingKey: 'test.2'});
@@ -80,7 +80,7 @@ describe('Consumer', () => {
       queue.queueMessage({routingKey: 'test.1'});
 
       const owner = {};
-      const consumer = Consumer(owner, queue, onMessage);
+      const consumer = Consumer(queue, onMessage, null, owner);
       consumer.consume();
 
       expect(messages).to.have.length(1);
@@ -98,7 +98,7 @@ describe('Consumer', () => {
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
-      const consumer = Consumer(null, queue, onMessage, {prefetch: 2});
+      const consumer = Consumer(queue, onMessage, {prefetch: 2});
       consumer.consume();
 
       expect(messages).to.have.length(2);
@@ -117,7 +117,7 @@ describe('Consumer', () => {
       queue.queueMessage({routingKey: 'test.3'});
       queue.queueMessage({routingKey: 'test.4'});
 
-      const consumer = Consumer(null, queue, onMessage, {prefetch: 2});
+      const consumer = Consumer(queue, onMessage, {prefetch: 2});
       consumer.consume();
 
       expect(messages).to.have.length(2);
@@ -140,7 +140,7 @@ describe('Consumer', () => {
       queue.queueMessage({routingKey: 'test.3'});
       queue.queueMessage({routingKey: 'test.4'});
 
-      const consumer = Consumer(null, queue, onMessage, {prefetch: 2});
+      const consumer = Consumer(queue, onMessage, {prefetch: 2});
       consumer.consume();
 
       expect(messages).to.have.length(2);
@@ -161,7 +161,7 @@ describe('Consumer', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
-      const consumer = Consumer({}, queue, () => {});
+      const consumer = Consumer(queue, () => {});
       expect(consumer.options).to.have.property('noAck', false);
     });
 
@@ -171,7 +171,7 @@ describe('Consumer', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
-      const consumer = Consumer({}, queue, onMessage, {noAck: true});
+      const consumer = Consumer(queue, onMessage, {noAck: true});
       consumer.consume();
 
       expect(messages).to.have.length(1);
@@ -190,7 +190,7 @@ describe('Consumer', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
-      const consumer = Consumer({}, queue, onMessage, {noAck: true});
+      const consumer = Consumer(queue, onMessage, {noAck: true});
       consumer.consume();
 
       queue.queueMessage({routingKey: 'test.2'});
@@ -217,7 +217,7 @@ describe('Consumer', () => {
       queue.queueMessage({routingKey: 'test.3'});
       queue.queueMessage({routingKey: 'test.4'});
 
-      const consumer = Consumer(null, queue, onMessage, {prefetch: 2, noAck: true});
+      const consumer = Consumer(queue, onMessage, {prefetch: 2, noAck: true});
       consumer.consume();
 
       queue.queueMessage({routingKey: 'test.5'});
@@ -238,7 +238,7 @@ describe('Consumer', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
-      const consumer = Consumer({}, queue, onMessage);
+      const consumer = Consumer(queue, onMessage);
       consumer.consume();
 
       consumer.cancel();
@@ -260,7 +260,7 @@ describe('Consumer', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
-      const consumer = Consumer({}, queue, onMessage, {consumerTag: 'test-consumer'});
+      const consumer = Consumer(queue, onMessage, {consumerTag: 'test-consumer'});
       consumer.consume();
 
       consumer.cancel();
@@ -278,7 +278,7 @@ describe('Consumer', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
-      const consumer = Consumer({}, queue, onMessage, {consumerTag: 'test-consumer'});
+      const consumer = Consumer(queue, onMessage, {consumerTag: 'test-consumer'});
       consumer.consume();
 
       consumer.cancel();
@@ -300,7 +300,7 @@ describe('Consumer', () => {
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
-      const consumer = Consumer({}, queue, onMessage, {prefetch: 2});
+      const consumer = Consumer(queue, onMessage, {prefetch: 2});
       consumer.consume();
 
       expect(consumer.messageCount).to.equal(2);
@@ -320,7 +320,7 @@ describe('Consumer', () => {
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
-      const consumer = Consumer({}, queue, onMessage, {prefetch: 2});
+      const consumer = Consumer(queue, onMessage, {prefetch: 2});
       consumer.consume();
 
       expect(consumer.messageCount).to.equal(2);
@@ -337,7 +337,7 @@ describe('Consumer', () => {
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
-      const consumer = Consumer({}, queue, onMessage, {prefetch: 2});
+      const consumer = Consumer(queue, onMessage, {prefetch: 2});
       consumer.consume();
 
       expect(consumer.messageCount).to.equal(2);
@@ -356,7 +356,7 @@ describe('Consumer', () => {
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
-      const consumer = Consumer({}, queue, onMessage, {prefetch: 2});
+      const consumer = Consumer(queue, onMessage, {prefetch: 2});
       consumer.consume();
 
       expect(consumer.messageCount).to.equal(2);

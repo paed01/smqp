@@ -3,7 +3,7 @@ import {Queue} from './Queue';
 
 export {Consumer};
 
-function Consumer(owner, queue, onMessage, options = {}) {
+function Consumer(queue, onMessage, options = {}, owner) {
   options = Object.assign({prefetch: 1, priority: 0, noAck: false}, options);
   if (!options.consumerTag) options.consumerTag = `smq.ctag-${generateId()}`;
 

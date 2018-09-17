@@ -1,30 +1,31 @@
 import {Consumer} from './Consumer';
 import {Queue} from './Queue';
+import {sortByPriority} from './shared';
 
 export {Exchange};
 
 function Exchange(name, type = 'topic', options = {}) {
+  if (!name) throw new Error('Exchange name is required');
   if (['topic', 'direct'].indexOf(type) === -1) throw Error('Exchange type must be one of topic or direct');
+
+  const deliveryQueue = Queue('delivery-q');
+  const consumer = Consumer(deliveryQueue, type === 'topic' ? topic : direct, {});
 
   const bindings = [];
   let stopped;
   options = Object.assign({durable: true, autoDelete: true}, options);
-
-  const publishQueue = Queue('messages-queue', {autoDelete: false});
-  publishQueue.addConsumer(type === 'topic' ? topic : direct);
 
   const exchange = {
     name,
     type,
     options,
     bind,
-    close: closeExchange,
-    delete: () => deleteExchange(name),
+    close,
     getBinding,
-    getState: getExchangeState,
-    publish: publishToQueues,
-    recover: recoverExchange,
-    stop: stopExchange,
+    getState,
+    publish,
+    recover,
+    stop,
     unbind,
     unbindQueueByName,
   };
@@ -46,9 +47,9 @@ function Exchange(name, type = 'topic', options = {}) {
 
   return exchange;
 
-  function publishToQueues(routingKey, content, msgOptions) {
+  function publish(routingKey, content, properties) {
     if (stopped) return;
-    return publishQueue.queueMessage(name, routingKey, content, msgOptions);
+    return deliveryQueue.queueMessage({exchange, routingKey}, content, properties);
   }
 
   function topic(routingKey, message) {
@@ -58,7 +59,7 @@ function Exchange(name, type = 'topic', options = {}) {
       return 0;
     }
 
-    deliverTo.forEach(({queue}) => queue.queueMessage(name, routingKey, message.content, message.options));
+    deliverTo.forEach(({queue}) => queue.queueMessage({exchange, routingKey}, message.content, message.properties));
     message.ack();
   }
 
@@ -71,7 +72,7 @@ function Exchange(name, type = 'topic', options = {}) {
     }
 
     if (deliverTo.length > 1) shift(deliverTo[0]);
-    first.queue.queueMessage(name, routingKey, message.content, message.options, message.ack);
+    first.queue.queueMessage({exchange, routingKey}, message.content, message.properties, message.ack);
   }
 
   function getConcernedBindings(routingKey) {
@@ -113,45 +114,42 @@ function Exchange(name, type = 'topic', options = {}) {
     });
   }
 
-  function closeExchange() {
+  function close() {
     bindings.slice().forEach((binding) => binding.close());
-    publishQueue.removeConsumer(type === 'topic' ? topic : direct, false);
-    publishQueue.close();
+    deliveryQueue.unbindConsumer(consumer);
+    deliveryQueue.close();
   }
 
-  function getExchangeState() {
+  function getState() {
     return {
       name: name,
       type,
       options: Object.assign({}, options),
       bindings: getBoundState(),
-      undelivered: getUndelivered(),
+      deliveryQueue
     };
 
     function getBoundState() {
       return bindings.reduce((result, binding) => {
         if (!binding.queue.options.durable) return result;
         if (!result) result = [];
-        result.push(binding.getState());
+        result.push(binding);
         return result;
       }, undefined);
     }
-
-    function getUndelivered() {
-      return publishQueue.getState().messages;
-    }
   }
 
-  function stopExchange() {
+  function stop() {
     stopped = true;
   }
 
-  function recoverExchange(state) {
+  function recover(state, getQueue) {
     stopped = false;
 
     recoverBindings();
     if (state) {
-      publishQueue.recover({messages: state.undelivered});
+      name = exchange.name = state.name;
+      deliveryQueue.recover({messages: state.deliveryQueue.messages});
     }
 
     return exchange;
@@ -177,12 +175,19 @@ function Exchange(name, type = 'topic', options = {}) {
       id: `${queue.name}/${pattern}`,
       options: {priority: 0, ...bindOptions},
       pattern,
-      exchange,
-      queue,
       close: closeBinding,
-      getState: getBindingState,
       testPattern,
     };
+
+    Object.defineProperty(binding, 'queue', {
+      enumerable: false,
+      value: queue,
+    });
+
+    Object.defineProperty(binding, 'queueName', {
+      enumerable: true,
+      get: () => queue.name,
+    });
 
     queue.addBinding(binding);
 
@@ -193,7 +198,6 @@ function Exchange(name, type = 'topic', options = {}) {
     }
 
     function closeBinding() {
-      queue.removeBinding(binding);
       unbind(queue, pattern);
     }
 
@@ -204,14 +208,6 @@ function Exchange(name, type = 'topic', options = {}) {
         .replace('#', '.+?');
 
       return new RegExp(`^${rpattern}$`);
-    }
-
-    function getBindingState() {
-      return {
-        pattern: pattern,
-        queueName: queue.name,
-        options: Object.assign({}, bindOptions)
-      };
     }
   }
 }
