@@ -1,4 +1,4 @@
-export {generateId, sortByPriority};
+export {generateId, getRoutingKeyPattern, sortByPriority};
 
 function generateId() {
   const min = 110000;
@@ -8,6 +8,17 @@ function generateId() {
   return rand.toString(16);
 }
 
+function getRoutingKeyPattern(pattern) {
+  const rpattern = pattern
+    .replace('.', '\\.')
+    .replace('*', '[^.]+?')
+    .replace('#', '.+?');
+
+  return new RegExp(`^${rpattern}$`);
+}
+
 function sortByPriority(a, b) {
+  if (!("priority" in a.options)) throw new Error(JSON.stringify(a));
+
   return b.options.priority - a.options.priority;
 }

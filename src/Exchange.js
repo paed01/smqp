@@ -1,15 +1,24 @@
-import {Consumer} from './Consumer';
 import {Queue} from './Queue';
-import {sortByPriority} from './shared';
+import {sortByPriority, getRoutingKeyPattern, generateId} from './shared';
 
-export {Exchange};
+export {Exchange, EventExchange};
 
-function Exchange(name, type = 'topic', options = {}) {
+function Exchange(name, type, options) {
+  const eventExchange = EventExchange();
+  return ExchangeBase(name, type, options, eventExchange);
+}
+
+function EventExchange(name) {
+  if (!name) name = `smq.ename-${generateId()}`;
+  return ExchangeBase(name, 'topic', {durable: false, autoDelete: true});
+}
+
+function ExchangeBase(name, type = 'topic', options = {}, eventExchange) {
   if (!name) throw new Error('Exchange name is required');
   if (['topic', 'direct'].indexOf(type) === -1) throw Error('Exchange type must be one of topic or direct');
 
-  const deliveryQueue = Queue('delivery-q');
-  const consumer = Consumer(deliveryQueue, type === 'topic' ? topic : direct, {});
+  const deliveryQueue = Queue('delivery-q', {}, {emit: onInternalQueueEmit});
+  const consumer = deliveryQueue.consume(type === 'topic' ? topic : direct);
 
   const bindings = [];
   let stopped;
@@ -21,8 +30,10 @@ function Exchange(name, type = 'topic', options = {}) {
     options,
     bind,
     close,
+    emit,
     getBinding,
     getState,
+    on,
     publish,
     recover,
     stop,
@@ -30,7 +41,7 @@ function Exchange(name, type = 'topic', options = {}) {
     unbindQueueByName,
   };
 
-  Object.defineProperty(exchange, 'bindingsCount', {
+  Object.defineProperty(exchange, 'bindingCount', {
     enumerable: true,
     get: () => bindings.length
   });
@@ -49,7 +60,7 @@ function Exchange(name, type = 'topic', options = {}) {
 
   function publish(routingKey, content, properties) {
     if (stopped) return;
-    return deliveryQueue.queueMessage({exchange, routingKey}, content, properties);
+    return deliveryQueue.queueMessage({exchange: name, routingKey}, content, properties);
   }
 
   function topic(routingKey, message) {
@@ -59,7 +70,7 @@ function Exchange(name, type = 'topic', options = {}) {
       return 0;
     }
 
-    deliverTo.forEach(({queue}) => queue.queueMessage({exchange, routingKey}, message.content, message.properties));
+    deliverTo.forEach(({queue}) => queue.queueMessage({exchange: name, routingKey}, message.content, message.properties));
     message.ack();
   }
 
@@ -95,6 +106,9 @@ function Exchange(name, type = 'topic', options = {}) {
     const binding = Binding(queue, pattern, bindOptions);
     bindings.push(binding);
     bindings.sort(sortByPriority);
+
+    emit('exchange.bind', binding);
+
     return binding;
   }
 
@@ -104,7 +118,8 @@ function Exchange(name, type = 'topic', options = {}) {
 
     const [binding] = bindings.splice(idx, 1);
     binding.close();
-    if (options.autoDelete && !bindings.length) deleteExchange(name, true);
+
+    emit('exchange.unbind', binding);
   }
 
   function unbindQueueByName(queueName) {
@@ -121,13 +136,12 @@ function Exchange(name, type = 'topic', options = {}) {
   }
 
   function getState() {
-    return {
+    return JSON.parse(JSON.stringify(Object.assign({
       name: name,
       type,
       options: Object.assign({}, options),
-      bindings: getBoundState(),
       deliveryQueue
-    };
+    }, {bindings: getBoundState()})));
 
     function getBoundState() {
       return bindings.reduce((result, binding) => {
@@ -149,7 +163,7 @@ function Exchange(name, type = 'topic', options = {}) {
     recoverBindings();
     if (state) {
       name = exchange.name = state.name;
-      deliveryQueue.recover({messages: state.deliveryQueue.messages});
+      deliveryQueue.recover(state.deliveryQueue);
     }
 
     return exchange;
@@ -168,8 +182,23 @@ function Exchange(name, type = 'topic', options = {}) {
     return bindings.find((binding) => binding.queue.name === queueName && binding.pattern === pattern);
   }
 
+  function emit(routingKey, content) {
+    if (eventExchange) return eventExchange.emit(routingKey, content);
+    publish(routingKey, content);
+  }
+
+  function on(pattern, handler) {
+    if (eventExchange) return eventExchange.on(pattern, handler);
+
+    const eventQueue = Queue(null, {durable: false, autoDelete: true});
+    bind(eventQueue, pattern);
+    const eventConsumer = eventQueue.consume(handler, {noAck: true}, exchange);
+    return eventConsumer;
+  }
+
   function Binding(queue, pattern, bindOptions = {}) {
-    const rPattern = getRPattern();
+    const rPattern = getRoutingKeyPattern(pattern);
+    queue.on('delete', closeBinding);
 
     const binding = {
       id: `${queue.name}/${pattern}`,
@@ -189,8 +218,6 @@ function Exchange(name, type = 'topic', options = {}) {
       get: () => queue.name,
     });
 
-    queue.addBinding(binding);
-
     return binding;
 
     function testPattern(routingKey) {
@@ -200,14 +227,7 @@ function Exchange(name, type = 'topic', options = {}) {
     function closeBinding() {
       unbind(queue, pattern);
     }
-
-    function getRPattern() {
-      const rpattern = pattern
-        .replace('.', '\\.')
-        .replace('*', '[^.]+?')
-        .replace('#', '.+?');
-
-      return new RegExp(`^${rpattern}$`);
-    }
   }
+
+  function onInternalQueueEmit() {}
 }

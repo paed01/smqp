@@ -1,4 +1,5 @@
 import {Consumer} from '../../src/Consumer';
+import {EventExchange} from '../../src/Exchange';
 import {Queue} from '../../src/Queue';
 
 describe('Consumer', () => {
@@ -34,7 +35,7 @@ describe('Consumer', () => {
     it('consumes pending message in queue', () => {
       const messages = [];
 
-      const queue = Queue();
+      const queue = Queue(null, {}, EventExchange());
       queue.queueMessage({routingKey: 'test.1'});
 
       const consumer = Consumer(queue, onMessage);
@@ -52,7 +53,7 @@ describe('Consumer', () => {
     it('consumes queued messages in queue', () => {
       const messages = [];
 
-      const queue = Queue();
+      const queue = Queue(null, {}, EventExchange());
       queue.queueMessage({routingKey: 'test.1'});
 
       const consumer = Consumer(queue, onMessage);

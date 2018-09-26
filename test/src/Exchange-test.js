@@ -1,4 +1,3 @@
-import {Consumer} from '../../src/Consumer';
 import {Exchange} from '../../src/Exchange';
 import {Queue} from '../../src/Queue';
 
@@ -43,7 +42,7 @@ describe('Exchange', () => {
       exchange.publish('test.2');
       exchange.publish('test.3');
 
-      Consumer(queue, onMessage).consume();
+      queue.consume(onMessage);
 
       expect(messages).to.eql([
         'test.1',
@@ -71,8 +70,8 @@ describe('Exchange', () => {
       const messages1 = [];
       const messages2 = [];
 
-      Consumer(queue1, onMessage1);
-      Consumer(queue2, onMessage2);
+      queue1.consume(onMessage1);
+      queue2.consume(onMessage2);
 
       exchange.publish('test.1.1');
       exchange.publish('test.1.2');
@@ -115,7 +114,7 @@ describe('Exchange', () => {
       exchange.publish('test.2');
       exchange.publish('test.3');
 
-      Consumer(queue, onMessage).consume();
+      queue.consume(onMessage);
 
       expect(messages).to.eql([
         'test.1',
@@ -142,8 +141,8 @@ describe('Exchange', () => {
       const messages1 = [];
       const messages2 = [];
 
-      Consumer(queue1, onMessage1).consume();
-      Consumer(queue2, onMessage2).consume();
+      queue1.consume(onMessage1);
+      queue2.consume(onMessage2);
 
       exchange.publish('test.1.1');
       exchange.publish('test.1.2');
@@ -187,9 +186,9 @@ describe('Exchange', () => {
       const messages1 = [];
       const messages2 = [];
 
-      Consumer(queue1, onMessage1).consume();
-      Consumer(queue2, onMessage2).consume();
-      Consumer(doneQueue, assertMessages).consume();
+      queue1.consume(onMessage1);
+      queue2.consume(onMessage2);
+      doneQueue.consume(assertMessages);
 
       exchange.publish('test.1');
 
@@ -211,7 +210,6 @@ describe('Exchange', () => {
 
       function assertMessages(key, message) {
         if (key !== 'done') return message.ack();
-
         expect(messages1.map(({fields}) => fields.routingKey)).to.eql([
           'test.1',
           'test.2',
@@ -223,6 +221,96 @@ describe('Exchange', () => {
         ]);
 
         done();
+      }
+    });
+  });
+
+  describe('bind(queue, pattern)', () => {
+    it('ups bindingCount', () => {
+      const exchange = Exchange('event', 'topic');
+      exchange.bind(Queue('event-q', {durable: true}), 'test.#');
+      expect(exchange.bindingCount).to.equal(1);
+    });
+
+    it('same queue and pattern is ignored', () => {
+      const exchange = Exchange('event', 'topic');
+      const queue = Queue('event-q', {durable: true});
+      exchange.bind(queue, 'test.#');
+      exchange.bind(queue, 'test.#');
+      expect(exchange.bindingCount).to.equal(1);
+    });
+
+    it('same queue and different pattern is honored', () => {
+      const exchange = Exchange('event', 'topic');
+      const queue = Queue('event-q', {durable: true});
+      exchange.bind(queue, 'test.#');
+      exchange.bind(queue, 'test.*');
+      expect(exchange.bindingCount).to.equal(2);
+    });
+
+    it('emits event with binding', () => {
+      let event;
+      const exchange = Exchange('event', 'topic');
+
+      exchange.on('exchange.*', onEvent);
+
+      const queue = Queue();
+      const binding = exchange.bind(queue, 'test.#');
+
+      expect(event).to.be.ok;
+      expect(event.fields).to.have.property('routingKey', 'exchange.bind');
+      expect(event.content === binding, 'content is binding').to.be.true;
+
+      function onEvent(_, message) {
+        event = message;
+      }
+    });
+  });
+
+  describe('unbind(queue, pattern)', () => {
+    it('reduce bindingCount', () => {
+      const exchange = Exchange('event', 'topic');
+      const queue = Queue('event-q', {durable: true});
+      exchange.bind(queue, 'test.#');
+      exchange.unbind(queue, 'test.#');
+      expect(exchange.bindingCount).to.equal(0);
+    });
+
+    it('same queue and different pattern is kept', () => {
+      const exchange = Exchange('event', 'topic');
+      const queue = Queue('event-q', {durable: true});
+      exchange.bind(queue, 'test.#');
+      exchange.bind(queue, 'test.*');
+      exchange.unbind(queue, 'test.#');
+      expect(exchange.bindingCount).to.equal(1);
+    });
+
+    it('twice is ignored', () => {
+      const exchange = Exchange('event', 'topic');
+      const queue = Queue('event-q', {durable: true});
+      exchange.bind(queue, 'test.#');
+      exchange.unbind(queue, 'test.#');
+      exchange.unbind(queue, 'test.#');
+      expect(exchange.bindingCount).to.equal(0);
+    });
+
+    it('emits event with binding', () => {
+      let event;
+      const exchange = Exchange('event', 'topic');
+
+      exchange.on('exchange.unbind', onEvent);
+
+      const queue = Queue();
+      const binding = exchange.bind(queue, 'test.#');
+
+      exchange.unbind(queue, 'test.#');
+
+      expect(event).to.be.ok;
+      expect(event.fields).to.have.property('routingKey', 'exchange.unbind');
+      expect(event.content === binding, 'content is binding').to.be.true;
+
+      function onEvent(_, message) {
+        event = message;
       }
     });
   });
@@ -314,6 +402,28 @@ describe('Exchange', () => {
 
       expect(exchange.name).to.equal('event-recovered');
       expect(queue.messageCount).to.equal(3);
+    });
+  });
+
+  describe('events', () => {
+
+    it('emits event when binding is unbound with binding and exchange', () => {
+      let event;
+      const exchange = Exchange('event', 'topic');
+
+      exchange.on('exchange.*', onEvent);
+
+      const queue = Queue('event-q');
+      exchange.bind(queue, 'test.#');
+      exchange.unbind(queue, 'test.#');
+
+      expect(event).to.be.ok;
+      expect(event.fields).to.have.property('routingKey', 'exchange.unbind');
+      expect(event.content).to.have.property('queueName', 'event-q');
+
+      function onEvent(_, message) {
+        event = message;
+      }
     });
   });
 });

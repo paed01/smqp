@@ -23,6 +23,169 @@ describe('Queue', () => {
     });
   });
 
+  describe('queue options', () => {
+    describe('maxLength', () => {
+
+      it('maxLength evicts old messages', () => {
+        const queue = Queue(null, {maxLength: 2});
+        queue.queueMessage({routingKey: 'test.1'});
+        queue.queueMessage({routingKey: 'test.2'});
+        queue.queueMessage({routingKey: 'test.3'});
+
+        expect(queue.messageCount).to.equal(2);
+        expect(queue.peek().fields.routingKey).to.equal('test.2');
+      });
+
+      it('emits saturated when maxLength is reached', () => {
+        let triggered;
+        const queue = Queue(null, {maxLength: 2}, {emit});
+
+        queue.queueMessage({routingKey: 'test.1'});
+        queue.queueMessage({routingKey: 'test.2'});
+
+        expect(queue.messageCount).to.equal(2);
+        expect(triggered).to.be.true;
+
+        function emit(eventName) {
+          if (eventName === 'queue.saturated') triggered = true;
+        }
+      });
+
+      it('maxLength = 1 evicts old messages', () => {
+        const queue = Queue(null, {maxLength: 1});
+        queue.queueMessage({routingKey: 'test.1'});
+        queue.queueMessage({routingKey: 'test.2'});
+        queue.queueMessage({routingKey: 'test.3'});
+
+        expect(queue.messageCount).to.equal(1);
+        expect(queue.peek().fields.routingKey).to.equal('test.3');
+      });
+
+      it('emits saturated when maxLength = 1 is reached', () => {
+        let triggered;
+        const queue = Queue(null, {maxLength: 1}, {emit});
+
+        queue.queueMessage({routingKey: 'test.1'});
+
+        expect(queue.messageCount).to.equal(1);
+        expect(triggered).to.be.true;
+
+        function emit(eventName) {
+          if (eventName === 'queue.saturated') triggered = true;
+        }
+      });
+
+      it('maxLength evicts old non-pending messages', () => {
+        const queue = Queue(null, {maxLength: 2});
+        queue.queueMessage({routingKey: 'test.1'});
+
+        queue.get();
+
+        queue.queueMessage({routingKey: 'test.2'});
+        queue.queueMessage({routingKey: 'test.3'});
+
+        expect(queue.messageCount).to.equal(2);
+        expect(queue.peek(true).fields.routingKey).to.equal('test.3');
+      });
+
+      it('if maxLength is reached and all messages are pending then new message is discarded', () => {
+        const queue = Queue(null, {maxLength: 1});
+        queue.queueMessage({routingKey: 'test.1'});
+
+        queue.get();
+
+        queue.queueMessage({routingKey: 'test.2'});
+
+        expect(queue.messageCount).to.equal(1);
+        expect(queue.peek().fields.routingKey).to.equal('test.1');
+      });
+    });
+
+    describe('deadLetterExchange', () => {
+      it('deadLetterExchange emits event with message when message is nacked', () => {
+        let triggered;
+        const queue = Queue(null, {deadLetterExchange: 'evict'}, {emit});
+        queue.queueMessage({routingKey: 'test.1'});
+
+        queue.get().nack(false, false);
+
+        expect(triggered).to.be.ok;
+        expect(triggered).to.have.property('deadLetterExchange', 'evict');
+        expect(triggered).to.have.property('message').with.property('fields').with.property('routingKey', 'test.1');
+
+        function emit(eventName, event) {
+          if (eventName === 'queue.dead-letter') triggered = event;
+        }
+      });
+
+      it('deadLetterExchange with deadLetterRoutingKey emits event with message with deadLetterRoutingKey when message is nacked', () => {
+        let triggered;
+        const queue = Queue(null, {deadLetterExchange: 'evict', deadLetterRoutingKey: 'evicted.message'}, {emit});
+        queue.queueMessage({routingKey: 'test.1'});
+
+        queue.get().nack(false, false);
+
+        expect(triggered).to.be.ok;
+        expect(triggered).to.have.property('deadLetterExchange', 'evict');
+        expect(triggered).to.have.property('message').with.property('fields').with.property('routingKey', 'evicted.message');
+
+        function emit(eventName, event) {
+          if (eventName === 'queue.dead-letter') triggered = event;
+        }
+      });
+
+      it('deadLetterExchange emits event with message when messages are evicted due to maxLength', () => {
+        const triggered = [];
+        const queue = Queue(null, {maxLength: 1, deadLetterExchange: 'evict'}, {emit});
+        queue.queueMessage({routingKey: 'test.1'});
+        queue.queueMessage({routingKey: 'test.2'});
+        queue.queueMessage({routingKey: 'test.3'});
+
+        expect(triggered).to.have.length(2);
+        expect(triggered[0]).to.have.property('deadLetterExchange', 'evict');
+        expect(triggered[0]).to.have.property('message').with.property('fields').with.property('routingKey', 'test.1');
+        expect(triggered[1]).to.have.property('deadLetterExchange', 'evict');
+        expect(triggered[1]).to.have.property('message').with.property('fields').with.property('routingKey', 'test.2');
+
+        function emit(eventName, event) {
+          if (eventName === 'queue.dead-letter') triggered.push(event);
+        }
+      });
+
+      it('no deadLetterExchange emits no dead letter event', () => {
+        let triggered;
+        const queue = Queue(null, {maxLength: 1}, {emit});
+        queue.queueMessage({routingKey: 'test.1'});
+
+        queue.get().nack(false, true);
+
+        expect(triggered).to.not.be.ok;
+
+        function emit(eventName, event) {
+          if (eventName === 'queue.dead-letter') triggered = event;
+        }
+      });
+    });
+
+    describe('exclusive', () => {
+      it('consume exclusively consumed queue throws error', () => {
+        const queue = Queue();
+        queue.consume(() => {}, {exclusive: true});
+
+        expect(() => {
+          queue.consume(() => {});
+        }).to.throw(/is exclusively consumed/);
+      });
+
+      it('releases exclusive consumed queue when consumer is canceled', () => {
+        const queue = Queue(null, {autoDelete: false});
+        const consumer = queue.consume(() => {}, {exclusive: true});
+        queue.cancel(consumer.consumerTag);
+        queue.consume(() => {});
+      });
+    });
+  });
+
   describe('queueMessage()', () => {
     it('queues message', () => {
       const queue = Queue();
@@ -40,58 +203,190 @@ describe('Queue', () => {
     });
   });
 
-  describe('consume()', () => {
-    it('returns non-pending messages', () => {
+  describe('consume(onMessage[, options])', () => {
+    it('returns consumer', () => {
       const queue = Queue();
-      queue.queueMessage({routingKey: 'test.1'});
-
-      const msgs = queue.consume();
-      expect(msgs[0]).to.have.property('fields').with.property('routingKey', 'test.1');
-      expect(msgs[0]).to.have.property('pending', false);
+      const consumer = queue.consume(() => {});
+      expect(consumer.options).to.have.property('consumerTag');
     });
 
-    it('returns first non-pending messages', () => {
+    it('ups consumerCount', () => {
+      const queue = Queue();
+      queue.consume(() => {});
+      expect(queue.consumerCount).to.equal(1);
+    });
+
+    it('passes options to consumer', () => {
+      const queue = Queue();
+      const consumer = queue.consume(() => {}, {prefetch: 42});
+      expect(consumer.options).to.have.property('prefetch', 42);
+    });
+
+    it('emits consume with consumer', () => {
+      let triggered;
+      const queue = Queue(null, {}, {emit});
+      queue.consume(() => {});
+
+      expect(triggered).to.be.true;
+
+      function emit(eventName, content) {
+        triggered = true;
+        expect(eventName).to.equal('queue.consume');
+        expect(content).to.have.property('consumerTag');
+      }
+    });
+
+    it('calls onMessage callback with queued message', () => {
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'}, {data: 1});
+      const messages = [];
+
+      queue.consume(onMessage);
+
+      expect(messages.length).to.equal(1);
+      expect(messages[0].fields).to.have.property('routingKey', 'test.1');
+      expect(messages[0].content).to.eql({data: 1});
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+      }
+    });
+
+    it('calls onMessage callback with queued messages', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
+      const messages = [];
 
-      queue.get();
+      queue.consume(onMessage, {prefetch: 2});
 
-      const msgs = queue.consume();
-      expect(msgs[0]).to.have.property('fields').with.property('routingKey', 'test.2');
-      expect(msgs[0]).to.have.property('pending', false);
+      expect(messages.length).to.equal(2);
+      expect(messages[0].fields).to.have.property('routingKey', 'test.1');
+      expect(messages[1].fields).to.have.property('routingKey', 'test.2');
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+      }
     });
 
-    it('prefetch option returns messages', () => {
+    it('calls onMessage callback on new message', () => {
       const queue = Queue();
+      const messages = [];
+
+      queue.consume(onMessage, {prefetch: 2});
+
       queue.queueMessage({routingKey: 'test.1'});
-      queue.queueMessage({routingKey: 'test.2'});
-      queue.queueMessage({routingKey: 'test.3'});
-      queue.queueMessage({routingKey: 'test.4'});
 
-      const msgs = queue.consume({prefetch: 2});
-      expect(msgs).to.have.length(2);
+      expect(messages.length).to.equal(1);
+      expect(messages[0].fields).to.have.property('routingKey', 'test.1');
 
-      expect(msgs[0]).to.have.property('fields').with.property('routingKey', 'test.1');
-      expect(msgs[1]).to.have.property('fields').with.property('routingKey', 'test.2');
+      function onMessage(routingKey, message) {
+        messages.push(message);
+      }
     });
 
-    it('second consume returns non-pending messages', () => {
+    it('calls onMessage callback on new messages', () => {
       const queue = Queue();
+      const messages = [];
+
+      queue.consume(onMessage, {prefetch: 2});
+
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
-      queue.queueMessage({routingKey: 'test.3'});
-      queue.queueMessage({routingKey: 'test.4'});
-      queue.queueMessage({routingKey: 'test.5'});
 
-      const msgs1 = queue.consume({prefetch: 2});
-      expect(msgs1).to.have.length(2);
-      msgs1.forEach((msg) => msg.consume());
+      expect(messages.length).to.equal(2);
+      expect(messages[0].fields).to.have.property('routingKey', 'test.1');
+      expect(messages[1].fields).to.have.property('routingKey', 'test.2');
 
-      const msgs2 = queue.consume({prefetch: 3});
-      expect(msgs2).to.have.length(3);
+      function onMessage(routingKey, message) {
+        messages.push(message);
+      }
+    });
 
-      expect(msgs2[0]).to.have.property('fields').with.property('routingKey', 'test.3');
+    it('new message queued in onMessage callback is handled in sequence', () => {
+      const queue = Queue();
+      const messages = [];
+
+      queue.consume(onMessage);
+
+      queue.queueMessage({routingKey: 'test.1'});
+
+      expect(messages.length).to.equal(2);
+      expect(messages[0].fields).to.have.property('routingKey', 'test.1');
+      expect(messages[1].fields).to.have.property('routingKey', 'test.2');
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+        if (routingKey === 'test.1') queue.queueMessage({routingKey: 'test.2'});
+        message.ack();
+      }
+    });
+
+    it('new messages queued in onMessage callback are handled in sequence', () => {
+      const queue = Queue();
+      const messages = [];
+
+      queue.consume(onMessage, {prefetch: 2});
+
+      queue.queueMessage({routingKey: 'test.1'});
+
+      expect(messages.length).to.equal(3);
+      expect(messages[0].fields).to.have.property('routingKey', 'test.1');
+      expect(messages[1].fields).to.have.property('routingKey', 'test.2');
+      expect(messages[2].fields).to.have.property('routingKey', 'test.3');
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+        if (routingKey === 'test.1') {
+          queue.queueMessage({routingKey: 'test.2'});
+        } else if (routingKey === 'test.2') {
+          queue.queueMessage({routingKey: 'test.3'});
+        }
+        message.ack();
+      }
+    });
+
+    it('new message queued in onMessage callback is queued', () => {
+      const queue = Queue();
+      const messages = [];
+
+      queue.consume(onMessage, {consumerTag: 'meme'});
+
+      queue.queueMessage({routingKey: 'test.1'});
+
+      expect(queue.messageCount).to.equal(2);
+
+      expect(messages.length).to.equal(1);
+      expect(messages[0].fields).to.have.property('routingKey', 'test.1');
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+        if (routingKey === 'test.1') queue.queueMessage({routingKey: 'test.2'});
+      }
+    });
+  });
+
+  describe('dismiss(onMessage)', () => {
+    it('downs consumerCount', () => {
+      const queue = Queue();
+      queue.consume(onMessage);
+      queue.dismiss(onMessage);
+
+      expect(queue.consumerCount).to.equal(0);
+
+      function onMessage() {}
+    });
+
+    it('requeues non acknowledge message', () => {
+      const queue = Queue(null, {autoDelete: false});
+      queue.consume(onMessage);
+      queue.queueMessage({routingKey: 'test.1'});
+
+      queue.dismiss(onMessage);
+
+      expect(queue.messageCount).to.equal(1);
+
+      function onMessage() {}
     });
   });
 
@@ -328,6 +623,102 @@ describe('Queue', () => {
     });
   });
 
+  describe('Consumer', () => {
+    it('waits for ack before consuming next message', () => {
+      const queue = Queue('event-q');
+      const messages = [];
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      queue.consume(onMessage);
+      expect(messages.length).to.equal(1);
+
+      messages[0].ack();
+      expect(messages.length).to.equal(2);
+
+      messages[1].ack();
+      expect(queue.messageCount).to.equal(0);
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+      }
+    });
+
+    it('noAck acks messages in queue immediately', () => {
+      const queue = Queue();
+      const messages = [];
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      queue.consume(onMessage, {noAck: true});
+
+      expect(messages.length).to.equal(2);
+
+      expect(queue.messageCount).to.equal(0);
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+      }
+    });
+
+    it('noAck acks queued messages immediately', () => {
+      const queue = Queue();
+      const messages = [];
+
+      queue.queueMessage({routingKey: 'test.1'});
+
+      queue.consume(onMessage, {noAck: true});
+
+      queue.queueMessage({routingKey: 'test.2'});
+      queue.queueMessage({routingKey: 'test.3'});
+
+      expect(messages.length).to.equal(3);
+
+      expect(queue.messageCount).to.equal(0);
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+      }
+    });
+
+    it('noAck with prefetch above 1 acks messages immediately', () => {
+      const queue = Queue();
+      const messages = [];
+
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      queue.consume(onMessage, {noAck: true, prefetch: 2});
+
+      queue.queueMessage({routingKey: 'test.3'});
+      queue.queueMessage({routingKey: 'test.4'});
+
+      expect(messages.length).to.equal(4);
+
+      expect(queue.messageCount).to.equal(0);
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+      }
+    });
+
+    it('indicates ready when available for new messages', () => {
+      const queue = Queue('event-q');
+      const messages = [];
+      queue.queueMessage({routingKey: 'test.1'});
+
+      const consumer = queue.consume(onMessage);
+      expect(consumer.ready).to.be.false;
+      messages[0].ack();
+
+      expect(consumer.ready).to.be.true;
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+      }
+    });
+  });
+
   describe('queued message', () => {
     describe('message.ack()', () => {
       it('consumes message', () => {
@@ -491,8 +882,10 @@ describe('Queue', () => {
       queue.queueMessage({routingKey: 'test.3'});
 
       expect(queue.get()).to.be.undefined;
-      expect(queue.consume()).to.eql([]);
+      const consumer = queue.consume(() => {});
+
       expect(queue.messageCount).to.equal(2);
+      expect(consumer.messageCount).to.equal(0);
     });
 
     it('stopped ignores ack()', () => {
@@ -608,32 +1001,127 @@ describe('Queue', () => {
     });
   });
 
-  describe('empty', () => {
-    it('calls onEmpty callback when queue is emptied by message ack', () => {
-      let emptied;
-      const queue = Queue('test-q', {}, {onEmpty});
+  describe('delete()', () => {
+    it('emits delete', () => {
+      let triggered;
+      const queue = Queue('test-q', {}, {emit});
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.consume(() => {});
+
+      queue.delete();
+
+      expect(triggered).to.be.true;
+
+      function emit(eventName) {
+        if (eventName !== 'queue.delete') return;
+        triggered = true;
+      }
+    });
+
+    it('emits delete for queue and all consumers', () => {
+      const triggered = [];
+      const queue = Queue('test-q', {}, {emit});
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.consume(() => {});
+      queue.consume(() => {});
+
+      queue.delete();
+
+      expect(triggered).to.eql([
+        'queue.message',
+        'queue.consume',
+        'queue.consume',
+        'consumer.cancel',
+        'consumer.cancel',
+        'queue.delete'
+      ]);
+      expect(triggered).to.have.length(6);
+
+      function emit(eventName) {
+        triggered.push(eventName);
+      }
+    });
+
+    it('ifUnused option only deletes queue if no consumers', () => {
+      let triggered = false;
+      const queue = Queue('test-q', {}, {emit});
+      const consumer = queue.consume(() => {});
+
+      queue.delete({ifUnused: true});
+
+      expect(triggered).to.be.false;
+
+      consumer.cancel();
+
+      queue.delete({ifUnused: true});
+
+      expect(triggered).to.be.true;
+
+      function emit(eventName) {
+        if (eventName !== 'queue.delete') return;
+        triggered = true;
+      }
+    });
+
+    it('ifEmpty option only deletes queue if no messages', () => {
+      let triggered = false;
+      const queue = Queue('test-q', {}, {emit});
+      queue.queueMessage({routingKey: 'test.1'});
+
+      queue.delete({ifEmpty: true});
+
+      expect(triggered).to.be.false;
+
+      queue.purge();
+      queue.delete({ifEmpty: true});
+
+      expect(triggered).to.be.true;
+
+      function emit(eventName) {
+        if (eventName !== 'queue.delete') return;
+        triggered = true;
+      }
+    });
+  });
+
+  describe('events', () => {
+    it('emits message when message is queued', () => {
+      let triggered;
+      const queue = Queue('test-q', {}, {emit});
+      queue.queueMessage({routingKey: 'test.1'});
+
+      expect(triggered).to.be.true;
+
+      function emit(eventName) {
+        if (eventName === 'queue.message') triggered = true;
+      }
+    });
+
+    it('emits depleted when queue is emptied by message ack', () => {
+      let triggered;
+      const queue = Queue('test-q', {}, {emit});
       queue.queueMessage({routingKey: 'test.1'});
 
       queue.get().ack();
 
-      expect(emptied).to.be.true;
+      expect(triggered).to.be.true;
 
-      function onEmpty() {
-        emptied = true;
+      function emit(eventName) {
+        if (eventName === 'queue.depleted') triggered = true;
       }
     });
 
-    it('calls onEmpty callback when queue is emptied by message nack', () => {
-      let emptied;
-      const queue = Queue('test-q', {}, {onEmpty});
+    it('emits depleted when queue is emptied by message nack', () => {
+      let triggered;
+      const queue = Queue('test-q', {}, {emit});
       queue.queueMessage({routingKey: 'test.1'});
 
       queue.get().nack(false, false);
 
-      expect(emptied).to.be.true;
+      expect(triggered).to.be.true;
 
-      function onEmpty() {
-        emptied = true;
+      function emit(eventName) {
+        if (eventName === 'queue.depleted') triggered = true;
       }
     });
   });
