@@ -4,15 +4,13 @@ describe('exchange', () => {
   describe('delete()', () => {
     it('deletes exchange from broker', () => {
       const broker = Broker();
-      const topic = broker.assertExchange('topic');
+      broker.assertExchange('topic');
       const queue = broker.assertQueue('multi');
 
       broker.bindQueue(queue.name, 'topic', 'event.#');
       broker.bindQueue(queue.name, 'topic', 'load.#');
 
-      expect(queue.bindings).to.have.length(2);
-
-      topic.delete();
+      broker.deleteExchange('topic');
 
       expect(broker.getExchange('topic')).to.not.be.ok;
     });

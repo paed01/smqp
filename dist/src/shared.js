@@ -1,4 +1,12 @@
-export {generateId, getRoutingKeyPattern, sortByPriority};
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.generateId = generateId;
+exports.getRoutingKeyPattern = getRoutingKeyPattern;
+exports.sortByPriority = sortByPriority;
+
 
 function generateId() {
   const min = 110000;
@@ -9,10 +17,7 @@ function generateId() {
 }
 
 function getRoutingKeyPattern(pattern) {
-  const rpattern = pattern
-    .replace('.', '\\.')
-    .replace('*', '[^.]+?')
-    .replace('#', '.+?');
+  const rpattern = pattern.replace('.', '\\.').replace('*', '[^.]+?').replace('#', '.+?');
 
   return new RegExp(`^${rpattern}$`);
 }

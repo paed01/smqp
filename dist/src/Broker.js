@@ -1,7 +1,15 @@
-import {Exchange, EventExchange} from './Exchange';
-import {Queue} from './Queue';
+'use strict';
 
-export function Broker(owner) {
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.Broker = Broker;
+
+var _Exchange = require('./Exchange');
+
+var _Queue = require('./Queue');
+
+function Broker(owner) {
   const exchanges = [];
   const queues = [];
   const consumers = [];
@@ -37,7 +45,7 @@ export function Broker(owner) {
     sendToQueue,
     stop,
     unbindExchange,
-    unbindQueue,
+    unbindQueue
   };
 
   Object.defineProperty(broker, 'exchangeCount', {
@@ -57,7 +65,7 @@ export function Broker(owner) {
 
   return broker;
 
-  function subscribe(exchangeName, pattern, queueName, onMessage, options = {durable: true}) {
+  function subscribe(exchangeName, pattern, queueName, onMessage, options = { durable: true }) {
     if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and message callback are required');
     if (options && options.consumerTag) validateConsumerTag(options.consumerTag);
 
@@ -70,7 +78,7 @@ export function Broker(owner) {
   }
 
   function subscribeTmp(exchangeName, pattern, onMessage, options = {}) {
-    return subscribe(exchangeName, pattern, null, onMessage, {...options, durable: false});
+    return subscribe(exchangeName, pattern, null, onMessage, { ...options, durable: false });
   }
 
   function subscribeOnce(exchangeName, pattern, onMessage, options = {}) {
@@ -78,12 +86,12 @@ export function Broker(owner) {
     if (options && options.consumerTag) validateConsumerTag(options.consumerTag);
 
     assertExchange(exchangeName);
-    const onceOptions = {autoDelete: true, durable: false};
+    const onceOptions = { autoDelete: true, durable: false };
     const onceQueue = createQueue(null, onceOptions);
 
     bindQueue(onceQueue.name, exchangeName, pattern, onceOptions);
 
-    const onceConsumer = consume(onceQueue.name, wrappedOnMessage, {noAck: true, consumerTag: options.consumerTag});
+    const onceConsumer = consume(onceQueue.name, wrappedOnMessage, { noAck: true, consumerTag: options.consumerTag });
     return onceConsumer;
 
     function wrappedOnMessage(...args) {
@@ -103,7 +111,7 @@ export function Broker(owner) {
     if (exchange) {
       if (type && exchange.type !== type) throw new Error('Type doesn\'t match');
     } else {
-      exchange = Exchange(exchangeName, type || 'topic', options);
+      exchange = (0, _Exchange.Exchange)(exchangeName, type || 'topic', options);
       exchange.on('delete', () => {
         const idx = exchanges.indexOf(exchange);
         if (idx === -1) return;
@@ -116,7 +124,7 @@ export function Broker(owner) {
   }
 
   function getExchangeByName(exchangeName) {
-    return exchanges.find((exchange) => exchange.name === exchangeName);
+    return exchanges.find(exchange => exchange.name === exchangeName);
   }
 
   function bindQueue(queueName, exchangeName, pattern, bindOptions) {
@@ -143,18 +151,18 @@ export function Broker(owner) {
   }
 
   function cancel(consumerTag) {
-    const consumer = consumers.find((c) => c.consumerTag === consumerTag);
+    const consumer = consumers.find(c => c.consumerTag === consumerTag);
     if (!consumer) return false;
     consumer.cancel(false);
     return true;
   }
 
   function getExchange(exchangeName) {
-    return exchanges.find(({name}) => name === exchangeName);
+    return exchanges.find(({ name }) => name === exchangeName);
   }
 
-  function deleteExchange(exchangeName, {ifUnused} = {}) {
-    const idx = exchanges.findIndex((exchange) => exchange.name === exchangeName);
+  function deleteExchange(exchangeName, { ifUnused } = {}) {
+    const idx = exchanges.findIndex(exchange => exchange.name === exchangeName);
     if (idx === -1) return false;
 
     const exchange = exchanges[idx];
@@ -166,19 +174,19 @@ export function Broker(owner) {
   }
 
   function stop() {
-    exchanges.forEach((exchange) => exchange.stop());
-    queues.forEach((queue) => queue.stop());
+    exchanges.forEach(exchange => exchange.stop());
+    queues.forEach(queue => queue.stop());
   }
 
   function close() {
-    exchanges.forEach((e) => e.close());
-    queues.forEach((q) => q.close());
+    exchanges.forEach(e => e.close());
+    queues.forEach(q => q.close());
   }
 
   function getState() {
     return {
       exchanges: getExchangeState(),
-      queues: getQueuesState(),
+      queues: getQueuesState()
     };
 
     function getExchangeState() {
@@ -193,16 +201,16 @@ export function Broker(owner) {
 
   function recover(state) {
     if (!state) {
-      queues.forEach((queue) => queue.recover());
-      exchanges.forEach((exchange) => exchange.recover(null, getQueue));
+      queues.forEach(queue => queue.recover());
+      exchanges.forEach(exchange => exchange.recover(null, getQueue));
       return;
     }
 
     if (state.queues) state.queues.forEach(recoverQueue);
-    queues.forEach((queue) => queue.stopped && queue.recover());
+    queues.forEach(queue => queue.stopped && queue.recover());
 
     if (state.exchanges) state.exchanges.forEach(recoverExchange);
-    exchanges.forEach((exchange) => exchange.stopped && exchange.recover(null, getQueue));
+    exchanges.forEach(exchange => exchange.stopped && exchange.recover(null, getQueue));
 
     return broker;
 
@@ -250,7 +258,7 @@ export function Broker(owner) {
   function createQueue(queueName, options) {
     if (getQueue(queueName)) throw new Error(`Queue named ${queueName} already exists`);
 
-    const queue = Queue(queueName, options, EventExchange());
+    const queue = (0, _Queue.Queue)(queueName, options, (0, _Exchange.EventExchange)());
     queue.on('delete', onDelete);
     queue.on('dead-letter', onDeadLetter);
     queue.on('consume', (_, event) => consumers.push(event.content));
@@ -268,7 +276,7 @@ export function Broker(owner) {
       queues.splice(idx, 1);
     }
 
-    function onDeadLetter(_, {content}) {
+    function onDeadLetter(_, { content }) {
       const exchange = getExchange(content.deadLetterExchange);
       if (!exchange) return;
       exchange.publish(content.message.fields.routingKey, content.message.content, content.message.properties);
@@ -277,7 +285,7 @@ export function Broker(owner) {
 
   function getQueue(queueName) {
     if (!queueName) return;
-    const idx = queues.findIndex((queue) => queue.name === queueName);
+    const idx = queues.findIndex(queue => queue.name === queueName);
     if (idx > -1) return queues[idx];
   }
 
@@ -285,25 +293,26 @@ export function Broker(owner) {
     if (!queueName) return createQueue(null, options);
 
     const queue = getQueue(queueName);
-    options = {durable: true, ...options};
+    options = { durable: true, ...options };
     if (!queue) return createQueue(queueName, options);
 
     if (queue.options.durable !== options.durable) throw new Error('Durable doesn\'t match');
     return queue;
   }
 
-  function deleteQueue(queueName, options) {
+  function deleteQueue(queueName) {
     if (!queueName) return false;
     const queue = getQueue(queueName);
     if (!queue) return false;
-    return queue.delete(options);
+    queue.delete();
+    return true;
   }
 
-  function getMessageFromQueue(queueName, {noAck} = {}) {
+  function getMessageFromQueue(queueName, { noAck } = {}) {
     const queue = getQueue(queueName);
     if (!queue) return;
 
-    return queue.get({noAck});
+    return queue.get({ noAck });
   }
 
   function ack(message, allUpTo) {
@@ -311,7 +320,7 @@ export function Broker(owner) {
   }
 
   function ackAll() {
-    queues.forEach((q) => q.ackAll());
+    queues.forEach(q => q.ackAll());
   }
 
   function nack(message, allUpTo, requeue) {
@@ -319,7 +328,7 @@ export function Broker(owner) {
   }
 
   function nackAll(requeue) {
-    queues.forEach((q) => q.nackAll(requeue));
+    queues.forEach(q => q.nackAll(requeue));
   }
 
   function reject(message, requeue) {
@@ -329,7 +338,7 @@ export function Broker(owner) {
   function validateConsumerTag(consumerTag) {
     if (!consumerTag) return true;
 
-    if (consumers.find((c) => c.consumerTag === consumerTag)) {
+    if (consumers.find(c => c.consumerTag === consumerTag)) {
       throw new Error(`Consumer tag must be unique, ${consumerTag} is occupied`);
     }
 

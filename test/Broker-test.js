@@ -58,7 +58,7 @@ describe('Smqp', () => {
       }
     });
 
-    it.skip('returns existing consumer if the same queue, pattern, and handler are used when subscribing', (done) => {
+    it('returns existing consumer if the same queue, pattern, and handler are used when subscribing', (done) => {
       const broker = Broker();
 
       broker.assertExchange('event');
@@ -109,14 +109,14 @@ describe('Smqp', () => {
     });
   });
 
-  describe.skip('exclusive subscription', () => {
+  describe('exclusive subscription', () => {
     it('throws if subscribing to exclusively consumed queue', () => {
       const broker = Broker();
 
-      broker.subscribe('test', 'test.#', 'exclusiveQueue', onMessage1, {exclusive: true});
+      broker.subscribe('test', 'test.#', 'exclusive-q', onMessage1, {exclusive: true});
 
       expect(() => {
-        broker.subscribe('test', 'test.#', 'exclusiveQueue', onMessage2);
+        broker.subscribe('test', 'test.#', 'exclusive-q', onMessage2);
       }).to.throw(/exclusively/i);
 
       function onMessage1() {}
@@ -126,11 +126,11 @@ describe('Smqp', () => {
     it('cannot exclusively subscribe if already consumed', () => {
       const broker = Broker();
 
-      broker.subscribe('test', 'test.#', 'exclusiveQueue', onMessage1);
+      broker.subscribe('test', 'test.#', 'exclusive-q', onMessage1);
 
       expect(() => {
-        broker.subscribe('test', 'test.#', 'exclusiveQueue', onMessage2, {exclusive: true});
-      }).to.throw(/cannot exclusively/i);
+        broker.subscribe('test', 'test.#', 'exclusive-q', onMessage2, {exclusive: true});
+      }).to.throw(Error);
 
       function onMessage1() {}
       function onMessage2() {}
@@ -139,15 +139,15 @@ describe('Smqp', () => {
     it('releases exclusive consumption if unsubscribed', () => {
       const broker = Broker();
 
-      const queue = broker.assertQueue('exclusiveQueue', {autoDelete: false});
-      broker.subscribe('test', 'test.#', 'exclusiveQueue', onMessage1, {exclusive: true});
+      const queue = broker.assertQueue('exclusive-q', {autoDelete: false});
+      broker.subscribe('test', 'test.#', 'exclusive-q', onMessage1, {exclusive: true});
 
-      expect(queue.options).to.have.property('exclusive', true);
+      expect(queue).to.have.property('exclusive', true);
 
-      broker.unsubscribe('exclusiveQueue', onMessage1);
+      broker.unsubscribe('exclusive-q', onMessage1);
       expect(queue).to.have.property('exclusive', false);
 
-      broker.subscribe('test', 'test.#', 'exclusiveQueue', onMessage2);
+      broker.subscribe('test', 'test.#', 'exclusive-q', onMessage2);
 
       function onMessage1() {}
       function onMessage2() {}
@@ -377,6 +377,18 @@ describe('Smqp', () => {
         message.ack();
         broker.unsubscribe('test-q', onMessage);
       }
+    });
+
+    it('returns undefined', () => {
+      const broker = Broker();
+
+      const queue = broker.assertQueue('test-q');
+      broker.subscribe('test', 'test.*', 'test-q', onMessage);
+
+      expect(broker.unsubscribe('test-q', onMessage)).to.be.undefined;
+      expect(queue.consumerCount).to.equal(0);
+
+      function onMessage() {}
     });
   });
 
@@ -732,6 +744,16 @@ describe('Smqp', () => {
       expect(bindings[1]).to.have.property('pattern', '#');
     });
 
+    it('same broker with state keeps consumers', () => {
+      broker.consume('event-q', () => {});
+
+      expect(broker.consumerCount).to.equal(1);
+
+      broker.recover(broker.getState());
+
+      expect(broker.consumerCount).to.equal(1);
+    });
+
     it('peek returns first recovered message', () => {
       broker.publish('event', 'event.0', {data: 1});
       broker.publish('event', 'event.1', {data: 2});
@@ -908,7 +930,7 @@ describe('Smqp', () => {
       }
     });
 
-    it('continues consumption', () => {
+    it('without state continues consumption', () => {
       const messages = [];
 
       const consumer = broker.subscribeTmp('event', '#', onMessage);
@@ -942,26 +964,6 @@ describe('Smqp', () => {
   });
 
   describe('dead letters', () => {
-    it('sends rejected message to dead letter exchange', () => {
-      const broker = Broker();
-
-      broker.assertExchange('event');
-      broker.assertExchange('dead-letter');
-
-      const deadLetterQueue = broker.assertQueue('dead-letter-q');
-      broker.bindQueue('dead-letter-q', 'dead-letter', '#');
-
-      broker.subscribe('event', 'test.#', 'test-q', onMessage, {deadLetterExchange: 'dead-letter'});
-
-      broker.publish('event', 'test.1');
-
-      expect(deadLetterQueue.messageCount).to.equal(1);
-
-      function onMessage(_, message) {
-        message.reject(false);
-      }
-    });
-
     it('sends nacked message to dead letter exchange', () => {
       const broker = Broker();
 
@@ -979,6 +981,26 @@ describe('Smqp', () => {
 
       function onMessage(_, message) {
         message.nack(false, false);
+      }
+    });
+
+    it('sends rejected message to dead letter exchange', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      broker.assertExchange('dead-letter');
+
+      const deadLetterQueue = broker.assertQueue('dead-letter-q');
+      broker.bindQueue('dead-letter-q', 'dead-letter', '#');
+
+      broker.subscribe('event', 'test.#', 'test-q', onMessage, {deadLetterExchange: 'dead-letter'});
+
+      broker.publish('event', 'test.1');
+
+      expect(deadLetterQueue.messageCount).to.equal(1);
+
+      function onMessage(_, message) {
+        message.reject(false);
       }
     });
 
@@ -1120,7 +1142,7 @@ describe('Smqp', () => {
 
       message1.nack(null, true);
 
-      expect(broker.getQueue('testq').length).to.equal(2);
+      expect(broker.getQueue('testq').messageCount).to.equal(2);
 
       function onMessage(routingKey, message) {
         messages.push(message);
@@ -1139,7 +1161,7 @@ describe('Smqp', () => {
       broker.publish('test', 'test3');
 
       expect(messages).to.eql(['test2', 'test3']);
-      expect(broker.getQueue('testq').length).to.equal(0);
+      expect(broker.getQueue('testq').messageCount).to.equal(0);
 
       function onMessage(routingKey, message) {
         if (routingKey === 'test1') return;
@@ -1151,7 +1173,7 @@ describe('Smqp', () => {
     it('nack allUpTo argument acknowledges all outstanding messages up to the current one', () => {
       const broker = Broker();
 
-      broker.subscribe('test', '#', 'testq', onMessage, {prefetch: 2});
+      broker.subscribe('test', '#', 'test-q', onMessage, {prefetch: 2});
 
       const messages = [];
 
@@ -1160,12 +1182,12 @@ describe('Smqp', () => {
       broker.publish('test', 'test3');
 
       expect(messages).to.eql(['test2', 'test3']);
-      expect(broker.getQueue('testq').length).to.equal(0);
+      expect(broker.getQueue('test-q').messageCount).to.equal(0);
 
       function onMessage(routingKey, message) {
         if (routingKey === 'test1') return;
         messages.push(routingKey);
-        message.nack(true);
+        message.nack(true, false);
       }
     });
   });
@@ -1176,15 +1198,15 @@ describe('Smqp', () => {
       broker = Broker();
 
       broker.assertExchange('load', 'direct');
-      broker.assertQueue('loadq1', {autoDelete: false});
-      broker.assertQueue('loadq2', {autoDelete: false});
+      broker.assertQueue('load1-q', {autoDelete: false});
+      broker.assertQueue('load2-q', {autoDelete: false});
 
       broker.assertExchange('event', 'topic');
-      broker.assertQueue('events', {autoDelete: false});
+      broker.assertQueue('event-q', {autoDelete: false});
 
-      broker.bindQueue('events', 'event', '#');
-      broker.bindQueue('loadq1', 'load', '#');
-      broker.bindQueue('loadq2', 'load', '#');
+      broker.bindQueue('event-q', 'event', '#');
+      broker.bindQueue('load1-q', 'load', '#');
+      broker.bindQueue('load2-q', 'load', '#');
     });
 
     it('are recovered with bindings', () => {
@@ -1195,9 +1217,9 @@ describe('Smqp', () => {
       newBroker.publish('load', 'heavy.1');
       newBroker.publish('load', 'heavy.1');
 
-      expect(newBroker.getQueue('events').length).to.equal(1);
-      expect(newBroker.getQueue('loadq1').length).to.equal(1);
-      expect(newBroker.getQueue('loadq2').length).to.equal(1);
+      expect(newBroker.getQueue('event-q').messageCount).to.equal(1);
+      expect(newBroker.getQueue('load1-q').messageCount).to.equal(1);
+      expect(newBroker.getQueue('load2-q').messageCount).to.equal(1);
     });
 
     it('are recovered with messages', () => {
@@ -1208,9 +1230,9 @@ describe('Smqp', () => {
       const state = broker.getState();
       const newBroker = Broker().recover(state);
 
-      expect(newBroker.getQueue('events').length).to.equal(1);
-      expect(newBroker.getQueue('loadq1').length).to.equal(1);
-      expect(newBroker.getQueue('loadq2').length).to.equal(1);
+      expect(newBroker.getQueue('event-q').messageCount).to.equal(1);
+      expect(newBroker.getQueue('load1-q').messageCount).to.equal(1);
+      expect(newBroker.getQueue('load2-q').messageCount).to.equal(1);
     });
 
     it('recovers the same broker with bindings', () => {
@@ -1221,9 +1243,9 @@ describe('Smqp', () => {
       broker.publish('load', 'heavy.1');
       broker.publish('load', 'heavy.1');
 
-      expect(broker.getQueue('events').length).to.equal(1);
-      expect(broker.getQueue('loadq1').length).to.equal(1);
-      expect(broker.getQueue('loadq2').length).to.equal(1);
+      expect(broker.getQueue('event-q').messageCount).to.equal(1);
+      expect(broker.getQueue('load1-q').messageCount).to.equal(1);
+      expect(broker.getQueue('load2-q').messageCount).to.equal(1);
     });
 
     it('recovers the same broker with messages', () => {
@@ -1234,17 +1256,17 @@ describe('Smqp', () => {
       const state = broker.getState();
       broker.recover(state);
 
-      expect(broker.getQueue('events').length).to.equal(1);
-      expect(broker.getQueue('loadq1').length).to.equal(1);
-      expect(broker.getQueue('loadq2').length).to.equal(1);
+      expect(broker.getQueue('event-q').messageCount).to.equal(1);
+      expect(broker.getQueue('load1-q').messageCount).to.equal(1);
+      expect(broker.getQueue('load2-q').messageCount).to.equal(1);
     });
 
-    it('recoveres multiple direct exchange messages', (done) => {
+    it.skip('recoveres multiple direct exchange messages', (done) => {
       const messages = [];
 
-      broker.consume('loadq1', onLoad1);
-      broker.consume('loadq2', onLoad2);
-      broker.consume('events', onEvent);
+      broker.consume('load1-q', onLoad1);
+      broker.consume('load2-q', onLoad2);
+      broker.consume('event-q', onEvent);
 
       broker.subscribeTmp('event', 'event.start', onStart, {noAck: true});
 
@@ -1252,17 +1274,17 @@ describe('Smqp', () => {
       broker.publish('load', 'complete');
       broker.publish('load', 'end');
 
+      function onLoad1(routingKey, message) {
+        messages.push(routingKey);
+        broker.publish('event', `event.${routingKey}`);
+        message.ack();
+      }
+
       function onStart() {
         messages.push('-stop');
         broker.stop();
         const state = broker.getState();
         recover(state);
-      }
-
-      function onLoad1(routingKey, message) {
-        messages.push(routingKey);
-        broker.publish('event', `event.${routingKey}`);
-        message.ack();
       }
 
       function onLoad2(routingKey, message) {
@@ -1279,15 +1301,14 @@ describe('Smqp', () => {
       function recover(state) {
         broker = Broker().recover(state);
 
-        broker.consume('loadq1', onLoad1);
-        broker.consume('loadq2', onLoad2);
+        broker.consume('load1-q', onLoad1);
+        broker.consume('load2-q', onLoad2);
 
         setImmediate(() => {
           expect(messages).to.eql([
             'start',
             'event.start',
             '-stop',
-            'start',
             'complete',
             'end',
           ]);
@@ -1298,101 +1319,10 @@ describe('Smqp', () => {
     });
   });
 
-  describe('broker.get()', () => {
-    it('gets message from queue', () => {
-      const broker = Broker();
-      broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-
-      const msg = broker.get('test-q');
-      expect(msg).to.have.property('content').that.eql({msg: 1});
-    });
-
-    it('returns falsey if no message', () => {
-      const broker = Broker();
-      broker.assertQueue('test-q');
-      expect(broker.get('test-q')).to.not.be.ok;
-    });
-
-    it('expects to be acked', () => {
-      const broker = Broker();
-      broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
-
-      const msg = broker.get('test-q');
-      expect(msg).to.have.property('content').that.eql({msg: 1});
-      expect(msg.pending).to.be.true;
-    });
-
-    it('noAck option acks message immediately and leaves the rest of the messages in the queue', () => {
-      const broker = Broker();
-      const queue = broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
-
-      const msg = broker.get('test-q', {noAck: true});
-      expect(msg).to.have.property('content').that.eql({msg: 1});
-      expect(msg.pending).to.be.false;
-
-      expect(queue.length).to.equal(1);
-    });
-
-    it('after message leaves no lingering consumers', () => {
-      const broker = Broker();
-      broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
-
-      const msg = broker.get('test-q', {noAck: true});
-      expect(msg).to.have.property('content').that.eql({msg: 1});
-      expect(msg.pending).to.be.false;
-
-      expect(broker.consumerCount).to.equal(0);
-    });
-  });
-
-  describe('broker.ack(message[, allUpTo])', () => {
-    it('has expected behaviour', () => {
-      const broker = Broker();
-      broker.ack();
-    });
-  });
-
-  describe('broker.ackAll()', () => {
-    it('has expected behaviour', () => {
-      const broker = Broker();
-      broker.ackAll();
-    });
-  });
-
-  describe('broker.nack(message[, allUpTo, requeue])', () => {
-    it('has expected behaviour', () => {
-      const broker = Broker();
-      broker.nack();
-    });
-  });
-
-  describe('broker.nackAll()', () => {
-    it('has expected behaviour', () => {
-      const broker = Broker();
-      broker.nackAll();
-    });
-  });
-
-  describe('broker.reject(message[, requeue])', () => {
-    it('has expected behaviour', () => {
-      const broker = Broker();
-      broker.reject();
-    });
-  });
-
   describe('broker.prefetch(count)', () => {
     it('has expected behaviour', () => {
       const broker = Broker();
       broker.prefetch();
     });
   });
-
-
 });

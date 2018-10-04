@@ -1,6 +1,6 @@
 import {Broker} from '../index';
 
-describe('queue', () => {
+describe('Broker queue', () => {
   describe('options', () => {
     it('durable autoDelete queue is deleted when last consumer is unsubscribed', () => {
       const broker = Broker();
@@ -24,126 +24,212 @@ describe('queue', () => {
     });
   });
 
-  describe('.bindings', () => {
-    it('keeps reference to exchange binding', () => {
+  describe('broker.get()', () => {
+    it('returns message from queue', () => {
       const broker = Broker();
-      broker.assertExchange('event');
-      const topic = broker.assertExchange('topic');
+      broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
 
-      const queue = broker.assertQueue('q');
-
-      broker.bindQueue(queue.name, 'topic', '#');
-
-      expect(queue.bindings).to.have.length(1);
-      expect(queue.bindings[0].exchange === topic).to.be.true;
+      const msg = broker.get('test-q');
+      expect(msg).to.have.property('content').that.eql({msg: 1});
     });
 
-    it('keeps reference to multiple exchange bindings', () => {
+    it('returns falsey if no message', () => {
       const broker = Broker();
-      broker.assertExchange('event');
-      const topic = broker.assertExchange('topic');
-      const direct = broker.assertExchange('direct', 'direct');
-
-      const queue = broker.assertQueue('multi');
-
-      broker.bindQueue(queue.name, 'topic', '#');
-      broker.bindQueue(queue.name, 'direct', '#');
-
-      expect(queue.bindings).to.have.length(2);
-      expect(queue.bindings[0].exchange === topic).to.be.true;
-      expect(queue.bindings[1].exchange === direct).to.be.true;
+      broker.assertQueue('test-q');
+      expect(broker.get('test-q')).to.not.be.ok;
     });
 
-    it('keeps reference to different pattern bindings exchange', () => {
+    it('expects to be acked', () => {
       const broker = Broker();
-      broker.assertExchange('topic');
+      broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
 
-      const queue = broker.assertQueue('multi');
-
-      broker.bindQueue(queue.name, 'topic', 'event.#');
-      broker.bindQueue(queue.name, 'topic', 'load.#');
-
-      expect(queue.bindings).to.have.length(2);
+      const msg = broker.get('test-q');
+      expect(msg).to.have.property('content').that.eql({msg: 1});
+      expect(msg.pending).to.be.true;
     });
 
-    it('close referenced binding removes binding from queue and exchange', () => {
+    it('noAck option acks message immediately and leaves the rest of the messages in the queue', () => {
       const broker = Broker();
-      const topic = broker.assertExchange('topic');
-      const queue = broker.assertQueue('multi');
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
 
-      broker.bindQueue(queue.name, 'topic', 'event.#');
-      broker.bindQueue(queue.name, 'topic', 'load.#');
+      const msg = broker.get('test-q', {noAck: true});
+      expect(msg).to.have.property('content').that.eql({msg: 1});
+      expect(msg.pending).to.be.true;
 
-      expect(queue.bindings).to.have.length(2);
-      queue.bindings[0].close();
-
-      expect(topic.bindings).to.have.length(1);
-      expect(queue.bindings).to.have.length(1);
-    });
-
-    it('removes bindings if exchange is deleted', () => {
-      const broker = Broker();
-      const topic = broker.assertExchange('topic');
-      const queue = broker.assertQueue('multi');
-
-      broker.bindQueue(queue.name, 'topic', 'event.#');
-      broker.bindQueue(queue.name, 'topic', 'load.#');
-
-      expect(queue.bindings).to.have.length(2);
-
-      broker.deleteExchange(topic.name);
-
-      expect(queue.bindings).to.have.length(0);
-    });
-
-    it('close all referenced bindings removes bindings from queue and exchange', () => {
-      const broker = Broker();
-      const topic = broker.assertExchange('topic');
-      const queue = broker.assertQueue('multi');
-
-      broker.bindQueue(queue.name, 'topic', 'event.#');
-      broker.bindQueue(queue.name, 'topic', 'load.#');
-
-      expect(queue.bindings).to.have.length(2);
-      queue.bindings[0].close();
-      queue.bindings[0].close();
-
-      expect(topic.bindings).to.have.length(0);
-      expect(queue.bindings).to.have.length(0);
-    });
-
-    it('add binding from different queue throws', () => {
-      const broker = Broker();
-      broker.assertExchange('topic');
-      const queue1 = broker.assertQueue('q1');
-      const queue2 = broker.assertQueue('q2');
-
-      broker.bindQueue(queue1.name, 'topic', 'event.#');
-      broker.bindQueue(queue2.name, 'topic', 'load.#');
-
-      expect(() => {
-        queue1.addBinding(queue2.bindings[0]);
-      }).to.throw(Error, /bindings are exclusive/);
-    });
-
-    it('can be bound to multiple exchanges', () => {
-      const broker = Broker();
-      broker.assertExchange('topic');
-      broker.assertExchange('direct', 'direct');
-
-      const queue = broker.assertQueue('multi');
-
-      broker.bindQueue(queue.name, 'topic', '#');
-      broker.bindQueue(queue.name, 'direct', '#');
-
-      broker.publish('topic', 'event.1');
-      broker.publish('direct', 'load.1');
-
-      expect(queue.length).to.equal(2);
+      expect(queue.messageCount).to.equal(1);
     });
   });
 
-  describe('sendToQueue()', () => {
+  describe('broker.ack(message[, allUpTo])', () => {
+    it('acks message', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      expect(queue.messageCount).to.equal(1);
+
+      broker.ack(broker.get('test-q'));
+
+      expect(queue.messageCount).to.equal(0);
+    });
+
+    it('with allUpTo = true acks all up to outstanding messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', {msg: 3});
+      expect(queue.messageCount).to.equal(3);
+
+      broker.get('test-q');
+      broker.ack(broker.get('test-q'), true);
+
+      expect(queue.messageCount).to.equal(1);
+    });
+  });
+
+  describe('broker.ackAll()', () => {
+    it('acks all outstanding messages in queues', () => {
+      const broker = Broker();
+      const queue1 = broker.assertQueue('test1-q');
+      const queue2 = broker.assertQueue('test2-q');
+      broker.sendToQueue('test1-q', {msg: 1});
+      broker.sendToQueue('test1-q', {msg: 2});
+      broker.sendToQueue('test2-q', {msg: 3});
+      expect(queue1.messageCount).to.equal(2);
+      expect(queue2.messageCount).to.equal(1);
+
+      broker.get('test1-q');
+      broker.get('test2-q');
+
+      broker.ackAll();
+
+      expect(queue1.messageCount).to.equal(1);
+      expect(queue2.messageCount).to.equal(0);
+    });
+  });
+
+  describe('broker.nack(message[, allUpTo, requeue])', () => {
+    it('nacks and requeues message', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      expect(queue.messageCount).to.equal(1);
+
+      broker.nack(broker.get('test-q'));
+
+      expect(queue.messageCount).to.equal(1);
+    });
+
+    it('with allUpTo = true nacks and requeues all up to outstanding messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', {msg: 3});
+      expect(queue.messageCount).to.equal(3);
+
+      broker.get('test-q');
+      broker.nack(broker.get('test-q'), true);
+
+      expect(queue.messageCount).to.equal(3);
+    });
+
+    it('with falsey requeue dequeues message', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      expect(queue.messageCount).to.equal(1);
+
+      broker.nack(broker.get('test-q'), false, false);
+
+      expect(queue.messageCount).to.equal(0);
+    });
+
+    it('with allUpTo = true and no requeue nacks and requeues all up to outstanding messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', {msg: 3});
+      expect(queue.messageCount).to.equal(3);
+
+      broker.get('test-q');
+      broker.nack(broker.get('test-q'), true, false);
+
+      expect(queue.messageCount).to.equal(1);
+    });
+  });
+
+  describe('broker.nackAll([requeue])', () => {
+    it('nacks and requeues all outstanding message', () => {
+      const broker = Broker();
+      const queue1 = broker.assertQueue('test1-q');
+      const queue2 = broker.assertQueue('test2-q');
+      broker.sendToQueue('test1-q', {msg: 1});
+      broker.sendToQueue('test1-q', {msg: 2});
+      broker.sendToQueue('test2-q', {msg: 3});
+      expect(queue1.messageCount).to.equal(2);
+      expect(queue2.messageCount).to.equal(1);
+
+      broker.get('test1-q');
+      broker.get('test2-q');
+
+      broker.nackAll();
+
+      expect(queue1.messageCount).to.equal(2);
+      expect(queue2.messageCount).to.equal(1);
+    });
+
+    it('with falsey requeue nacks and dequeues all outstanding message', () => {
+      const broker = Broker();
+      const queue1 = broker.assertQueue('test1-q');
+      const queue2 = broker.assertQueue('test2-q');
+      broker.sendToQueue('test1-q', {msg: 1});
+      broker.sendToQueue('test1-q', {msg: 2});
+      broker.sendToQueue('test2-q', {msg: 3});
+      expect(queue1.messageCount).to.equal(2);
+      expect(queue2.messageCount).to.equal(1);
+
+      broker.get('test1-q');
+      broker.get('test2-q');
+
+      broker.nackAll(false);
+
+      expect(queue1.messageCount).to.equal(1);
+      expect(queue2.messageCount).to.equal(0);
+    });
+  });
+
+  describe('broker.reject(message[, requeue])', () => {
+    it('nacks and requeues message', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      expect(queue.messageCount).to.equal(1);
+
+      broker.reject(broker.get('test-q'));
+
+      expect(queue.messageCount).to.equal(1);
+    });
+
+    it('with falsey requeue dequeues message', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      expect(queue.messageCount).to.equal(1);
+
+      broker.reject(broker.get('test-q'), false, false);
+
+      expect(queue.messageCount).to.equal(0);
+    });
+  });
+
+  describe('broker.sendToQueue()', () => {
     it('sendToQueue() publish message on queue', () => {
       const broker = Broker();
 
@@ -225,7 +311,7 @@ describe('queue', () => {
 
       const messages = [];
 
-      queue.addConsumer(onMessage, {durable: true});
+      queue.consume(onMessage);
       broker.sendToQueue('persist', 'test.2');
       broker.sendToQueue('persist', 'test.3');
 
@@ -247,81 +333,82 @@ describe('queue', () => {
         messages.push(message);
       }
     });
-
   });
 
-  describe('purgeQueue()', () => {
+  describe('broker.purgeQueue()', () => {
     it('purge in message callback removes all messages', () => {
       const broker = Broker();
 
-      const queue = broker.assertQueue('purge-me');
-      broker.sendToQueue('purge-me', {msg: 1});
-      broker.sendToQueue('purge-me', {msg: 2});
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
 
       const messages = [];
 
-      broker.consume('purge-me', onMessage);
+      broker.consume('test-q', onMessage);
 
-      expect(queue.length).to.equal(0);
+      expect(queue.messageCount).to.equal(0);
       expect(messages).to.have.length(1);
 
       function onMessage(routingKey, message) {
         messages.push(message);
-        broker.purgeQueue('purge-me');
+        broker.purgeQueue('test-q');
         message.ack();
       }
     });
   });
 
-  describe('peek()', () => {
-    it('returns undefined if no messages', () => {
+  describe('broker.deleteQueue(queueName[, {ifUnused, ifEmpty}])', () => {
+    it('deletes queue from broker', () => {
       const broker = Broker();
 
-      const consumer = broker.subscribeTmp('test', '#', onMessage);
+      broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
 
-      expect(broker.getQueue(consumer.queueName).peek()).to.be.undefined;
+      broker.consume('test-q', onMessage);
+
+      broker.deleteQueue('test-q');
+
+      expect(broker.getQueue('test-q')).to.be.undefined;
+
+      expect(broker.queueCount).to.equal(0);
 
       function onMessage() {}
     });
 
-    it('returns first message', () => {
+    it('keeps queue if in use if that option is passed', () => {
       const broker = Broker();
 
-      const consumer = broker.subscribeTmp('test', 'test.#', onMessage);
+      broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
 
-      broker.publish('test', 'test.0');
-      broker.publish('test', 'test.1');
-      broker.publish('test', 'test.2');
+      broker.consume('test-q', onMessage);
+      expect(broker.consumerCount).to.equal(1);
 
-      expect(broker.getQueue(consumer.queueName).peek()).to.have.property('fields').with.property('routingKey', 'test.0');
+      broker.deleteQueue('test-q', {ifUnused: true});
+
+      expect(broker.getQueue('test-q')).to.be.ok;
+
+      expect(broker.queueCount).to.equal(1);
+      expect(broker.consumerCount).to.equal(1);
 
       function onMessage() {}
     });
 
-    it('with ignore pending argument true returns message that is not pending ack', () => {
+    it('keeps queue if not empty if that option is passed', () => {
       const broker = Broker();
 
-      const consumer = broker.subscribeTmp('test', 'test.#', onMessage);
+      broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
 
-      broker.publish('test', 'test.0');
-      broker.publish('test', 'test.1');
-      broker.publish('test', 'test.2');
+      broker.deleteQueue('test-q', {ifEmpty: true});
 
-      expect(broker.getQueue(consumer.queueName).peek(true)).to.have.property('fields').with.property('routingKey', 'test.1');
+      expect(broker.getQueue('test-q')).to.be.ok;
 
-      function onMessage() {}
-    });
-
-    it('with ignore pending argument true returns undefined if no queued messages beyond pending', () => {
-      const broker = Broker();
-
-      const consumer = broker.subscribeTmp('test', 'test.#', onMessage);
-
-      broker.publish('test', 'test.0');
-
-      expect(broker.getQueue(consumer.queueName).peek(true)).to.be.undefined;
-
-      function onMessage() {}
+      expect(broker.queueCount).to.equal(1);
     });
   });
 
@@ -335,12 +422,12 @@ describe('queue', () => {
       broker.bindQueue(queue.name, 'topic', 'event.*');
       broker.bindQueue(queue.name, 'topic', 'load.*');
 
-      expect(topic.bindingsCount).to.equal(2);
+      expect(topic.bindingCount).to.equal(2);
 
       broker.publish('topic', 'event.1');
       broker.publish('topic', 'load.1');
 
-      expect(queue.length).to.equal(2);
+      expect(queue.messageCount).to.equal(2);
     });
 
     it('can be unbound from multiple exchanges', () => {
@@ -356,12 +443,12 @@ describe('queue', () => {
       broker.publish('topic', 'event.1');
       broker.publish('direct', 'load.1');
 
-      expect(queue.length).to.equal(2);
+      expect(queue.messageCount).to.equal(2);
 
       broker.unbindQueue(queue.name, 'topic', '#');
 
-      expect(topic.bindingsCount).to.equal(0);
-      expect(direct.bindingsCount).to.equal(1);
+      expect(topic.bindingCount).to.equal(0);
+      expect(direct.bindingCount).to.equal(1);
     });
 
     it('deleted queue is unbound from multiple exchanges', () => {
@@ -377,12 +464,12 @@ describe('queue', () => {
       broker.publish('topic', 'event.1');
       broker.publish('direct', 'load.1');
 
-      expect(queue.length).to.equal(2);
+      expect(queue.messageCount).to.equal(2);
 
       broker.deleteQueue(queue.name);
 
-      expect(topic.bindingsCount).to.equal(0);
-      expect(direct.bindingsCount).to.equal(0);
+      expect(topic.bindingCount).to.equal(0);
+      expect(direct.bindingCount).to.equal(0);
     });
 
     it('can be unbound from same exchange with different pattern', () => {
@@ -398,12 +485,12 @@ describe('queue', () => {
       broker.publish('topic', 'load.1');
 
       broker.unbindQueue(queue.name, 'topic', 'load.*');
-      expect(topic.bindingsCount).to.equal(1);
+      expect(topic.bindingCount).to.equal(1);
 
       broker.publish('topic', 'event.2');
       broker.publish('topic', 'load.2');
 
-      expect(queue.length).to.equal(3);
+      expect(queue.messageCount).to.equal(3);
     });
 
     it('deleted queue is unbound from same exchange different pattern', () => {
@@ -418,23 +505,11 @@ describe('queue', () => {
       broker.publish('topic', 'event.1');
       broker.publish('topic', 'load.1');
 
-      expect(queue.length).to.equal(2);
+      expect(queue.messageCount).to.equal(2);
 
       broker.deleteQueue(queue.name);
 
-      expect(topic.bindingsCount).to.equal(0);
-    });
-
-    it('returns consumer before consuming message', () => {
-      const broker = Broker();
-      const queue = broker.assertQueue('test-q');
-
-      queue.queueMessage(undefined, 'test.1');
-
-      const consumer = queue.addConsumer(() => {
-        expect(consumer).to.be.ok;
-      });
-
+      expect(topic.bindingCount).to.equal(0);
     });
   });
 });

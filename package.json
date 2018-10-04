@@ -30,7 +30,7 @@
   ],
   "scripts": {
     "test": "mocha && npm run dist &&  eslint . --cache && npm run toc",
-    "dist": "babel index.js -d dist",
+    "dist": "babel index.js -d dist && babel src/**.js -d dist",
     "prepare": "npm run dist",
     "toc": "node ./scripts/generate-api-toc.js"
   },

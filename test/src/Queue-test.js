@@ -25,7 +25,6 @@ describe('Queue', () => {
 
   describe('queue options', () => {
     describe('maxLength', () => {
-
       it('maxLength evicts old messages', () => {
         const queue = Queue(null, {maxLength: 2});
         queue.queueMessage({routingKey: 'test.1'});
@@ -175,6 +174,15 @@ describe('Queue', () => {
         expect(() => {
           queue.consume(() => {});
         }).to.throw(/is exclusively consumed/);
+      });
+
+      it('exclusively consume on queue with consumer throws error', () => {
+        const queue = Queue();
+        queue.consume(() => {});
+
+        expect(() => {
+          queue.consume(() => {}, {exclusive: true});
+        }).to.throw(/already has consumers/);
       });
 
       it('releases exclusive consumed queue when consumer is canceled', () => {
@@ -366,6 +374,48 @@ describe('Queue', () => {
     });
   });
 
+  describe('assertConsumer(onMessage[, options])', () => {
+    it('returns consumer', () => {
+      const queue = Queue();
+      const consumer = queue.assertConsumer(() => {});
+      expect(consumer.options).to.have.property('consumerTag');
+    });
+
+    it('ups consumerCount', () => {
+      const queue = Queue();
+      queue.assertConsumer(() => {});
+      expect(queue.consumerCount).to.equal(1);
+    });
+
+    it('returns the same consumer if message callback match', () => {
+      const queue = Queue();
+      const consumer = queue.consume(onMessage);
+      expect(queue.assertConsumer(onMessage) === consumer).to.be.true;
+      function onMessage() {}
+    });
+
+    it('returns the same consumer if message callback and consumer tag match', () => {
+      const queue = Queue();
+      const consumer = queue.consume(onMessage, {consumerTag: 'test-consumer'});
+      expect(queue.assertConsumer(onMessage, {consumerTag: 'test-consumer-2'}) === consumer).to.be.false;
+      expect(queue.assertConsumer(onMessage, {consumerTag: 'test-consumer'}) === consumer).to.be.true;
+      function onMessage() {}
+    });
+
+    it('returns the same consumer if message callback, consumer tag and exclusive match', () => {
+      const queue = Queue();
+      const consumer = queue.consume(onMessage, {consumerTag: 'test-consumer', exclusive: true});
+
+      expect(() => {
+        queue.assertConsumer(onMessage, {consumerTag: 'test-consumer', exclusive: false});
+      }).to.throw(Error);
+
+      expect(queue.assertConsumer(onMessage, {consumerTag: 'test-consumer', exclusive: true}) === consumer).to.be.true;
+
+      function onMessage() {}
+    });
+  });
+
   describe('dismiss(onMessage)', () => {
     it('downs consumerCount', () => {
       const queue = Queue();
@@ -398,15 +448,6 @@ describe('Queue', () => {
       const msg = queue.get();
       expect(msg).to.have.property('fields').with.property('routingKey', 'test.1');
       expect(msg).to.have.property('pending', true);
-    });
-
-    it('with options consumerTag sets message field', () => {
-      const queue = Queue();
-      queue.queueMessage({routingKey: 'test.1'});
-
-      const msg = queue.get({consumerTag: 'smq.ctag-1'});
-      expect(msg).to.have.property('fields').with.property('routingKey', 'test.1');
-      expect(msg).to.have.property('fields').with.property('consumerTag', 'smq.ctag-1');
     });
   });
 
@@ -523,7 +564,9 @@ describe('Queue', () => {
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
 
-      const msg = queue.get({consumerTag: 'my-consumer'});
+      queue.consume(() => {}, {consumerTag: 'my-consumer'});
+
+      const msg = queue.peek();
       expect(msg.consumerTag).to.equal('my-consumer');
       queue.nack(msg);
 
@@ -575,9 +618,66 @@ describe('Queue', () => {
       queue.purge();
       expect(queue.messageCount).to.equal(0);
     });
+
+    it('removes all undelivered messages', () => {
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+      queue.queueMessage({routingKey: 'test.3'});
+
+      queue.get();
+
+      expect(queue.messageCount).to.equal(3);
+      queue.purge();
+      expect(queue.messageCount).to.equal(1);
+    });
+
+    it('emits depleted if no undelivered messages remain', () => {
+      let triggered;
+      const queue = Queue(null, {}, {emit});
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+      queue.queueMessage({routingKey: 'test.3'});
+
+      expect(queue.messageCount).to.equal(3);
+      queue.purge();
+
+      expect(queue.messageCount).to.equal(0);
+      expect(triggered, 'depleted').to.be.true;
+
+      function emit(eventName, msg) {
+        if (eventName === 'queue.depleted') {
+          triggered = true;
+          expect(queue === msg).to.be.true;
+        }
+      }
+    });
+
+    it('consumes next message in queue after consumer nackAll and queue purge', () => {
+      const messages = [];
+
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      const consumer = queue.consume(onMessage, {prefetch: 2});
+
+      expect(consumer.messageCount).to.equal(2);
+
+      consumer.nackAll(false);
+      queue.purge();
+
+      queue.queueMessage({routingKey: 'test.3'});
+
+      expect(messages).to.eql(['test.1', 'test.2', 'test.3']);
+
+      function onMessage(routingKey) {
+        messages.push(routingKey);
+      }
+    });
   });
 
-  describe('peek()', () => {
+  describe('peek([ignoreDelivered])', () => {
     it('returns first message', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
@@ -588,7 +688,7 @@ describe('Queue', () => {
       expect(msg).to.have.property('pending', false);
     });
 
-    it('returns first message even if pending', () => {
+    it('returns first message even if delivered', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
@@ -600,7 +700,7 @@ describe('Queue', () => {
       expect(msg).to.have.property('pending', true);
     });
 
-    it('with ignore pending flag and no pending messages in queue returns first message', () => {
+    it('with ignore delivered argument true returns first message when all are undelivered', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
@@ -610,7 +710,7 @@ describe('Queue', () => {
       expect(msg).to.have.property('pending', false);
     });
 
-    it('with ignore pending flag and pending messages in queue returns first non-pending message', () => {
+    it('with ignore delivered argument returns first undelivered message', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
@@ -621,101 +721,16 @@ describe('Queue', () => {
       expect(msg).to.have.property('fields').with.property('routingKey', 'test.2');
       expect(msg).to.have.property('pending', false);
     });
-  });
 
-  describe('Consumer', () => {
-    it('waits for ack before consuming next message', () => {
-      const queue = Queue('event-q');
-      const messages = [];
-      queue.queueMessage({routingKey: 'test.1'});
-      queue.queueMessage({routingKey: 'test.2'});
-
-      queue.consume(onMessage);
-      expect(messages.length).to.equal(1);
-
-      messages[0].ack();
-      expect(messages.length).to.equal(2);
-
-      messages[1].ack();
-      expect(queue.messageCount).to.equal(0);
-
-      function onMessage(routingKey, message) {
-        messages.push(message);
-      }
-    });
-
-    it('noAck acks messages in queue immediately', () => {
+    it('with ignore delivered argument returns nothing if all are delivered', () => {
       const queue = Queue();
-      const messages = [];
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
-      queue.consume(onMessage, {noAck: true});
+      queue.get();
+      queue.get();
 
-      expect(messages.length).to.equal(2);
-
-      expect(queue.messageCount).to.equal(0);
-
-      function onMessage(routingKey, message) {
-        messages.push(message);
-      }
-    });
-
-    it('noAck acks queued messages immediately', () => {
-      const queue = Queue();
-      const messages = [];
-
-      queue.queueMessage({routingKey: 'test.1'});
-
-      queue.consume(onMessage, {noAck: true});
-
-      queue.queueMessage({routingKey: 'test.2'});
-      queue.queueMessage({routingKey: 'test.3'});
-
-      expect(messages.length).to.equal(3);
-
-      expect(queue.messageCount).to.equal(0);
-
-      function onMessage(routingKey, message) {
-        messages.push(message);
-      }
-    });
-
-    it('noAck with prefetch above 1 acks messages immediately', () => {
-      const queue = Queue();
-      const messages = [];
-
-      queue.queueMessage({routingKey: 'test.1'});
-      queue.queueMessage({routingKey: 'test.2'});
-
-      queue.consume(onMessage, {noAck: true, prefetch: 2});
-
-      queue.queueMessage({routingKey: 'test.3'});
-      queue.queueMessage({routingKey: 'test.4'});
-
-      expect(messages.length).to.equal(4);
-
-      expect(queue.messageCount).to.equal(0);
-
-      function onMessage(routingKey, message) {
-        messages.push(message);
-      }
-    });
-
-    it('indicates ready when available for new messages', () => {
-      const queue = Queue('event-q');
-      const messages = [];
-      queue.queueMessage({routingKey: 'test.1'});
-
-      const consumer = queue.consume(onMessage);
-      expect(consumer.ready).to.be.false;
-      messages[0].ack();
-
-      expect(consumer.ready).to.be.true;
-
-      function onMessage(routingKey, message) {
-        messages.push(message);
-      }
+      expect(queue.peek(true)).to.be.undefined;
     });
   });
 
@@ -862,145 +877,6 @@ describe('Queue', () => {
     });
   });
 
-  describe('stop()', () => {
-    it('stops new messages', () => {
-      const queue = Queue('test-q');
-      queue.queueMessage({routingKey: 'test.1'});
-      queue.stop();
-      queue.queueMessage({routingKey: 'test.2'});
-
-      expect(queue.messageCount).to.equal(1);
-    });
-
-    it('stops consumption', () => {
-      const queue = Queue('test-q');
-      queue.queueMessage({routingKey: 'test.1'});
-      queue.queueMessage({routingKey: 'test.2'});
-
-      queue.stop();
-
-      queue.queueMessage({routingKey: 'test.3'});
-
-      expect(queue.get()).to.be.undefined;
-      const consumer = queue.consume(() => {});
-
-      expect(queue.messageCount).to.equal(2);
-      expect(consumer.messageCount).to.equal(0);
-    });
-
-    it('stopped ignores ack()', () => {
-      const queue = Queue('test-q');
-      queue.queueMessage({routingKey: 'test.1'});
-      queue.queueMessage({routingKey: 'test.2'});
-
-      const msg = queue.get();
-
-      queue.stop();
-
-      queue.ack(msg);
-
-      expect(queue.messageCount).to.equal(2);
-    });
-
-    it('stopped ignores nack()', () => {
-      const queue = Queue('test-q');
-      queue.queueMessage({routingKey: 'test.1'});
-      queue.queueMessage({routingKey: 'test.2'});
-
-      const msg = queue.get();
-
-      queue.stop();
-
-      queue.nack(msg, null, false);
-
-      expect(queue.messageCount).to.equal(2);
-    });
-
-    it('stopped ignores reject()', () => {
-      const queue = Queue('test-q');
-      queue.queueMessage({routingKey: 'test.1'});
-      queue.queueMessage({routingKey: 'test.2'});
-
-      const msg = queue.get();
-
-      queue.stop();
-
-      queue.reject(msg, false);
-
-      expect(queue.messageCount).to.equal(2);
-    });
-  });
-
-  describe('recover()', () => {
-    it('recovers stopped without state', () => {
-      const queue = Queue('test-q');
-      queue.queueMessage({routingKey: 'test.1'});
-      queue.queueMessage({routingKey: 'test.2'});
-
-      queue.stop();
-
-      queue.queueMessage({routingKey: 'test.3'});
-
-      expect(queue.messageCount).to.equal(2);
-
-      queue.recover();
-
-      queue.queueMessage({routingKey: 'test.3'});
-
-      expect(queue.messageCount).to.equal(3);
-    });
-
-    it('recovers stopped with state', () => {
-      const queue = Queue('test-q');
-      queue.queueMessage({routingKey: 'test.1', exchange: 'event'}, 'data', {contentType: 'text/plain'});
-      queue.queueMessage({routingKey: 'test.2', exchange: 'event'}, {data: 1}, {contentType: 'application/json'});
-
-      queue.stop();
-
-      const state = queue.getState();
-      state.name = 'test-recovered-q';
-      state.messages.pop();
-
-      queue.recover(state);
-
-      queue.queueMessage({routingKey: 'test.3'});
-
-      expect(queue.name).to.equal('test-recovered-q');
-      expect(queue.messageCount).to.equal(2);
-    });
-
-    it('resumes consumption', () => {
-      const queue = Queue('test-q');
-      queue.queueMessage({routingKey: 'test.1', exchange: 'event'}, 'data', {contentType: 'text/plain'});
-      queue.queueMessage({routingKey: 'test.2', exchange: 'event'}, {data: 1}, {contentType: 'application/json'});
-
-      queue.stop();
-
-      const state = queue.getState();
-
-      queue.recover(state);
-
-      expect(queue.messageCount).to.equal(2);
-
-      let msg = queue.get({consumerTag: 'me-again'});
-      expect(msg).to.have.property('fields').that.eql({routingKey: 'test.1', exchange: 'event', consumerTag: 'me-again'});
-      expect(msg).to.have.property('properties').that.have.property('contentType', 'text/plain');
-      expect(msg).to.have.property('content').that.equal('data');
-
-      msg.ack();
-      expect(queue.messageCount).to.equal(1);
-
-      msg = queue.get();
-      expect(msg).to.have.property('fields').that.include({routingKey: 'test.2', exchange: 'event'});
-      expect(msg).to.have.property('properties').that.have.property('contentType', 'application/json');
-      expect(msg).to.have.property('content').that.eql({data: 1});
-
-      msg.ack();
-
-      expect(queue.messageCount).to.equal(0);
-    });
-  });
-
   describe('delete()', () => {
     it('emits delete', () => {
       let triggered;
@@ -1031,8 +907,8 @@ describe('Queue', () => {
         'queue.message',
         'queue.consume',
         'queue.consume',
-        'consumer.cancel',
-        'consumer.cancel',
+        'queue.consumer.cancel',
+        'queue.consumer.cancel',
         'queue.delete'
       ]);
       expect(triggered).to.have.length(6);
@@ -1122,6 +998,730 @@ describe('Queue', () => {
 
       function emit(eventName) {
         if (eventName === 'queue.depleted') triggered = true;
+      }
+    });
+
+    it('emits available when queue maxLength was reached and then released one message', () => {
+      let triggered;
+      const queue = Queue('test-q', {maxLength: 2}, {emit});
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      queue.get().nack(false, false);
+
+      expect(triggered).to.be.true;
+
+      function emit(eventName) {
+        if (eventName === 'queue.available') triggered = true;
+      }
+    });
+  });
+
+  describe('stop()', () => {
+    it('stops new messages', () => {
+      const queue = Queue('test-q');
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.stop();
+      queue.queueMessage({routingKey: 'test.2'});
+
+      expect(queue.messageCount).to.equal(1);
+    });
+
+    it('stops consumption', () => {
+      const queue = Queue('test-q');
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      queue.stop();
+
+      queue.queueMessage({routingKey: 'test.3'});
+
+      expect(queue.get()).to.be.undefined;
+      const consumer = queue.consume(() => {});
+
+      expect(queue.messageCount).to.equal(2);
+      expect(consumer.messageCount).to.equal(0);
+    });
+
+    it('stopped ignores ack()', () => {
+      const queue = Queue('test-q');
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      const msg = queue.get();
+
+      queue.stop();
+
+      queue.ack(msg);
+
+      expect(queue.messageCount).to.equal(2);
+    });
+
+    it('stopped ignores nack()', () => {
+      const queue = Queue('test-q');
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      const msg = queue.get();
+
+      queue.stop();
+
+      queue.nack(msg, null, false);
+
+      expect(queue.messageCount).to.equal(2);
+    });
+
+    it('stopped ignores reject()', () => {
+      const queue = Queue('test-q');
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      const msg = queue.get();
+
+      queue.stop();
+
+      queue.reject(msg, false);
+
+      expect(queue.messageCount).to.equal(2);
+    });
+  });
+
+  describe('recover([state])', () => {
+    it('recovers stopped without state', () => {
+      const queue = Queue('test-q');
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      queue.stop();
+
+      queue.queueMessage({routingKey: 'test.3'});
+
+      expect(queue.messageCount).to.equal(2);
+
+      queue.recover();
+
+      queue.queueMessage({routingKey: 'test.3'});
+
+      expect(queue.messageCount).to.equal(3);
+    });
+
+    it('with state resets pending messages', () => {
+      const queue = Queue('test-q');
+      queue.queueMessage({routingKey: 'test.1', exchange: 'event'}, 'data', {contentType: 'text/plain'});
+      queue.queueMessage({routingKey: 'test.2', exchange: 'event'}, {data: 1}, {contentType: 'application/json'});
+
+      let msg = queue.get();
+      expect(msg).to.have.property('fields').that.include({routingKey: 'test.1', exchange: 'event'});
+
+      queue.stop();
+
+      const state = queue.getState();
+
+      queue.recover(state);
+
+      expect(queue.messageCount).to.equal(2);
+
+      msg = queue.get({consumerTag: 'me-again'});
+      expect(msg).to.have.property('fields').that.include({routingKey: 'test.1', exchange: 'event'});
+      expect(msg).to.have.property('properties').that.have.property('contentType', 'text/plain');
+      expect(msg).to.have.property('content').that.equal('data');
+
+      msg.ack();
+      expect(queue.messageCount).to.equal(1);
+
+      msg = queue.get();
+      expect(msg).to.have.property('fields').that.include({routingKey: 'test.2', exchange: 'event'});
+      expect(msg).to.have.property('properties').that.have.property('contentType', 'application/json');
+      expect(msg).to.have.property('content').that.eql({data: 1});
+
+      msg.ack();
+
+      expect(queue.messageCount).to.equal(0);
+    });
+
+    it('without state preserves pending messages', () => {
+      const queue = Queue('test-q');
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      let msg = queue.get();
+      expect(msg).to.have.property('fields').that.include({routingKey: 'test.1'});
+
+      queue.stop();
+      queue.recover();
+
+      expect(queue.messageCount).to.equal(2);
+
+      expect(queue.peek()).to.have.property('fields').that.include({routingKey: 'test.1'});
+      expect(queue.peek()).to.have.property('pending', true);
+
+      msg = queue.get();
+      expect(msg).to.have.property('fields').that.include({routingKey: 'test.2'});
+    });
+
+    it('recovers stopped with state', () => {
+      const queue = Queue('test-q');
+      queue.queueMessage({routingKey: 'test.1', exchange: 'event'}, 'data', {contentType: 'text/plain'});
+      queue.queueMessage({routingKey: 'test.2', exchange: 'event'}, {data: 1}, {contentType: 'application/json'});
+
+      queue.stop();
+
+      const state = queue.getState();
+      state.name = 'test-recovered-q';
+      state.messages.pop();
+
+      queue.recover(state);
+
+      queue.queueMessage({routingKey: 'test.3'});
+
+      expect(queue.name).to.equal('test-recovered-q');
+      expect(queue.messageCount).to.equal(2);
+    });
+
+    it('with state resumes messages', () => {
+      const queue = Queue('test-q');
+      queue.queueMessage({routingKey: 'test.1', exchange: 'event'}, 'data', {contentType: 'text/plain'});
+      queue.queueMessage({routingKey: 'test.2', exchange: 'event'}, {data: 1}, {contentType: 'application/json'});
+
+      queue.stop();
+
+      const state = queue.getState();
+
+      queue.recover(state);
+
+      expect(queue.messageCount).to.equal(2);
+
+      let msg = queue.get({consumerTag: 'me-again'});
+      expect(msg).to.have.property('fields').that.include({routingKey: 'test.1', exchange: 'event'});
+      expect(msg).to.have.property('properties').that.have.property('contentType', 'text/plain');
+      expect(msg).to.have.property('content').that.equal('data');
+
+      msg.ack();
+      expect(queue.messageCount).to.equal(1);
+
+      msg = queue.get();
+      expect(msg).to.have.property('fields').that.include({routingKey: 'test.2', exchange: 'event'});
+      expect(msg).to.have.property('properties').that.have.property('contentType', 'application/json');
+      expect(msg).to.have.property('content').that.eql({data: 1});
+
+      msg.ack();
+
+      expect(queue.messageCount).to.equal(0);
+    });
+
+    it('with state resumes consumers', () => {
+      const queue = Queue('test-q');
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      const consumer = queue.consume(() => {});
+
+      queue.stop();
+
+      const state = queue.getState();
+
+      queue.recover(state);
+
+      expect(consumer.messageCount).to.equal(1);
+
+      consumer.ackAll();
+
+      expect(queue.consumerCount).to.equal(1);
+      expect(queue.messageCount).to.equal(1);
+    });
+
+    it('without state resumes consumers', () => {
+      const messages = [];
+
+      const queue = Queue('test-q');
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      queue.consume((routingKey, message) => {
+        messages.push(message);
+      });
+
+      queue.stop();
+      expect(queue.consumerCount).to.equal(1);
+
+      queue.recover();
+
+      messages[0].ack();
+
+      expect(queue.messageCount).to.equal(1);
+
+      messages[1].ack();
+
+      expect(queue.messageCount).to.equal(0);
+    });
+  });
+});
+
+describe('Consumer', () => {
+  describe('options', () => {
+    const queue = Queue();
+
+    it('generates tag if not passed', () => {
+      const consumer = queue.consume(() => {});
+      expect(consumer).to.have.property('consumerTag').that.is.ok;
+    });
+
+    it('default prefetch to 1', () => {
+      const consumer = queue.consume(() => {});
+      expect(consumer).to.have.property('options');
+      expect(consumer.options).to.have.property('prefetch', 1);
+    });
+
+    it('default noAck to false', () => {
+      const consumer = queue.consume(() => {});
+      expect(consumer).to.have.property('options');
+      expect(consumer.options).to.have.property('noAck', false);
+    });
+
+    it('extends options with consumerTag', () => {
+      const consumer = queue.consume(() => {}, {prefetch: 2});
+      expect(consumer).to.have.property('options');
+      expect(consumer.options).to.have.property('consumerTag').that.is.ok;
+      expect(consumer.options).to.have.property('prefetch', 2);
+    });
+  });
+
+  it('waits for ack before consuming next message', () => {
+    const queue = Queue('event-q');
+    const messages = [];
+    queue.queueMessage({routingKey: 'test.1'});
+    queue.queueMessage({routingKey: 'test.2'});
+
+    queue.consume(onMessage);
+    expect(messages.length).to.equal(1);
+
+    messages[0].ack();
+    expect(messages.length).to.equal(2);
+
+    messages[1].ack();
+    expect(queue.messageCount).to.equal(0);
+
+    function onMessage(routingKey, message) {
+      messages.push(message);
+    }
+  });
+
+  it('indicates ready when available for new messages', () => {
+    const queue = Queue('event-q');
+    const messages = [];
+    queue.queueMessage({routingKey: 'test.1'});
+
+    const consumer = queue.consume(onMessage);
+    expect(consumer.ready).to.be.false;
+    messages[0].ack();
+
+    expect(consumer.ready).to.be.true;
+
+    function onMessage(routingKey, message) {
+      messages.push(message);
+    }
+  });
+
+  it('ack queued pending message removes message from consumer', () => {
+    const queue = Queue();
+    queue.queueMessage({routingKey: 'test.1'});
+    queue.queueMessage({routingKey: 'test.2'});
+
+    const consumer = queue.consume(onMessage, {prefetch: 2});
+
+    expect(consumer.messageCount).to.equal(2);
+    expect(queue.messageCount).to.equal(2);
+
+    queue.peek(false).ack();
+
+    expect(queue.messageCount, 'queue messageCount').to.equal(1);
+    expect(consumer.messageCount, 'consumer messageCount').to.equal(1);
+
+    function onMessage() {}
+  });
+
+  it('returns owner in message callback', () => {
+    const messages = [];
+
+    const queue = Queue();
+    queue.queueMessage({routingKey: 'test.1'});
+
+    const owner = {};
+    queue.consume(onMessage, undefined, owner);
+
+    expect(messages).to.have.length(1);
+    expect(messages[0] === owner).to.be.true;
+
+    function onMessage(routingKey, msg, ownedBy) {
+      messages.push(ownedBy);
+    }
+  });
+
+  describe('prefetch n', () => {
+    it('prefetch 2 consumes 2 messages', () => {
+      const messages = [];
+
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      queue.consume(onMessage, {prefetch: 2});
+
+      expect(messages).to.have.length(2);
+
+      function onMessage(routingKey, msg) {
+        messages.push(msg);
+      }
+    });
+
+    it('prefetch 10 is available for new messages when one is acked', () => {
+      const messages = [];
+
+      const queue = Queue('max-q');
+      Array(11).fill().map((_, idx) => queue.queueMessage({routingKey: `test.${idx}`}));
+
+      queue.consume(onMessage, {prefetch: 10});
+
+      expect(messages).to.have.length(10);
+
+      messages[0].ack();
+
+      expect(messages).to.have.length(11);
+
+      function onMessage(routingKey, msg) {
+        messages.push(msg);
+      }
+    });
+
+    it('prefetch 2 consumes no more than 2 messages at a time', () => {
+      const messages = [];
+
+      const queue = Queue();
+      const consumer = queue.consume(onMessage, {prefetch: 2});
+
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+      queue.queueMessage({routingKey: 'test.3'});
+      queue.queueMessage({routingKey: 'test.4'});
+
+      messages[0].ack();
+
+      function onMessage(routingKey, msg) {
+        messages.push(msg);
+        expect(consumer.messageCount).to.not.be.above(2);
+      }
+    });
+  });
+
+  describe('ack', () => {
+    it('consumes new messages when messages are acked', () => {
+      const messages = [];
+
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+      queue.queueMessage({routingKey: 'test.3'});
+      queue.queueMessage({routingKey: 'test.4'});
+
+      queue.consume(onMessage, {prefetch: 2});
+
+      expect(messages).to.have.length(2);
+
+      messages[0].ack();
+      messages[1].ack();
+
+      expect(messages).to.have.length(4);
+
+      function onMessage(routingKey, msg) {
+        messages.push(msg);
+      }
+    });
+
+    it('allUpTo = true acks all outstanding messages', () => {
+      const queue = Queue('event-q');
+      const messages = [];
+
+      queue.queueMessage({routingKey: 'test1'});
+      queue.queueMessage({routingKey: 'test2'});
+      queue.queueMessage({routingKey: 'test3'});
+
+      queue.consume(onMessage, {prefetch: 2});
+
+      expect(queue.messageCount).to.equal(0);
+
+      expect(messages).to.eql(['test2', 'test3']);
+
+      function onMessage(routingKey, message) {
+        if (routingKey === 'test1') return;
+        messages.push(routingKey);
+        message.ack(true);
+      }
+    });
+
+    it('allUpTo = true only acks messages above message', () => {
+      const queue = Queue('event-q');
+      const messages1 = [], messages2 = [];
+
+      queue.queueMessage({routingKey: 'test1'});
+      queue.queueMessage({routingKey: 'test2'});
+      queue.queueMessage({routingKey: 'test3'});
+      queue.queueMessage({routingKey: 'test4'});
+      queue.queueMessage({routingKey: 'test5'});
+
+      queue.consume(onMessage1);
+      queue.consume(onMessage2, {prefetch: 2});
+
+      expect(messages1, '#1 consumer').to.eql(['test1', 'test4']);
+      expect(messages2, '#2 consumer').to.eql(['test2', 'test3', 'test5']);
+
+      function onMessage1(routingKey) {
+        messages1.push(routingKey);
+      }
+
+      function onMessage2(routingKey, message) {
+        messages2.push(routingKey);
+        if (routingKey === 'test3') message.ack(true);
+      }
+    });
+
+    it('allUpTo = true only acks messages above message', () => {
+      const queue = Queue('event-q');
+      const messages1 = [], messages2 = [];
+
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+      queue.queueMessage({routingKey: 'test.3'});
+      queue.queueMessage({routingKey: 'test.4'});
+      queue.queueMessage({routingKey: 'test.5'});
+
+      queue.consume(onMessage1, {prefetch: 2});
+      queue.consume(onMessage2);
+
+      expect(messages1).to.have.length(2);
+      expect(messages2).to.have.length(1);
+
+      messages1[1].ack(true);
+
+      expect(messages2).to.have.length(1);
+      expect(messages1).to.have.length(4);
+
+      expect(messages1.map(({fields}) => fields.routingKey), '#1 consumer').to.eql(['test.1', 'test.2', 'test.4', 'test.5']);
+      expect(messages2.map(({fields}) => fields.routingKey), '#2 consumer').to.eql(['test.3']);
+
+      function onMessage1(routingKey, message) {
+        messages1.push(message);
+      }
+
+      function onMessage2(routingKey, message) {
+        messages2.push(message);
+      }
+    });
+  });
+
+  describe('noAck', () => {
+    it('defaults to false', () => {
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+
+      const consumer = queue.consume(() => {});
+      expect(consumer.options).to.have.property('noAck', false);
+    });
+
+    it('consumes pending message in queue', () => {
+      const messages = [];
+
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+
+      queue.consume(onMessage, {noAck: true});
+
+      expect(messages).to.have.length(1);
+      expect(messages[0].fields).to.have.property('routingKey', 'test.1');
+      expect(queue.messageCount, 'queue messages').to.equal(0);
+
+      function onMessage(routingKey, msg) {
+        expect(routingKey).to.equal('test.1');
+        messages.push(msg);
+      }
+    });
+
+    it('consumes queued messages in queue', () => {
+      const messages = [];
+
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+
+      queue.consume(onMessage, {noAck: true});
+
+      queue.queueMessage({routingKey: 'test.2'});
+      queue.queueMessage({routingKey: 'test.3'});
+
+      expect(messages).to.have.length(3);
+      expect(messages[0].fields).to.have.property('routingKey', 'test.1');
+      expect(messages[1].fields).to.have.property('routingKey', 'test.2');
+      expect(messages[2].fields).to.have.property('routingKey', 'test.3');
+
+      expect(queue).to.have.property('messageCount', 0);
+
+      function onMessage(routingKey, msg) {
+        if (messages.find((m) => m.fields.routingKey === msg.fields.routingKey)) throw new Error('Circuitbreaker');
+        messages.push(msg);
+        msg.ack();
+      }
+    });
+
+    it('prefetch n consumes max n messages at a time', () => {
+      const messages = [];
+
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+      queue.queueMessage({routingKey: 'test.3'});
+      queue.queueMessage({routingKey: 'test.4'});
+
+      queue.consume(onMessage, {noAck: true});
+
+      queue.queueMessage({routingKey: 'test.5'});
+
+      expect(messages).to.have.length(5);
+
+      function onMessage(routingKey, msg) {
+        if (routingKey === 'test.2') expect(messages.length).to.equal(2);
+        messages.push(msg);
+      }
+    });
+  });
+
+  describe('ackAll()', () => {
+    it('acks all consumed messages', () => {
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      const consumer = queue.consume(onMessage, {prefetch: 2});
+
+      expect(consumer.messageCount).to.equal(2);
+
+      consumer.ackAll();
+
+      expect(consumer.messageCount).to.equal(0);
+      expect(queue.messageCount).to.equal(0);
+
+      function onMessage() {}
+    });
+  });
+
+  describe('nackAll()', () => {
+    it('requeues all consumed messages', () => {
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      const consumer = queue.consume(onMessage, {prefetch: 2});
+
+      expect(consumer.messageCount).to.equal(2);
+
+      consumer.nackAll();
+
+      expect(queue.messageCount, 'queue messageCount').to.equal(2);
+
+      function onMessage() {}
+    });
+
+    it('removes all consumed messages if called with falsey requeue', () => {
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      const consumer = queue.consume(onMessage, {prefetch: 2});
+
+      expect(consumer.messageCount).to.equal(2);
+
+      consumer.nackAll(false);
+
+      expect(queue.messageCount, 'queue messageCount').to.equal(0);
+
+      function onMessage() {}
+    });
+
+    it('consumes next message in queue after nackAll with falsey requeue', () => {
+      const messages = [];
+
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      const consumer = queue.consume(onMessage, {prefetch: 2});
+
+      expect(consumer.messageCount).to.equal(2);
+
+      consumer.nackAll(false);
+
+      queue.queueMessage({routingKey: 'test.3'});
+
+      expect(messages).to.eql(['test.1', 'test.2', 'test.3']);
+
+      function onMessage(routingKey) {
+        messages.push(routingKey);
+      }
+    });
+  });
+
+  describe('cancel()', () => {
+    it('stops consuming messages from queue', () => {
+      const messages = [];
+
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+
+      const consumer = queue.consume(onMessage);
+
+      consumer.cancel();
+
+      queue.queueMessage({routingKey: 'test.2'});
+
+      expect(messages).to.have.length(1);
+      expect(messages[0].fields).to.have.property('routingKey', 'test.1');
+
+      function onMessage(routingKey, msg) {
+        messages.push(msg);
+      }
+    });
+
+    it('returns message to queue', () => {
+      const messages = [];
+
+      const queue = Queue(null, {autoDelete: false});
+      queue.queueMessage({routingKey: 'test.1'});
+
+      const consumer = queue.consume(onMessage, {consumerTag: 'test-consumer'});
+
+      consumer.cancel();
+
+      queue.queueMessage({routingKey: 'test.2'});
+
+      expect(queue).to.have.property('messageCount', 2);
+
+      function onMessage(routingKey, msg) {
+        messages.push(msg);
+      }
+    });
+
+    it('resets message consumerTag', () => {
+      const queue = Queue(null, {autoDelete: false});
+      queue.queueMessage({routingKey: 'test.1'});
+
+      const consumer = queue.consume(onMessage, {consumerTag: 'test-consumer'});
+
+      consumer.cancel();
+
+      const msg = queue.peek();
+      expect(msg).to.have.property('fields');
+      expect(msg.fields.consumerTag).to.be.undefined;
+
+      function onMessage(_, message) {
+        expect(message).to.have.property('fields');
+        expect(message.fields.consumerTag).to.equal('test-consumer');
       }
     });
   });

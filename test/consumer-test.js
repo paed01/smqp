@@ -41,10 +41,10 @@ describe('consumer', () => {
 
     queue.queueMessage('test');
 
-    expect(queue.length).to.equal(0);
+    expect(queue.messageCount).to.equal(0);
 
     function onMessage() {
-      expect(queue.length).to.equal(0);
+      expect(queue.messageCount).to.equal(0);
     }
   });
 
@@ -81,7 +81,7 @@ describe('consumer', () => {
       broker.assertQueue('test');
 
       const messages = [];
-      broker.subscribe('test', 'test.#', 'testq', onMessage, {prefetch: 2});
+      broker.subscribe('test', 'test.#', 'test-q', onMessage, {prefetch: 2});
 
       broker.publish('test', 'test.1.1', null, {correlationId: 1});
       broker.publish('test', 'test.2.1', null, {correlationId: 1});
@@ -106,18 +106,18 @@ describe('consumer', () => {
       }
     });
 
-    it('prefetch consumes messages in sequence', () => {
+    it('high prefetch consumes messages in sequence even if new message is published in message callback', () => {
       const broker = Broker();
 
       broker.assertExchange('event');
-      broker.assertQueue('events-q');
-      broker.bindQueue('events-q', 'event', '#');
+      broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
 
       broker.publish('event', 'event.1');
       broker.publish('event', 'event.2');
 
       const messages = [];
-      broker.consume('events-q', onMessage, {prefetch: 10, consumerTag: 'test-prefetch'});
+      broker.consume('event-q', onMessage, {prefetch: 10, consumerTag: 'test-prefetch'});
 
       expect(messages).to.eql([
         'event.1',

@@ -252,7 +252,7 @@ describe('Exchange', () => {
       let event;
       const exchange = Exchange('event', 'topic');
 
-      exchange.on('exchange.*', onEvent);
+      exchange.on('*', onEvent);
 
       const queue = Queue();
       const binding = exchange.bind(queue, 'test.#');
@@ -298,7 +298,7 @@ describe('Exchange', () => {
       let event;
       const exchange = Exchange('event', 'topic');
 
-      exchange.on('exchange.unbind', onEvent);
+      exchange.on('unbind', onEvent);
 
       const queue = Queue();
       const binding = exchange.bind(queue, 'test.#');
@@ -406,12 +406,11 @@ describe('Exchange', () => {
   });
 
   describe('events', () => {
-
     it('emits event when binding is unbound with binding and exchange', () => {
       let event;
       const exchange = Exchange('event', 'topic');
 
-      exchange.on('exchange.*', onEvent);
+      exchange.on('unbind', onEvent);
 
       const queue = Queue('event-q');
       exchange.bind(queue, 'test.#');
@@ -422,6 +421,25 @@ describe('Exchange', () => {
       expect(event.content).to.have.property('queueName', 'event-q');
 
       function onEvent(_, message) {
+        event = message;
+      }
+    });
+
+    it('autoDelete emits delete when bindings drops to zero', () => {
+      let event;
+      const exchange = Exchange('event', 'topic', {autoDelete: true});
+
+      exchange.on('delete', onEvent);
+
+      const queue = Queue('event-q');
+      exchange.bind(queue, 'test.#');
+      exchange.unbind(queue, 'test.#');
+
+      expect(event).to.be.ok;
+      expect(event.fields).to.have.property('routingKey', 'exchange.delete');
+      expect(event.content).to.have.property('name', 'event');
+
+      function onEvent(eventName, message) {
         event = message;
       }
     });
