@@ -24,7 +24,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.consume(queueName, onMessage[, options])`](#brokerconsumequeuename-onmessage-options)
     - [`broker.cancel(consumerTag)`](#brokercancelconsumertag)
     - [`broker.createQueue()`](#brokercreatequeue)
-    - [`broker.deleteQueue(queueName)`](#brokerdeletequeuequeuename)
+    - [`broker.deleteQueue(queueName[, {ifUnused, ifEmpty}])`](#brokerdeletequeuequeuename-ifunused-ifempty)
     - [`broker.getExchange(exchangeName)`](#brokergetexchangeexchangename)
     - [`broker.getQueue(queueName)`](#brokergetqueuequeuename)
     - [`broker.getState()`](#brokergetstate)
@@ -36,13 +36,11 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.ack(message[, allUpTo])`](#brokerackmessage-allupto)
     - [`broker.ackAll()`](#brokerackall)
     - [`broker.nack(message[, allUpTo, requeue])`](#brokernackmessage-allupto-requeue)
-    - [`broker.nackAll()`](#brokernackall)
+    - [`broker.nackAll([requeue])`](#brokernackallrequeue)
     - [`broker.reject(message[, requeue])`](#brokerrejectmessage-requeue)
     - [`broker.prefetch(count)`](#brokerprefetchcount)
   - [Consumer](#consumer)
-    - [`consumer.ack([allUpTo])`](#consumerackallupto)
     - [`consumer.ackAll()`](#consumerackall)
-    - [`consumer.nack([allUpTo, requeue])`](#consumernackallupto-requeue)
     - [`consumer.nackAll([requeue])`](#consumernackallrequeue)
     - [`consumer.cancel()`](#consumercancel)
   - [Message](#message)
@@ -58,7 +56,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
 Start new broker owned by optional `owner`.
 
 ### `broker.subscribe(exchangeName, pattern, queueName, onMessage[, options])`
-Asserts an exvhange, a named queue and returns a new [consumer](#consumer) to that queue.
+Asserts an exchange, a named queue, and returns [consumer](#consumer) to the named queue. The consumer is asserted into existance as well, i.e. message callback and options are matched.
 
 To make sure the exchange, and or queue has the desired behaviour, please use [`assertExchange()`](#brokerassertexchangeexchangename-type--topic-options) and [`assertQueue()`](#brokerassertqueuequeuename-options)
 
@@ -177,7 +175,12 @@ Consume queue. Returns a [consumer](#consumer). If the message callback is alrea
 Cancel consumption by consumer tag.
 
 ### `broker.createQueue()`
-### `broker.deleteQueue(queueName)`
+### `broker.deleteQueue(queueName[, {ifUnused, ifEmpty}])`
+Delete queue by name.
+
+- options
+  - `ifUnused`: delete if no consumers, defaults to false
+  - `ifEmpty`: delete if no messages, defaults to false
 
 ### `broker.getExchange(exchangeName)`
 ### `broker.getQueue(queueName)`
@@ -204,7 +207,7 @@ Get message from queue.
 ### `broker.ack(message[, allUpTo])`
 ### `broker.ackAll()`
 ### `broker.nack(message[, allUpTo, requeue])`
-### `broker.nackAll()`
+### `broker.nackAll([requeue])`
 ### `broker.reject(message[, requeue])`
 ### `broker.prefetch(count)`
 
@@ -219,9 +222,7 @@ Queue consumer
 - `priority`: priority option value
 - `queueName`: consuming queue with name
 
-### `consumer.ack([allUpTo])`
 ### `consumer.ackAll()`
-### `consumer.nack([allUpTo, requeue])`
 ### `consumer.nackAll([requeue])`
 ### `consumer.cancel()`
 Cancel consumption and unsubscribe from queue

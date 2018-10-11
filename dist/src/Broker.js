@@ -1,19 +1,18 @@
-'use strict';
+"use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.Broker = Broker;
 
-var _Exchange = require('./Exchange');
+var _Exchange = require("./Exchange");
 
-var _Queue = require('./Queue');
+var _Queue = require("./Queue");
 
 function Broker(owner) {
   const exchanges = [];
   const queues = [];
   const consumers = [];
-
   const broker = {
     subscribe,
     subscribeOnce,
@@ -47,51 +46,51 @@ function Broker(owner) {
     unbindExchange,
     unbindQueue
   };
-
   Object.defineProperty(broker, 'exchangeCount', {
     enumerable: true,
     get: () => exchanges.length
   });
-
   Object.defineProperty(broker, 'queueCount', {
     enumerable: true,
     get: () => queues.length
   });
-
   Object.defineProperty(broker, 'consumerCount', {
     enumerable: true,
     get: () => consumers.length
   });
-
   return broker;
 
-  function subscribe(exchangeName, pattern, queueName, onMessage, options = { durable: true }) {
+  function subscribe(exchangeName, pattern, queueName, onMessage, options = {
+    durable: true
+  }) {
     if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and message callback are required');
     if (options && options.consumerTag) validateConsumerTag(options.consumerTag);
-
     assertExchange(exchangeName);
     const queue = assertQueue(queueName, options);
-
     bindQueue(queue.name, exchangeName, pattern, options);
-
     return queue.assertConsumer(onMessage, options, owner);
   }
 
   function subscribeTmp(exchangeName, pattern, onMessage, options = {}) {
-    return subscribe(exchangeName, pattern, null, onMessage, { ...options, durable: false });
+    return subscribe(exchangeName, pattern, null, onMessage, { ...options,
+      durable: false
+    });
   }
 
   function subscribeOnce(exchangeName, pattern, onMessage, options = {}) {
     if (typeof onMessage !== 'function') throw new Error('message callback is required');
     if (options && options.consumerTag) validateConsumerTag(options.consumerTag);
-
     assertExchange(exchangeName);
-    const onceOptions = { autoDelete: true, durable: false };
+    const onceOptions = {
+      autoDelete: true,
+      durable: false
+    };
     const onceQueue = createQueue(null, onceOptions);
-
     bindQueue(onceQueue.name, exchangeName, pattern, onceOptions);
-
-    const onceConsumer = consume(onceQueue.name, wrappedOnMessage, { noAck: true, consumerTag: options.consumerTag });
+    const onceConsumer = consume(onceQueue.name, wrappedOnMessage, {
+      noAck: true,
+      consumerTag: options.consumerTag
+    });
     return onceConsumer;
 
     function wrappedOnMessage(...args) {
@@ -108,6 +107,7 @@ function Broker(owner) {
 
   function assertExchange(exchangeName, type, options) {
     let exchange = getExchangeByName(exchangeName);
+
     if (exchange) {
       if (type && exchange.type !== type) throw new Error('Type doesn\'t match');
     } else {
@@ -144,9 +144,7 @@ function Broker(owner) {
   function consume(queueName, onMessage, options) {
     const queue = getQueue(queueName);
     if (!queue) throw new Error(`Queue with name <${queueName}> was not found`);
-
     if (options) validateConsumerTag(options.consumerTag);
-
     return queue.consume(onMessage, options, owner);
   }
 
@@ -158,16 +156,18 @@ function Broker(owner) {
   }
 
   function getExchange(exchangeName) {
-    return exchanges.find(({ name }) => name === exchangeName);
+    return exchanges.find(({
+      name
+    }) => name === exchangeName);
   }
 
-  function deleteExchange(exchangeName, { ifUnused } = {}) {
+  function deleteExchange(exchangeName, {
+    ifUnused
+  } = {}) {
     const idx = exchanges.findIndex(exchange => exchange.name === exchangeName);
     if (idx === -1) return false;
-
     const exchange = exchanges[idx];
     if (ifUnused && exchange.bindingCount) return false;
-
     exchanges.splice(idx, 1);
     exchange.close();
     return true;
@@ -208,10 +208,8 @@ function Broker(owner) {
 
     if (state.queues) state.queues.forEach(recoverQueue);
     queues.forEach(queue => queue.stopped && queue.recover());
-
     if (state.exchanges) state.exchanges.forEach(recoverExchange);
     exchanges.forEach(exchange => exchange.stopped && exchange.recover(null, getQueue));
-
     return broker;
 
     function recoverQueue(qState) {
@@ -226,6 +224,7 @@ function Broker(owner) {
   }
 
   function bindExchange() {}
+
   function unbindExchange() {}
 
   function publish(exchangeName, routingKey, content, options) {
@@ -257,7 +256,6 @@ function Broker(owner) {
 
   function createQueue(queueName, options) {
     if (getQueue(queueName)) throw new Error(`Queue named ${queueName} already exists`);
-
     const queue = (0, _Queue.Queue)(queueName, options, (0, _Exchange.EventExchange)());
     queue.on('delete', onDelete);
     queue.on('dead-letter', onDeadLetter);
@@ -266,7 +264,6 @@ function Broker(owner) {
       const idx = consumers.indexOf(event.content);
       consumers.splice(idx, 1);
     });
-
     queues.push(queue);
     return queue;
 
@@ -276,7 +273,9 @@ function Broker(owner) {
       queues.splice(idx, 1);
     }
 
-    function onDeadLetter(_, { content }) {
+    function onDeadLetter(_, {
+      content
+    }) {
       const exchange = getExchange(content.deadLetterExchange);
       if (!exchange) return;
       exchange.publish(content.message.fields.routingKey, content.message.content, content.message.properties);
@@ -291,28 +290,31 @@ function Broker(owner) {
 
   function assertQueue(queueName, options = {}) {
     if (!queueName) return createQueue(null, options);
-
     const queue = getQueue(queueName);
-    options = { durable: true, ...options };
+    options = {
+      durable: true,
+      ...options
+    };
     if (!queue) return createQueue(queueName, options);
-
     if (queue.options.durable !== options.durable) throw new Error('Durable doesn\'t match');
     return queue;
   }
 
-  function deleteQueue(queueName) {
+  function deleteQueue(queueName, options) {
     if (!queueName) return false;
     const queue = getQueue(queueName);
     if (!queue) return false;
-    queue.delete();
-    return true;
+    return queue.delete(options);
   }
 
-  function getMessageFromQueue(queueName, { noAck } = {}) {
+  function getMessageFromQueue(queueName, {
+    noAck
+  } = {}) {
     const queue = getQueue(queueName);
     if (!queue) return;
-
-    return queue.get({ noAck });
+    return queue.get({
+      noAck
+    });
   }
 
   function ack(message, allUpTo) {

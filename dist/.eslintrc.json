@@ -13,6 +13,7 @@
     "no-cond-assign": 0,
     "quotes": 0,
     "semi-spacing": 0,
-    "space-unary-ops": 0
+    "space-unary-ops": 0,
+    "space-before-function-paren": 0
   }
 }

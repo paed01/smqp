@@ -1,8 +1,10 @@
 {
   "presets": [
     [
-      "latest-node", {
-        "target": "current"
+      "@babel/env", {
+        targets: {
+          "node": "current"
+        }
       }
     ]
   ]

@@ -30,7 +30,7 @@
   ],
   "scripts": {
     "test": "mocha && npm run dist &&  eslint . --cache && npm run toc",
-    "dist": "babel index.js -d dist && babel src/**.js -d dist",
+    "dist": "babel index.js -d dist && babel src/**.js -d dist/src",
     "prepare": "npm run dist",
     "toc": "node ./scripts/generate-api-toc.js"
   },
@@ -49,10 +49,12 @@
     "direct"
   ],
   "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-preset-latest-node": "^1.0.0",
-    "chai": "^4.1.2",
-    "eslint": "^5.4.0",
+    "@babel/cli": "^7.1.2",
+    "@babel/core": "^7.1.2",
+    "@babel/preset-env": "^7.1.0",
+    "@babel/register": "^7.0.0",
+    "chai": "^4.2.0",
+    "eslint": "^5.6.1",
     "markdown-toc": "^1.2.0",
     "mocha": "^5.2.0"
   }

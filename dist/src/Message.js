@@ -1,48 +1,46 @@
-'use strict';
+"use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.Message = undefined;
-
-var _shared = require('./shared');
-
 exports.Message = Message;
 
+var _shared = require("./shared");
 
 function Message(fields = {}, content, properties = {}, onConsumed) {
   let pending = false;
   let consumedCallback;
-
   const messageId = properties.messageId || `smq.mid-${(0, _shared.generateId)()}`;
   const message = {
-    fields: { ...fields, consumerTag: undefined },
+    fields: { ...fields,
+      consumerTag: undefined
+    },
     content,
-    properties: { ...properties, messageId },
+    properties: { ...properties,
+      messageId
+    },
     consume,
     ack,
     nack,
     reject
   };
-
   Object.defineProperty(message, 'messageId', {
     get: () => messageId
   });
-
   Object.defineProperty(message, 'consumerTag', {
     get: () => message.fields.consumerTag,
     set: value => {
       message.fields.consumerTag = value;
     }
   });
-
   Object.defineProperty(message, 'pending', {
     get: () => pending
   });
-
   return message;
 
-  function consume({ consumerTag } = {}, consumedCb) {
+  function consume({
+    consumerTag
+  } = {}, consumedCb) {
     pending = true;
     message.fields.consumerTag = consumerTag;
     consumedCallback = consumedCb;
