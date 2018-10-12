@@ -23,6 +23,7 @@
     "test": "test"
   },
   "files": [
+    "dist/src",
     "dist/index.js",
     "index.js",
     "LICENSE",
