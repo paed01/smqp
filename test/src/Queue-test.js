@@ -244,7 +244,7 @@ describe('Queue', () => {
       }
     });
 
-    it('calls onMessage callback with queued message', () => {
+    it('calls onMessage callback with already queued message', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'}, {data: 1});
       const messages = [];
@@ -260,7 +260,7 @@ describe('Queue', () => {
       }
     });
 
-    it('calls onMessage callback with queued messages', () => {
+    it('calls onMessage callback with already queued messages', () => {
       const queue = Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
@@ -370,6 +370,27 @@ describe('Queue', () => {
       function onMessage(routingKey, message) {
         messages.push(message);
         if (routingKey === 'test.1') queue.queueMessage({routingKey: 'test.2'});
+      }
+    });
+
+    it('cancel consumer after ack in message callback stops consumption', () => {
+      const queue = Queue(null, {autoDelete: false});
+      const messages = [];
+
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      queue.consume(onMessage, {consumerTag: 'meme'});
+
+      expect(messages.length).to.equal(1);
+      expect(messages[0].fields).to.have.property('routingKey', 'test.1');
+
+      expect(queue.messageCount).to.equal(1);
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+        message.ack();
+        queue.dismiss(onMessage);
       }
     });
   });
@@ -1001,7 +1022,7 @@ describe('Queue', () => {
       }
     });
 
-    it('emits available when queue maxLength was reached and then released one message', () => {
+    it('emits ready when queue maxLength was reached and then released one message', () => {
       let triggered;
       const queue = Queue('test-q', {maxLength: 2}, {emit});
       queue.queueMessage({routingKey: 'test.1'});
@@ -1012,7 +1033,7 @@ describe('Queue', () => {
       expect(triggered).to.be.true;
 
       function emit(eventName) {
-        if (eventName === 'queue.available') triggered = true;
+        if (eventName === 'queue.ready') triggered = true;
       }
     });
   });
@@ -1570,7 +1591,28 @@ describe('Consumer', () => {
       }
     });
 
-    it('prefetch n consumes max n messages at a time', () => {
+    it('cancel consumer in message callback stops consuming messages', () => {
+      const messages = [];
+
+      const queue = Queue();
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+      queue.queueMessage({routingKey: 'test.3'});
+      queue.queueMessage({routingKey: 'test.4'});
+
+      queue.consume(onMessage, {noAck: true});
+
+      queue.queueMessage({routingKey: 'test.5'});
+
+      expect(messages).to.have.length(2);
+
+      function onMessage(routingKey, msg) {
+        messages.push(msg);
+        if (routingKey === 'test.2') queue.cancel(msg.fields.consumerTag);
+      }
+    });
+
+    it('prefetch is pretty pointless', () => {
       const messages = [];
 
       const queue = Queue();
@@ -1586,8 +1628,8 @@ describe('Consumer', () => {
       expect(messages).to.have.length(5);
 
       function onMessage(routingKey, msg) {
-        if (routingKey === 'test.2') expect(messages.length).to.equal(2);
         messages.push(msg);
+        if (routingKey === 'test.2') expect(messages.length).to.equal(2);
       }
     });
   });

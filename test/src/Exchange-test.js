@@ -349,7 +349,7 @@ describe('Exchange', () => {
   });
 
   describe('stop()', () => {
-    it('stops publishing messages', () => {
+    it('stops publishing messages to topic exchange', () => {
       const exchange = Exchange('event', 'topic');
       const queue = Queue('event-q', {durable: true});
       exchange.bind(queue, 'test.#');
@@ -359,10 +359,51 @@ describe('Exchange', () => {
 
       expect(queue.messageCount).to.equal(1);
     });
+
+    it('stop in message callback stops publishing messages to topic exchange', () => {
+      const exchange = Exchange('event', 'topic');
+      const queue = Queue('event-q', {durable: true});
+      exchange.bind(queue, 'test.#');
+
+      queue.consume(() => {
+        exchange.stop();
+      });
+
+      exchange.publish('test.1');
+      exchange.publish('test.2');
+
+      expect(queue.messageCount).to.equal(1);
+    });
+
+    it('stops publishing messages to direct exchange', () => {
+      const exchange = Exchange('balance', 'direct');
+      const queue = Queue('balance-q', {durable: true});
+      exchange.bind(queue, 'test.#');
+      exchange.publish('test.1');
+      exchange.stop();
+      exchange.publish('test.2');
+
+      expect(queue.messageCount).to.equal(1);
+    });
+
+    it('stop in message callback stops publishing messages to direct exchange', () => {
+      const exchange = Exchange('balance', 'direct');
+      const queue = Queue('balance-q', {durable: true});
+      exchange.bind(queue, 'test.#');
+
+      queue.consume(() => {
+        exchange.stop();
+      });
+
+      exchange.publish('test.1');
+      exchange.publish('test.2');
+
+      expect(queue.messageCount).to.equal(1);
+    });
   });
 
   describe('recover()', () => {
-    it('recovers stopped without state', () => {
+    it('recovers stopped topic exchange without state', () => {
       const exchange = Exchange('event', 'topic');
       const queue = Queue('event-q', {durable: true});
       exchange.bind(queue, 'test.#');
@@ -383,7 +424,7 @@ describe('Exchange', () => {
       expect(queue.messageCount).to.equal(3);
     });
 
-    it('recovers stopped with state', () => {
+    it('recovers stopped topic exchange with state', () => {
       const exchange = Exchange('event', 'topic');
       const queue = Queue('event-q', {durable: true});
       exchange.bind(queue, 'test.#');
@@ -402,6 +443,131 @@ describe('Exchange', () => {
 
       expect(exchange.name).to.equal('event-recovered');
       expect(queue.messageCount).to.equal(3);
+    });
+
+    it('recovers stopped direct exchange without state', () => {
+      const exchange = Exchange('balance', 'direct');
+      const queue = Queue('balance-q', {durable: true});
+      exchange.bind(queue, 'test.#');
+
+      exchange.publish('test.1');
+      exchange.publish('test.2');
+
+      exchange.stop();
+
+      exchange.publish('test.3');
+
+      expect(queue.messageCount).to.equal(2);
+
+      exchange.recover();
+
+      exchange.publish('test.3');
+
+      expect(queue.messageCount).to.equal(3);
+    });
+
+    it('recovers stopped direct exchange with state', () => {
+      const exchange = Exchange('balance', 'direct');
+      const queue = Queue('balance-q', {durable: true});
+      exchange.bind(queue, 'test.#');
+
+      exchange.publish('test.1', 'data', {contentType: 'text/plain'});
+      exchange.publish('test.2', {data: 1}, {contentType: 'application/json'});
+
+      exchange.stop();
+
+      const state = exchange.getState();
+      state.name = 'balance-recovered';
+
+      exchange.recover(state, () => queue);
+
+      exchange.publish('test.3');
+
+      expect(exchange.name).to.equal('balance-recovered');
+      expect(queue.messageCount).to.equal(3);
+    });
+
+    it('recover in message callback continues publishing messages to topic exchange', () => {
+      const exchange = Exchange('event', 'topic');
+      const queue = Queue('event-q', {durable: true});
+      exchange.bind(queue, 'test.#');
+
+      queue.consume(() => {
+        exchange.stop();
+
+        exchange.publish('test.ignored');
+
+        exchange.recover();
+        exchange.publish('test.2');
+      });
+
+      exchange.publish('test.1');
+
+      expect(queue.messages.map(({fields}) => fields.routingKey)).to.eql(['test.1', 'test.2']);
+    });
+
+    it('recover multiple bindings in message callback continues publishing messages to topic exchange', () => {
+      const exchange = Exchange('event', 'topic');
+      const queue1 = Queue('event1-q', {durable: true});
+      const queue2 = Queue('event2-q', {durable: true});
+      exchange.bind(queue1, 'test.#');
+      exchange.bind(queue2, 'test.#');
+
+      queue1.consume(() => {
+        exchange.stop();
+
+        exchange.publish('test.ignored');
+
+        exchange.recover();
+        exchange.publish('test.2');
+      });
+
+      exchange.publish('test.1');
+
+      expect(queue1.messages.map(({fields}) => fields.routingKey)).to.eql(['test.1', 'test.2']);
+      expect(queue2.messages.map(({fields}) => fields.routingKey)).to.eql(['test.1', 'test.2']);
+    });
+
+    it('recover in message callback continues publishing messages to direct exchange', () => {
+      const exchange = Exchange('balance', 'direct');
+      const queue = Queue('balance-q', {durable: true});
+      exchange.bind(queue, 'test.#');
+
+      queue.consume(() => {
+        exchange.stop();
+
+        exchange.publish('test.ignored');
+
+        exchange.recover();
+        exchange.publish('test.2');
+      });
+
+      exchange.publish('test.1');
+      expect(queue.messages.map(({fields}) => fields.routingKey)).to.eql(['test.1', 'test.2']);
+    });
+
+    it('recover multiple bindings in message callback continues publishing messages to direct exchange', () => {
+      const exchange = Exchange('balance', 'direct');
+      const queue1 = Queue('balance1-q', {durable: true});
+      const queue2 = Queue('balance2-q', {durable: true});
+      exchange.bind(queue1, 'test.#');
+      exchange.bind(queue2, 'test.#');
+
+      queue1.consume(() => {
+        exchange.stop();
+
+        exchange.publish('test.ignored');
+
+        exchange.recover();
+        exchange.publish('test.2');
+        exchange.publish('test.3');
+        exchange.publish('test.4');
+      });
+
+      exchange.publish('test.1');
+
+      expect(queue1.messages.map(({fields}) => fields.routingKey)).to.eql(['test.1', 'test.3']);
+      expect(queue2.messages.map(({fields}) => fields.routingKey)).to.eql(['test.2', 'test.4']);
     });
   });
 

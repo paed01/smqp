@@ -201,8 +201,8 @@ function Broker(owner) {
 
   function recover(state) {
     if (!state) {
-      queues.forEach(queue => queue.recover());
-      exchanges.forEach(exchange => exchange.recover(null, getQueue));
+      queues.forEach(queue => queue.stopped && queue.recover());
+      exchanges.forEach(exchange => exchange.stopped && exchange.recover(null, getQueue));
       return;
     }
 

@@ -71,8 +71,8 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
       return 0;
     }
 
-    deliverTo.forEach(({queue}) => queue.queueMessage({exchange: name, routingKey}, message.content, message.properties));
     message.ack();
+    deliverTo.forEach(({queue}) => queue.queueMessage(message.fields, message.content, message.properties));
   }
 
   function direct(routingKey, message) {
@@ -84,7 +84,9 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
     }
 
     if (deliverTo.length > 1) shift(deliverTo[0]);
-    first.queue.queueMessage({exchange, routingKey}, message.content, message.properties, message.ack);
+
+    message.ack();
+    first.queue.queueMessage(message.fields, message.content, message.properties);
   }
 
   function getConcernedBindings(routingKey) {

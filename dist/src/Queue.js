@@ -37,6 +37,7 @@ function Queue(name, options = {}, eventEmitter) {
     close,
     consume,
     delete: deleteQueue,
+    dequeueMessage,
     dismiss,
     get,
     getState,
@@ -114,6 +115,7 @@ function Queue(name, options = {}, eventEmitter) {
 
     for (const consumer of readyConsumers) {
       const msgs = consumeMessages(consumer.capacity, consumer.options);
+      if (!msgs.length) return consumed;
       consumer.push(msgs);
       consumed += msgs.length;
     }
@@ -129,7 +131,7 @@ function Queue(name, options = {}, eventEmitter) {
     exclusivelyConsumed = consumer.options.exclusive;
     emit('consume', consumer);
     const pendingMessages = consumeMessages(consumer.capacity, consumer.options);
-    consumer.push(pendingMessages);
+    if (pendingMessages.length) consumer.push(pendingMessages);
     return consumer;
 
     function consumerEmitter() {
@@ -169,15 +171,6 @@ function Queue(name, options = {}, eventEmitter) {
     }
 
     return consume(onMessage, consumeOptions, owner);
-  }
-
-  function cancel(consumerTag) {
-    const idx = consumers.findIndex(c => c.consumerTag === consumerTag);
-    if (idx === -1) return;
-    const [consumer] = consumers.splice(idx, 1);
-    if (options.autoDelete && !consumers.length) return deleteQueue();
-    consumer.stop();
-    consumer.nackAll(true);
   }
 
   function get({
@@ -242,7 +235,7 @@ function Queue(name, options = {}, eventEmitter) {
     }
 
     let capacity;
-    if (!messages.length) emit('depleted', queue);else if ((capacity = getCapacity()) === 1) emit('available', capacity);
+    if (!messages.length) emit('depleted', queue);else if ((capacity = getCapacity()) === 1) emit('ready', capacity);
     if (!pending || !pending.length) consumeNext();
 
     if (deadLetter) {
@@ -296,6 +289,12 @@ function Queue(name, options = {}, eventEmitter) {
     }
   }
 
+  function cancel(consumerTag) {
+    const idx = consumers.findIndex(c => c.consumerTag === consumerTag);
+    if (idx === -1) return;
+    return unbindConsumer(consumers[idx]);
+  }
+
   function dismiss(onMessage) {
     const consumer = consumers.find(c => c.onMessage === onMessage);
     if (!consumer) return;
@@ -311,8 +310,8 @@ function Queue(name, options = {}, eventEmitter) {
       exclusivelyConsumed = false;
     }
 
-    if (options.autoDelete && !consumers.length) return deleteQueue();
     consumer.stop();
+    if (options.autoDelete && !consumers.length) return deleteQueue();
     consumer.nackAll(true);
   }
 
@@ -336,6 +335,12 @@ function Queue(name, options = {}, eventEmitter) {
     toDelete.forEach(dequeue);
     if (!messages.length) emit('depleted', queue);
     return toDelete.length;
+  }
+
+  function dequeueMessage(message) {
+    if (message.pending) return nack(message, false, false);
+    message.consume({});
+    nack(message, false, false);
   }
 
   function dequeue(message) {
@@ -462,7 +467,10 @@ function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
     messages.forEach(message => {
       internalQueue.queueMessage(message.fields, message, message.properties, onInternalMessageQueued);
     });
-    if (!consuming) consume();
+
+    if (!consuming) {
+      consume();
+    }
   }
 
   function onInternalMessageQueued(msg) {
@@ -470,21 +478,31 @@ function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
     message.consume(options, onConsumed);
 
     function onConsumed() {
-      msg.nack(false, false);
+      internalQueue.dequeueMessage(msg);
     }
   }
 
   function consume() {
+    if (stopped) return;
     consuming = true;
-    let msg;
+    const msg = internalQueue.get();
 
-    while (msg = internalQueue.get()) {
-      msg.consume(options);
-      if (options.noAck) msg.content.ack();
-      onMessage(msg.fields.routingKey, msg.content, owner);
+    if (!msg) {
+      consuming = false;
+      return;
     }
 
+    msg.consume(options);
+    const message = msg.content;
+    message.consume(options, onConsumed);
+    if (options.noAck) msg.content.ack();
+    onMessage(msg.fields.routingKey, msg.content, owner);
     consuming = false;
+    return consume();
+
+    function onConsumed() {
+      msg.nack(false, false);
+    }
   }
 
   function onInternalQueueEvent(eventName) {
@@ -496,9 +514,7 @@ function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
         }
 
       case 'queue.depleted':
-        consuming = false;
-
-      case 'queue.available':
+      case 'queue.ready':
         ready = true;
         break;
     }

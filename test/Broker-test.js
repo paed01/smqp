@@ -809,45 +809,6 @@ describe('Smqp', () => {
       }
     });
 
-    it('recovers direct exchange in stopped broker', (done) => {
-      const messages = [];
-
-      broker.subscribeTmp('load', 'stop', stop);
-      broker.consume('load-q', onMessage);
-
-      broker.publish('load', 'load.0');
-      broker.publish('load', 'load.1');
-      broker.publish('load', 'stop');
-
-      function onMessage(routingKey) {
-        messages.push(routingKey);
-      }
-
-      function onRecoveredMessage(routingKey, message) {
-        messages.push(routingKey);
-        message.ack();
-      }
-
-      function stop() {
-        broker.stop();
-        broker.publish('load', 'load.ignored');
-
-        broker.recover();
-
-        broker.publish('load', 'load.2');
-
-        broker.consume('load-q', onRecoveredMessage);
-
-        expect(messages).to.eql([
-          'load.0',
-          'load.1',
-          'load.2',
-        ]);
-
-        done();
-      }
-    });
-
     it('recover with state recovers bindings with descending priority', () => {
       const messages = [];
 
