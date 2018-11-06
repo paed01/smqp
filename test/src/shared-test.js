@@ -49,6 +49,33 @@ describe('shared', () => {
       expect(pattern.test('abc')).to.be.false;
     });
 
+    it('prefix.*.inter.# matches one that start with prefix then any word chars and then inter and ends with anything', () => {
+      const pattern = getRoutingKeyPattern('prefix.*.inter.#');
+      expect(pattern.test('prefix.a.inter.b')).to.be.true;
+      expect(pattern.test('prefix.a.inter.b.c.d')).to.be.true;
+      expect(pattern.test('prefix.a-oy.inter.b.c.d')).to.be.true;
+
+      expect(pattern.test('prefix.a')).to.be.false;
+      expect(pattern.test('prefix.a.inter')).to.be.false;
+      expect(pattern.test('prefix.a.b.inter.c')).to.be.false;
+      expect(pattern.test('prefix')).to.be.false;
+      expect(pattern.test('abc')).to.be.false;
+    });
+
+    it('prefix.#.inter.* matches one that start with prefix then anything until inter is reached and then ends with any word chars', () => {
+      const pattern = getRoutingKeyPattern('prefix.#.inter.*');
+      expect(pattern.test('prefix.a.inter.b')).to.be.true;
+      expect(pattern.test('prefix.a.b.inter.c')).to.be.true;
+      expect(pattern.test('prefix.a-oy.c.d.inter.e')).to.be.true;
+
+      expect(pattern.test('prefix.a.inter.')).to.be.false;
+      expect(pattern.test('prefix.a.inter.b.c.d')).to.be.false;
+      expect(pattern.test('prefix.a.inter')).to.be.false;
+      expect(pattern.test('prefix.a')).to.be.false;
+      expect(pattern.test('prefix')).to.be.false;
+      expect(pattern.test('abc')).to.be.false;
+    });
+
     it('special characters match', () => {
       const pattern = getRoutingKeyPattern('prefix-a.*.b');
       expect(pattern.test('prefix-a.a.b')).to.be.true;

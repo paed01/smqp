@@ -9,12 +9,42 @@ function generateId() {
 }
 
 function getRoutingKeyPattern(pattern) {
+  const len = pattern.length;
+  const hashIdx = pattern.indexOf('#');
+  const astxIdx = pattern.indexOf('*');
+  if (hashIdx === -1) {
+    if (astxIdx === -1) {
+      return directMatch();
+    }
+  } else if (hashIdx === len - 1 && astxIdx === -1) {
+    return endMatch();
+  }
+
   const rpattern = pattern
     .replace('.', '\\.')
     .replace('*', '[^.]+?')
     .replace('#', '.+?');
 
   return new RegExp(`^${rpattern}$`);
+
+  function directMatch() {
+    return {
+      test
+    };
+    function test(routingKey) {
+      return routingKey === pattern;
+    }
+  }
+
+  function endMatch() {
+    const testString = pattern.replace('#', '');
+    return {
+      test
+    };
+    function test(routingKey) {
+      return routingKey.indexOf(testString) === 0;
+    }
+  }
 }
 
 function sortByPriority(a, b) {
