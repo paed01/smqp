@@ -1,5 +1,5 @@
 <!-- version -->
-# 1.0.3 API Reference
+# 1.1.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -38,6 +38,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.nack(message[, allUpTo, requeue])`](#brokernackmessage-allupto-requeue)
     - [`broker.nackAll([requeue])`](#brokernackallrequeue)
     - [`broker.reject(message[, requeue])`](#brokerrejectmessage-requeue)
+    - [`broker.on(eventName, callback)`](#brokeroneventname-callback)
     - [`broker.prefetch(count)`](#brokerprefetchcount)
   - [Consumer](#consumer)
     - [`consumer.ackAll()`](#consumerackall)
@@ -128,7 +129,8 @@ Publish message to exchange.
 - `exchangeName`: exchange name
 - `routingKey`: routing key
 - `content`: object containing message content
-- `options`: Message options, actually not used at the moment but will be accessible with the message
+- `options`: Message options
+  - `mandatory`: message is mandatory, defaults to undef. Emits `return` if not routed to any queue
 
 ### `broker.close()`
 Close exchanges, queues, and all consumers
@@ -208,7 +210,16 @@ Get message from queue.
 ### `broker.ackAll()`
 ### `broker.nack(message[, allUpTo, requeue])`
 ### `broker.nackAll([requeue])`
+
 ### `broker.reject(message[, requeue])`
+
+### `broker.on(eventName, callback)`
+
+Listen for events from Broker. Returns consumer - that can be canceled.
+
+- `eventName`: name of event
+- `callback`: event callback
+
 ### `broker.prefetch(count)`
 
 ## Consumer

@@ -315,6 +315,42 @@ describe('Exchange', () => {
     });
   });
 
+  describe('publish', () => {
+    it('topic mandatory message emits "return" if not routed to any queue', () => {
+      const exchange = Exchange('event', 'topic');
+      let returnMsg;
+      exchange.on('return', (_, {content}) => {
+        returnMsg = content;
+      });
+
+      exchange.publish('test.1', 'important', {mandatory: true});
+
+      expect(returnMsg).to.be.ok;
+      expect(returnMsg).to.have.property('fields').that.include({
+        routingKey: 'test.1',
+        exchange: 'event'
+      });
+      expect(returnMsg).to.have.property('content', 'important');
+    });
+
+    it('direct mandatory message emits "return" if not routed to any queue', () => {
+      const exchange = Exchange('balance', 'direct');
+      let returnMsg;
+      exchange.on('return', (_, {content}) => {
+        returnMsg = content;
+      });
+
+      exchange.publish('test.1', 'important', {mandatory: true});
+
+      expect(returnMsg).to.be.ok;
+      expect(returnMsg).to.have.property('fields').that.include({
+        routingKey: 'test.1',
+        exchange: 'balance'
+      });
+      expect(returnMsg).to.have.property('content', 'important');
+    });
+  });
+
   describe('getState()', () => {
     it('returns name, type, and options', () => {
       const exchange = Exchange('event', 'topic', {durable: true});

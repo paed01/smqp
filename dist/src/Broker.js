@@ -13,6 +13,7 @@ function Broker(owner) {
   const exchanges = [];
   const queues = [];
   const consumers = [];
+  const events = (0, _Exchange.EventExchange)();
   const broker = {
     subscribe,
     subscribeOnce,
@@ -36,6 +37,7 @@ function Broker(owner) {
     getExchange,
     getQueue,
     getState,
+    on,
     prefetch: setPrefetch,
     publish,
     purgeQueue,
@@ -116,6 +118,9 @@ function Broker(owner) {
         const idx = exchanges.indexOf(exchange);
         if (idx === -1) return;
         exchanges.splice(idx, 1);
+      });
+      exchange.on('return', (_, msg) => {
+        events.publish('return', msg);
       });
       exchanges.push(exchange);
     }
@@ -345,6 +350,17 @@ function Broker(owner) {
     }
 
     return true;
+  }
+
+  function on(eventName, callback) {
+    switch (eventName) {
+      case 'return':
+        {
+          return events.on('return', (_, msg) => {
+            callback(msg.content.content);
+          });
+        }
+    }
   }
 
   function setPrefetch() {}

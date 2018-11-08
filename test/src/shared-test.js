@@ -9,6 +9,11 @@ describe('shared', () => {
       expect(pattern.test('a')).to.be.true;
     });
 
+    it('# matches empty', () => {
+      const pattern = getRoutingKeyPattern('#');
+      expect(pattern.test('')).to.be.true;
+    });
+
     it('* matches one', () => {
       const pattern = getRoutingKeyPattern('*');
       expect(pattern.test('a')).to.be.true;

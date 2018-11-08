@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", {
 exports.Exchange = Exchange;
 exports.EventExchange = EventExchange;
 
+var _Message = require("./Message");
+
 var _Queue = require("./Queue");
 
 var _shared = require("./shared");
@@ -67,40 +69,68 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
   });
   return exchange;
 
-  function publish(routingKey, content, properties) {
+  function publish(routingKey, content, properties = {}) {
     if (stopped) return;
     return deliveryQueue.queueMessage({
-      exchange: name,
       routingKey
-    }, content, properties);
+    }, {
+      content,
+      properties
+    });
   }
 
   function topic(routingKey, message) {
     const deliverTo = getConcernedBindings(routingKey);
+    const publishedMsg = message.content;
 
     if (!deliverTo.length) {
       message.ack();
+
+      if (publishedMsg.properties.mandatory) {
+        emitReturn(routingKey, publishedMsg);
+      }
+
       return 0;
     }
 
     message.ack();
     deliverTo.forEach(({
       queue
-    }) => queue.queueMessage(message.fields, message.content, message.properties));
+    }) => publishToQueue(queue, routingKey, publishedMsg.content, publishedMsg.properties));
   }
 
   function direct(routingKey, message) {
     const deliverTo = getConcernedBindings(routingKey);
+    const publishedMsg = message.content;
     const first = deliverTo[0];
 
     if (!first) {
       message.ack();
+
+      if (publishedMsg.properties.mandatory) {
+        emitReturn(routingKey, publishedMsg);
+      }
+
       return 0;
     }
 
     if (deliverTo.length > 1) shift(deliverTo[0]);
     message.ack();
-    first.queue.queueMessage(message.fields, message.content, message.properties);
+    publishToQueue(first.queue, routingKey, publishedMsg.content, publishedMsg.properties);
+  }
+
+  function publishToQueue(queue, routingKey, content, properties) {
+    queue.queueMessage({
+      routingKey,
+      exchange: name
+    }, content, properties);
+  }
+
+  function emitReturn(routingKey, returnMessage) {
+    emit('return', (0, _Message.Message)({
+      routingKey,
+      exchange: name
+    }, returnMessage.content, returnMessage.properties));
   }
 
   function getConcernedBindings(routingKey) {

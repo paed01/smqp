@@ -16,7 +16,6 @@ function Queue(name, options = {}, eventEmitter) {
         consumers = [];
   let exclusivelyConsumed,
       stopped,
-      deadLetterPattern,
       pendingMessageCount = 0;
   options = Object.assign({
     autoDelete: true
@@ -213,7 +212,6 @@ function Queue(name, options = {}, eventEmitter) {
 
   function onMessageConsumed(message, operation, allUpTo, requeue) {
     if (stopped) return;
-    let deadLetter = false;
     const pending = allUpTo && getPendingMessages(message);
 
     switch (operation) {
@@ -230,7 +228,6 @@ function Queue(name, options = {}, eventEmitter) {
         }
 
         if (!dequeue(message)) return;
-        deadLetter = deadLetterExchange && (!deadLetterPattern || deadLetterPattern.test(message.fields.routingKey));
         break;
     }
 
@@ -238,7 +235,7 @@ function Queue(name, options = {}, eventEmitter) {
     if (!messages.length) emit('depleted', queue);else if ((capacity = getCapacity()) === 1) emit('ready', capacity);
     if (!pending || !pending.length) consumeNext();
 
-    if (deadLetter) {
+    if (deadLetterExchange) {
       const deadMessage = (0, _Message.Message)(message.fields, message.content, message.properties);
       if (deadLetterRoutingKey) deadMessage.fields.routingKey = deadLetterRoutingKey;
       emit('dead-letter', {

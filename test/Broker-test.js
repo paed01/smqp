@@ -291,6 +291,18 @@ describe('Smqp', () => {
         messages.push(routingKey);
       }
     });
+
+    it('throws if message callback is not a function', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      expect(() => {
+        broker.subscribeOnce('event', '#');
+      }).to.throw(/message callback/);
+      expect(() => {
+        broker.subscribeOnce('event', '#', 'not-fn');
+      }).to.throw(/message callback/);
+    });
   });
 
   describe('unsubscribe()', () => {
@@ -441,16 +453,6 @@ describe('Smqp', () => {
       broker.consume('test-q', () => {});
     });
 
-    it.skip('the same consumer onMessage will be ignored even by exclusive consumer', () => {
-      const broker = Broker();
-
-      broker.assertQueue('test-q');
-      broker.consume('test-q', onMessage, {exclusive: true});
-      broker.consume('test-q', onMessage);
-
-      function onMessage() {}
-    });
-
     it('consumer tag must be unique', () => {
       const broker = Broker();
 
@@ -471,6 +473,13 @@ describe('Smqp', () => {
       expect(consumer).to.have.property('consumerTag', 'guid');
 
       function onMessage() {}
+    });
+
+    it('consume non-existing queue throws', () => {
+      const broker = Broker();
+      expect(() => {
+        broker.consume('non-q', () => {}, {exclusive: true, consumerTag: 'guid'});
+      }).to.throw(/not found/);
     });
   });
 
@@ -673,6 +682,99 @@ describe('Smqp', () => {
       const tmpQueue = broker.getQueue(consumer.queueName);
       expect(tmpQueue).to.be.ok;
       expect(tmpQueue).to.have.property('consumerCount', 1);
+
+      tmpQueue.queueMessage('event.queued');
+
+      expect(messages).to.eql([
+        'event.1',
+        'event.2',
+      ]);
+
+      function onMessage(routingKey, message) {
+        messages.push(routingKey);
+        message.ack();
+      }
+    });
+
+    it('keeps same state before and after stop', () => {
+      const messages = [];
+
+      broker.consume('events', onMessage);
+      broker.consume('loads', onMessage);
+
+      broker.publish('event', 'event.1');
+      broker.publish('load', 'load.1');
+
+      const state = broker.getState();
+
+      broker.stop();
+
+      expect(broker.getState()).to.eql(state);
+
+      function onMessage(routingKey, message) {
+        messages.push(routingKey);
+        message.ack();
+      }
+    });
+  });
+
+  describe('close()', () => {
+    let broker;
+    beforeEach('setup exchanges and queues', () => {
+      broker = Broker();
+      broker.assertExchange('event', 'topic', {autoDelete: false});
+      broker.assertExchange('load', 'direct', {autoDelete: false});
+
+      broker.assertQueue('events', {autoDelete: false});
+      broker.assertQueue('loads', {autoDelete: false});
+
+      broker.bindQueue('events', 'event', '#');
+      broker.bindQueue('loads', 'load', '#');
+    });
+
+    it('stops publishing messages and consumption', () => {
+      const messages = [];
+
+      broker.consume('events', onMessage);
+      broker.consume('loads', onMessage);
+
+      broker.publish('event', 'event.1');
+      broker.publish('load', 'load.1');
+
+      broker.close();
+
+      broker.publish('event', 'event.2');
+      broker.publish('load', 'load.2');
+
+      broker.getQueue('events').queueMessage('event.stopped');
+      broker.getQueue('loads').queueMessage('load.stopped');
+
+      expect(messages).to.eql([
+        'event.1',
+        'load.1',
+      ]);
+
+      function onMessage(routingKey, message) {
+        messages.push(routingKey);
+        message.ack();
+      }
+    });
+
+    it('removes consumers', () => {
+      const messages = [];
+
+      const consumer = broker.subscribeTmp('event', '#', onMessage);
+
+      broker.publish('event', 'event.1');
+      broker.publish('event', 'event.2');
+
+      broker.close();
+
+      broker.publish('event', 'event.3');
+
+      const tmpQueue = broker.getQueue(consumer.queueName);
+      expect(tmpQueue).to.be.ok;
+      expect(tmpQueue).to.have.property('consumerCount', 0);
 
       tmpQueue.queueMessage('event.queued');
 
@@ -924,6 +1026,61 @@ describe('Smqp', () => {
     });
   });
 
+  describe('unbindQueue()', () => {
+    it('stops receiving messages from exchange', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+      const q = broker.assertQueue('event-q');
+
+      broker.bindQueue('event-q', 'event', '#');
+
+      broker.publish('event', 'test.1');
+      expect(q.messageCount).to.equal(1);
+
+      broker.unbindQueue('event-q', 'event', '#');
+
+      broker.publish('event', 'test.1');
+      expect(q.messageCount).to.equal(1);
+    });
+
+    it('unbind from non-existing exchange is ignored', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+      broker.assertQueue('event-q');
+      broker.unbindQueue('event-q', 'non-event', '#');
+    });
+
+    it('unbind from non-existing queue is ignored', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+      broker.assertQueue('event-q');
+      broker.unbindQueue('non-q', 'event', '#');
+    });
+  });
+
+  describe('cancel(consumerTag)', () => {
+    it('stops consuming messages', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+      const messages = [];
+
+      broker.subscribeTmp('event', '#', (routingKey) => messages.push(routingKey), {consumerTag: 'cancel-me', noAck: true});
+
+      broker.publish('event', 'test.1');
+      expect(messages).to.have.length(1);
+
+      broker.cancel('cancel-me');
+
+      broker.publish('event', 'test.2');
+      expect(messages).to.have.length(1);
+    });
+
+    it('is ignored if no consumer tag was found', () => {
+      const broker = Broker();
+      broker.cancel('cancel-me');
+    });
+  });
+
   describe('dead letters', () => {
     it('sends nacked message to dead letter exchange', () => {
       const broker = Broker();
@@ -987,6 +1144,28 @@ describe('Smqp', () => {
         if (routingKey === 'test.reject') message.reject(true);
         message.nack(false, true);
       }
+    });
+  });
+
+  describe('queues', () => {
+    it('keeps count', () => {
+      const broker = Broker();
+      expect(broker.queueCount).to.equal(0);
+      broker.assertQueue('test-q');
+      expect(broker.queueCount).to.equal(1);
+      broker.deleteQueue('test-q');
+      expect(broker.queueCount).to.equal(0);
+    });
+  });
+
+  describe('exchanges', () => {
+    it('keeps count', () => {
+      const broker = Broker();
+      expect(broker.exchangeCount).to.equal(0);
+      broker.assertExchange('event');
+      expect(broker.exchangeCount).to.equal(1);
+      broker.deleteExchange('event');
+      expect(broker.exchangeCount).to.equal(0);
     });
   });
 
@@ -1284,6 +1463,54 @@ describe('Smqp', () => {
     it('has expected behaviour', () => {
       const broker = Broker();
       broker.prefetch();
+    });
+  });
+
+  describe('purgeQueue(queueName)', () => {
+    it('has expected behaviour', () => {
+      const broker = Broker();
+      const q = broker.assertQueue('test-q');
+
+      broker.sendToQueue('test-q', 'meme');
+
+      expect(q.messageCount).to.equal(1);
+
+      broker.purgeQueue('test-q');
+
+      expect(q.messageCount).to.equal(0);
+    });
+
+    it('is ignored if queue is not found', () => {
+      const broker = Broker();
+      broker.assertQueue('test-q');
+      broker.purgeQueue('nan-q');
+    });
+  });
+
+  describe('events', () => {
+    it('emits "return" with message if published mandatory message is not routed to any queue', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+
+      let message;
+      broker.on('return', (msg) => {
+        message = msg;
+      });
+
+      broker.publish('event', 'test.1', 'important', {mandatory: true});
+
+      expect(message).to.be.ok;
+
+      expect(message).to.have.property('fields').that.include({
+        exchange: 'event',
+        routingKey: 'test.1'
+      });
+      expect(message).to.have.property('content', 'important');
+    });
+
+    it('listen for unknown event is ok and doesn´t throw', () => {
+      const broker = Broker();
+      broker.on('me', () => {});
     });
   });
 });
