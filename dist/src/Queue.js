@@ -17,9 +17,10 @@ function Queue(name, options = {}, eventEmitter) {
   let exclusivelyConsumed,
       stopped,
       pendingMessageCount = 0;
-  options = Object.assign({
-    autoDelete: true
-  }, options);
+  options = {
+    autoDelete: true,
+    ...options
+  };
   let maxLength = 'maxLength' in options ? options.maxLength : Infinity;
   const {
     deadLetterExchange,
@@ -413,11 +414,12 @@ function Queue(name, options = {}, eventEmitter) {
 }
 
 function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
-  options = Object.assign({
+  options = {
     prefetch: 1,
     priority: 0,
-    noAck: false
-  }, options);
+    noAck: false,
+    ...options
+  };
   if (!options.consumerTag) options.consumerTag = `smq.ctag-${(0, _shared.generateId)()}`;
   let ready = true,
       stopped = false,

@@ -8,7 +8,7 @@ function Queue(name, options = {}, eventEmitter) {
 
   const messages = [], consumers = [];
   let exclusivelyConsumed, stopped, pendingMessageCount = 0;
-  options = Object.assign({autoDelete: true}, options);
+  options = {autoDelete: true, ...options};
 
   let maxLength = 'maxLength' in options ? options.maxLength : Infinity;
 
@@ -417,7 +417,7 @@ function Queue(name, options = {}, eventEmitter) {
 }
 
 function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
-  options = Object.assign({prefetch: 1, priority: 0, noAck: false}, options);
+  options = {prefetch: 1, priority: 0, noAck: false, ...options};
   if (!options.consumerTag) options.consumerTag = `smq.ctag-${generateId()}`;
 
   let ready = true, stopped = false, consuming;

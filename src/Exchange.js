@@ -24,7 +24,7 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
 
   const bindings = [];
   let stopped;
-  options = Object.assign({durable: true, autoDelete: true}, options);
+  options = {durable: true, autoDelete: true, ...options};
 
   const exchange = {
     name,
@@ -163,12 +163,12 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
   }
 
   function getState() {
-    return JSON.parse(JSON.stringify(Object.assign({
+    return JSON.parse(JSON.stringify({
       name: name,
       type,
-      options: Object.assign({}, options),
-      deliveryQueue
-    }, {bindings: getBoundState()})));
+      options: {...options},
+      deliveryQueue,
+      bindings: getBoundState()}));
 
     function getBoundState() {
       return bindings.reduce((result, binding) => {
