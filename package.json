@@ -8,6 +8,7 @@
   },
   "main": "dist/index.js",
   "module": "index.js",
+  "jsnext:main": "index.js",
   "license": "MIT",
   "repository": {
     "type": "git",
