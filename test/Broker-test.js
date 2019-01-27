@@ -1,6 +1,15 @@
 import {Broker} from '../index';
 
 describe('Smqp', () => {
+  describe('broker properties', () => {
+    it('exposes owner as owner', () => {
+      const owner = {};
+      const broker = Broker(owner);
+
+      expect(broker.owner).to.equal(owner);
+    });
+  });
+
   describe('subscribe()', () => {
     it('creates topic exchange with passed exchange name if not exists', () => {
       const broker = Broker();

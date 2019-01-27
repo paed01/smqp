@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 1.3.0
+
+- Expose broker owner
+
 # 1.0.0
 
 ## Breaking changes

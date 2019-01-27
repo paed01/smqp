@@ -15,6 +15,7 @@ function Broker(owner) {
   const consumers = [];
   const events = (0, _Exchange.EventExchange)();
   const broker = {
+    owner,
     subscribe,
     subscribeOnce,
     subscribeTmp,

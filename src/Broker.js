@@ -8,6 +8,7 @@ export function Broker(owner) {
   const events = EventExchange();
 
   const broker = {
+    owner,
     subscribe,
     subscribeOnce,
     subscribeTmp,
