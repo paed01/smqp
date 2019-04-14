@@ -1,5 +1,5 @@
 <!-- version -->
-# 1.3.0 API Reference
+# 1.3.1 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -48,6 +48,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`ack([allUpTo])`](#ackallupto)
     - [`nack([allUpTo, requeue])`](#nackallupto-requeue)
     - [`reject([requeue])`](#rejectrequeue)
+  - [`getRoutingKeyPattern(pattern)`](#getroutingkeypatternpattern)
 
 <!-- tocstop -->
 
@@ -255,3 +256,16 @@ NB! Beware of `requeue` argument since the message will immmediately be returned
 
 ### `reject([requeue])`
 Same as `nack(false, true)`
+
+
+## `getRoutingKeyPattern(pattern)`
+Test routing key pattern against routing key.
+
+```js
+import {getRoutingKeyPattern} from 'smqp';
+
+const {test} = getRoutingKeyPattern('activity.*');
+
+console.log(test('activity.start')); // true
+console.log(test('activity.execution.completed')); // false
+```

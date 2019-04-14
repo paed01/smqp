@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 1.3.1
+
+- Export `getRoutingKeyPattern`
+
 # 1.3.0
 
 - Expose broker owner
