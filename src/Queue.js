@@ -173,8 +173,8 @@ function Queue(name, options = {}, eventEmitter) {
     return consume(onMessage, consumeOptions, owner);
   }
 
-  function get({noAck} = {}) {
-    const message = consumeMessages(1, {noAck})[0];
+  function get({noAck, consumerTag} = {}) {
+    const message = consumeMessages(1, {noAck, consumerTag})[0];
     if (!message) return;
     if (noAck) dequeue(message);
 

@@ -174,10 +174,12 @@ function Queue(name, options = {}, eventEmitter) {
   }
 
   function get({
-    noAck
+    noAck,
+    consumerTag
   } = {}) {
     const message = consumeMessages(1, {
-      noAck
+      noAck,
+      consumerTag
     })[0];
     if (!message) return;
     if (noAck) dequeue(message);
