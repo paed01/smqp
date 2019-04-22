@@ -373,7 +373,7 @@ function Queue(name, options = {}, eventEmitter) {
     }
 
     state.messages.forEach(({fields, content, properties}) => {
-      const msg = Message(fields, content, properties, onMessageConsumed);
+      const msg = Message({...fields, redelivered: true}, content, properties, onMessageConsumed);
       messages.push(msg);
     });
     pendingMessageCount = messages.length;

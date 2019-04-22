@@ -369,7 +369,9 @@ function Queue(name, options = {}, eventEmitter) {
       content,
       properties
     }) => {
-      const msg = (0, _Message.Message)(fields, content, properties, onMessageConsumed);
+      const msg = (0, _Message.Message)({ ...fields,
+        redelivered: true
+      }, content, properties, onMessageConsumed);
       messages.push(msg);
     });
     pendingMessageCount = messages.length;

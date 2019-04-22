@@ -1,7 +1,11 @@
 Changelog
 =========
 
-# 1.3.1
+# 1.4.1
+
+- A recovered queue with messages always considers messages redelivered, regardless if queue was stopped or not
+
+# 1.4.0
 
 - Export `getRoutingKeyPattern`
 

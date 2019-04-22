@@ -1199,7 +1199,7 @@ describe('Queue', () => {
       expect(queue.messageCount).to.equal(2);
     });
 
-    it('with state resumes messages', () => {
+    it('with state recovers messages', () => {
       const queue = Queue('test-q');
       queue.queueMessage({routingKey: 'test.1', exchange: 'event'}, 'data', {contentType: 'text/plain'});
       queue.queueMessage({routingKey: 'test.2', exchange: 'event'}, {data: 1}, {contentType: 'application/json'});
@@ -1213,7 +1213,7 @@ describe('Queue', () => {
       expect(queue.messageCount).to.equal(2);
 
       let msg = queue.get({consumerTag: 'me-again'});
-      expect(msg).to.have.property('fields').that.include({routingKey: 'test.1', exchange: 'event'});
+      expect(msg).to.have.property('fields').that.include({routingKey: 'test.1', exchange: 'event', redelivered: true});
       expect(msg).to.have.property('properties').that.have.property('contentType', 'text/plain');
       expect(msg).to.have.property('content').that.equal('data');
 
@@ -1221,7 +1221,38 @@ describe('Queue', () => {
       expect(queue.messageCount).to.equal(1);
 
       msg = queue.get();
-      expect(msg).to.have.property('fields').that.include({routingKey: 'test.2', exchange: 'event'});
+      expect(msg).to.have.property('fields').that.include({routingKey: 'test.2', exchange: 'event', redelivered: true});
+      expect(msg).to.have.property('properties').that.have.property('contentType', 'application/json');
+      expect(msg).to.have.property('content').that.eql({data: 1});
+
+      msg.ack();
+
+      expect(queue.messageCount).to.equal(0);
+    });
+
+    it('with unstopped state recovers messages', () => {
+      const originalQueue = Queue('test-q');
+      originalQueue.queueMessage({routingKey: 'test.1', exchange: 'event'}, 'data', {contentType: 'text/plain'});
+      originalQueue.queueMessage({routingKey: 'test.2', exchange: 'event'}, {data: 1}, {contentType: 'application/json'});
+
+      const state = originalQueue.getState();
+
+      const queue = Queue('recover-q');
+
+      queue.recover(state);
+
+      expect(queue.messageCount).to.equal(2);
+
+      let msg = queue.get({consumerTag: 'me-again'});
+      expect(msg).to.have.property('fields').that.include({routingKey: 'test.1', exchange: 'event', redelivered: true});
+      expect(msg).to.have.property('properties').that.have.property('contentType', 'text/plain');
+      expect(msg).to.have.property('content').that.equal('data');
+
+      msg.ack();
+      expect(queue.messageCount).to.equal(1);
+
+      msg = queue.get();
+      expect(msg).to.have.property('fields').that.include({routingKey: 'test.2', exchange: 'event', redelivered: true});
       expect(msg).to.have.property('properties').that.have.property('contentType', 'application/json');
       expect(msg).to.have.property('content').that.eql({data: 1});
 
