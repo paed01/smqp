@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 1.5.0
+
+- Non-persistent message, message option `persistent = false`, will not be recovered when recovering from state
+
 # 1.4.1
 
 - A recovered queue with messages always considers messages redelivered, regardless if queue was stopped or not

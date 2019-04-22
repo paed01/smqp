@@ -1,5 +1,5 @@
 <!-- version -->
-# 1.4.1 API Reference
+# 1.5.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -40,6 +40,28 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.reject(message[, requeue])`](#brokerrejectmessage-requeue)
     - [`broker.on(eventName, callback)`](#brokeroneventname-callback)
     - [`broker.prefetch(count)`](#brokerprefetchcount)
+  - [Queue](#queue)
+    - [`ack(message)`](#ackmessage)
+    - [`ackAll()`](#ackall)
+    - [`assertConsumer(onMessage[, consumeOptions, owner])`](#assertconsumeronmessage-consumeoptions-owner)
+    - [`cancel(consumerTag)`](#cancelconsumertag)
+    - [`close()`](#close)
+    - [`consume(onMessage[, consumeOptions, owner])`](#consumeonmessage-consumeoptions-owner)
+    - [`delete([deleteOptions])`](#deletedeleteoptions)
+    - [`dequeueMessage(message)`](#dequeuemessagemessage)
+    - [`dismiss(onMessage)`](#dismissonmessage)
+    - [`get([consumeOptions])`](#getconsumeoptions)
+    - [`getState()`](#getstate)
+    - [`nack(message[, allUpTo, requeue = true])`](#nackmessage-allupto-requeue--true)
+    - [`nackAll([requeue = true])`](#nackallrequeue--true)
+    - [`on(eventName, handler)`](#oneventname-handler)
+    - [`peek([ignoreDelivered])`](#peekignoredelivered)
+    - [`purge()`](#purge)
+    - [`queueMessage(fields[, content, properties, onMessageQueued])`](#queuemessagefields-content-properties-onmessagequeued)
+    - [`recover([state])`](#recoverstate)
+    - [`reject(message[, requeue = true])`](#rejectmessage-requeue--true)
+    - [`stop()`](#stop)
+    - [`unbindConsumer()`](#unbindconsumer)
   - [Consumer](#consumer)
     - [`consumer.ackAll()`](#consumerackall)
     - [`consumer.nackAll([requeue])`](#consumernackallrequeue)
@@ -129,9 +151,10 @@ Publish message to exchange.
 
 - `exchangeName`: exchange name
 - `routingKey`: routing key
-- `content`: object containing message content
+- `content`: message content
 - `options`: Message options
-  - `mandatory`: message is mandatory, defaults to undef. Emits `return` if not routed to any queue
+  - `mandatory`: boolean indicating if message is mandatory. Value `true` emits `return` if not routed to any queue
+  - `persistant`: boolean indicating if message is persistant, defaults to undef (true). Value `false` ignores the message when queue is recovered from state
 
 ### `broker.close()`
 Close exchanges, queues, and all consumers
@@ -222,6 +245,80 @@ Listen for events from Broker. Returns consumer - that can be canceled.
 - `callback`: event callback
 
 ### `broker.prefetch(count)`
+
+## Queue
+Queue
+
+Properties:
+- `name`: queue name
+- `options`: queue options
+- `messages`: actual messages array, probably a good idea to not mess with, but it's there
+- `messageCount`: message count
+- `consumerCount`: consumer count
+- `stopped`: is stopped
+- `exclusive`: is exclusively consumed
+- `maxLength`: get or set max length of queue
+- `capacity`: `maxLength - messageCount`
+
+### `ack(message)`
+### `ackAll()`
+### `assertConsumer(onMessage[, consumeOptions, owner])`
+### `cancel(consumerTag)`
+Cancel consumer with tag
+
+### `close()`
+### `consume(onMessage[, consumeOptions, owner])`
+### `delete([deleteOptions])`
+Delete queue.
+
+- `deleteOptions`: Object with options
+  - `ifUnused`: boolean, delete if unused
+  - `ifEmpty`: boolean, delete if empty
+
+### `dequeueMessage(message)`
+Remove message from queue without redelivery.
+
+### `dismiss(onMessage)`
+Dismiss first consumer with `onMessage` handler.
+
+### `get([consumeOptions])`
+### `getState()`
+### `nack(message[, allUpTo, requeue = true])`
+### `nackAll([requeue = true])`
+### `on(eventName, handler)`
+Listen for events from queue.
+
+Events:
+- `cancel`: consumer was cancelled
+- `consume`: consumer was added
+- `dead-letter`: message was dead-lettered, sends `deadLetterExhange` name and message
+- `delete`: queue was deleted
+- `depleted`: queue is depleted
+- `message`: message was queued
+- `ready`: queue is ready to ready to receive new messages
+- `saturated`: queue is saturated, i.e. max capacity was reached
+
+### `peek([ignoreDelivered])`
+Peek into queue.
+
+- `ignoreDelivered`: ignore if message was delivered or not
+
+### `purge()`
+### `queueMessage(fields[, content, properties, onMessageQueued])`
+Queue message.
+
+- `fields`: object with fields, proposal:
+  - `exchangeName`: exchange name
+  - `routingKey`: routing key
+- `content`: message content
+- `properties`: message properties, basic properties are:
+  - `persistant`: boolean indicating if message is persistant, defaults to undef (true). Value `false` ignores the message when queue is recovered from state
+- `onMessageQueued`: optional function mainly used for interal purposes. Called when message was queued
+
+### `recover([state])`
+### `reject(message[, requeue = true])`
+### `stop()`
+### `unbindConsumer()`
 
 ## Consumer
 Queue consumer

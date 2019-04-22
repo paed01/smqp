@@ -1340,6 +1340,22 @@ describe('Queue', () => {
       expect(queue.messageCount).to.equal(0);
     });
   });
+
+  describe('persistent message', () => {
+    it('ignores non-persistent message when recovered with state', () => {
+      const originalQueue = Queue('test-q');
+      originalQueue.queueMessage({routingKey: 'test.ethereal'}, 'data', {persistent: false});
+      originalQueue.queueMessage({routingKey: 'test.persisted'}, 'data');
+
+      originalQueue.stop();
+
+      const queue = Queue('test-q');
+      queue.recover(originalQueue.getState());
+
+      const msg = queue.get();
+      expect(msg).to.have.property('fields').with.property('routingKey', 'test.persisted');
+    });
+  });
 });
 
 describe('Consumer', () => {

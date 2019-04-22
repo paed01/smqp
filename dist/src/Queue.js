@@ -47,10 +47,10 @@ function Queue(name, options = {}, eventEmitter) {
     peek,
     purge,
     queueMessage,
-    reject,
-    unbindConsumer,
     recover,
-    stop
+    reject,
+    stop,
+    unbindConsumer
   };
   Object.defineProperty(queue, 'messageCount', {
     enumerable: true,
@@ -371,6 +371,7 @@ function Queue(name, options = {}, eventEmitter) {
       content,
       properties
     }) => {
+      if (properties.persistent === false) return;
       const msg = (0, _Message.Message)({ ...fields,
         redelivered: true
       }, content, properties, onMessageConsumed);

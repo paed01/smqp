@@ -35,10 +35,10 @@ function Queue(name, options = {}, eventEmitter) {
     peek,
     purge,
     queueMessage,
-    reject,
-    unbindConsumer,
     recover,
+    reject,
     stop,
+    unbindConsumer,
   };
 
   Object.defineProperty(queue, 'messageCount', {
@@ -373,6 +373,7 @@ function Queue(name, options = {}, eventEmitter) {
     }
 
     state.messages.forEach(({fields, content, properties}) => {
+      if (properties.persistent === false) return;
       const msg = Message({...fields, redelivered: true}, content, properties, onMessageConsumed);
       messages.push(msg);
     });
