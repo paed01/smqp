@@ -645,5 +645,39 @@ describe('Exchange', () => {
         event = message;
       }
     });
+
+    it('events can be offed', () => {
+      let event;
+      const exchange = Exchange('event', 'topic', {autoDelete: true});
+
+      exchange.on('delete', onEvent);
+      exchange.off('delete', onEvent);
+
+      const queue = Queue('event-q');
+      exchange.bind(queue, 'test.#');
+      exchange.unbind(queue, 'test.#');
+
+      expect(event).to.not.be.ok;
+
+      function onEvent(eventName, message) {
+        event = message;
+      }
+    });
+
+    it('events can be offed even if they are not on', () => {
+      let event;
+      const exchange = Exchange('event', 'topic', {autoDelete: true});
+      exchange.off('delete', onEvent);
+
+      const queue = Queue('event-q');
+      exchange.bind(queue, 'test.#');
+      exchange.unbind(queue, 'test.#');
+
+      expect(event).to.not.be.ok;
+
+      function onEvent(eventName, message) {
+        event = message;
+      }
+    });
   });
 });

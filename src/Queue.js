@@ -46,6 +46,10 @@ function Queue(name, options = {}, eventEmitter) {
     get: () => messages.length
   });
 
+  Object.defineProperty(queue, 'consumers', {
+    get: () => consumers.slice()
+  });
+
   Object.defineProperty(queue, 'consumerCount', {
     get: () => consumers.length
   });

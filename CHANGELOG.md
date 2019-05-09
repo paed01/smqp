@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 1.6.0
+
+- Support turning off event listener with `off(eventName, handler)`
+
 # 1.5.0
 
 - Non-persistent message, message option `persistent = false`, will not be recovered when recovering from state

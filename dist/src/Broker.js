@@ -39,6 +39,7 @@ function Broker(owner) {
     getQueue,
     getState,
     on,
+    off,
     prefetch: setPrefetch,
     publish,
     purgeQueue,
@@ -357,10 +358,28 @@ function Broker(owner) {
     switch (eventName) {
       case 'return':
         {
-          return events.on('return', (_, msg) => {
-            callback(msg.content.content);
+          return events.on('return', getEventCallback(), {
+            origin: callback
           });
         }
+    }
+
+    function getEventCallback() {
+      return function eventCallback(_, msg) {
+        callback(msg.content.content);
+      };
+    }
+  }
+
+  function off(eventName, callback) {
+    for (const binding of events.bindings) {
+      if (binding.pattern === eventName) {
+        for (const consumer of binding.queue.consumers) {
+          if (consumer.options && consumer.options.origin === callback) {
+            consumer.cancel();
+          }
+        }
+      }
     }
   }
 

@@ -50,6 +50,7 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
     getBinding,
     getState,
     on,
+    off,
     publish,
     recover,
     stop,
@@ -234,17 +235,27 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
     publish(eventName, content);
   }
 
-  function on(pattern, handler) {
+  function on(pattern, handler, consumeOptions = {}) {
     if (isExchange) return eventExchange.on(`exchange.${pattern}`, handler);
     const eventQueue = (0, _Queue.Queue)(null, {
       durable: false,
       autoDelete: true
     });
     bind(eventQueue, pattern);
-    const eventConsumer = eventQueue.consume(handler, {
+    const eventConsumer = eventQueue.consume(handler, { ...consumeOptions,
       noAck: true
     }, exchange);
     return eventConsumer;
+  }
+
+  function off(pattern, handler) {
+    if (isExchange) return eventExchange.off(`exchange.${pattern}`, handler);
+
+    for (const binding of bindings) {
+      if (binding.pattern === pattern) {
+        binding.queue.dismiss(handler);
+      }
+    }
   }
 
   function Binding(queue, pattern, bindOptions = {}) {

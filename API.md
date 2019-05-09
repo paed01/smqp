@@ -1,5 +1,5 @@
 <!-- version -->
-# 1.5.0 API Reference
+# 1.6.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -39,6 +39,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.nackAll([requeue])`](#brokernackallrequeue)
     - [`broker.reject(message[, requeue])`](#brokerrejectmessage-requeue)
     - [`broker.on(eventName, callback)`](#brokeroneventname-callback)
+    - [`broker.off(eventName, callback)`](#brokeroffeventname-callback)
     - [`broker.prefetch(count)`](#brokerprefetchcount)
   - [Queue](#queue)
     - [`ack(message)`](#ackmessage)
@@ -239,12 +240,23 @@ Get message from queue.
 
 ### `broker.on(eventName, callback)`
 
-Listen for events from Broker. Returns consumer - that can be canceled.
+Listen for events from Broker.
+
+- `eventName`: name of event
+- `callback`: event callback
+
+Returns consumer - that can be canceled.
+
+### `broker.off(eventName, callback)`
+
+Turn off event listener(s) associated with event callback.
 
 - `eventName`: name of event
 - `callback`: event callback
 
 ### `broker.prefetch(count)`
+
+Noop, only placeholder.
 
 ## Queue
 Queue

@@ -1521,5 +1521,73 @@ describe('Smqp', () => {
       const broker = Broker();
       broker.on('me', () => {});
     });
+
+    it('cancels listener if off is called', () => {
+      const broker = Broker();
+      const messages = [];
+      broker.assertExchange('event');
+      broker.on('return', onBrokerReturn);
+
+      broker.publish('event', 'test.1', 'important', {mandatory: true});
+
+      expect(messages).to.have.length(1);
+
+      broker.off('return', onBrokerReturn);
+
+      broker.publish('event', 'test.1', 'important', {mandatory: true});
+
+      expect(messages).to.have.length(1);
+
+      function onBrokerReturn(msg) {
+        messages.push(msg);
+      }
+    });
+
+    it('off(eventName, handler) cancels only handler listener', () => {
+      const broker = Broker();
+      const messages = [];
+      broker.assertExchange('event');
+      broker.on('return', onBrokerReturn1);
+      broker.on('return', onBrokerReturn2);
+
+      broker.publish('event', 'test.1', 'important', {mandatory: true});
+
+      expect(messages).to.have.length(2);
+
+      broker.off('return', onBrokerReturn2);
+
+      broker.publish('event', 'test.1', 'important', {mandatory: true});
+
+      expect(messages).to.have.length(3);
+
+      function onBrokerReturn1(msg) {
+        messages.push(msg);
+      }
+      function onBrokerReturn2(msg) {
+        messages.push(msg);
+      }
+    });
+
+    it('off(eventName, handler) cancels all handler listeners', () => {
+      const broker = Broker();
+      const messages = [];
+      broker.assertExchange('event');
+      broker.on('return', onBrokerReturn);
+      broker.on('return', onBrokerReturn);
+
+      broker.publish('event', 'test.1', 'important', {mandatory: true});
+
+      expect(messages).to.have.length(2);
+
+      broker.off('return', onBrokerReturn);
+
+      broker.publish('event', 'test.1', 'important', {mandatory: true});
+
+      expect(messages).to.have.length(2);
+
+      function onBrokerReturn(msg) {
+        messages.push(msg);
+      }
+    });
   });
 });
