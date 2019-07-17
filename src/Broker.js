@@ -82,13 +82,12 @@ export function Broker(owner) {
     if (options && options.consumerTag) validateConsumerTag(options.consumerTag);
 
     assertExchange(exchangeName);
-    const onceOptions = {autoDelete: true, durable: false};
+    const onceOptions = {autoDelete: true, durable: false, priority: options.priority || 0};
     const onceQueue = createQueue(null, onceOptions);
 
-    bindQueue(onceQueue.name, exchangeName, pattern, onceOptions);
+    bindQueue(onceQueue.name, exchangeName, pattern, {...onceOptions});
 
-    const onceConsumer = consume(onceQueue.name, wrappedOnMessage, {noAck: true, consumerTag: options.consumerTag});
-    return onceConsumer;
+    return consume(onceQueue.name, wrappedOnMessage, {noAck: true, consumerTag: options.consumerTag});
 
     function wrappedOnMessage(...args) {
       onceQueue.delete();

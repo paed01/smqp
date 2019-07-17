@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 1.7.0
+
+- `subscribeOnce` also takes priority option, as it should've from the beginning
+
 # 1.6.0
 
 - Support turning off event listener with `off(eventName, handler)`

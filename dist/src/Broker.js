@@ -87,15 +87,16 @@ function Broker(owner) {
     assertExchange(exchangeName);
     const onceOptions = {
       autoDelete: true,
-      durable: false
+      durable: false,
+      priority: options.priority || 0
     };
     const onceQueue = createQueue(null, onceOptions);
-    bindQueue(onceQueue.name, exchangeName, pattern, onceOptions);
-    const onceConsumer = consume(onceQueue.name, wrappedOnMessage, {
+    bindQueue(onceQueue.name, exchangeName, pattern, { ...onceOptions
+    });
+    return consume(onceQueue.name, wrappedOnMessage, {
       noAck: true,
       consumerTag: options.consumerTag
     });
-    return onceConsumer;
 
     function wrappedOnMessage(...args) {
       onceQueue.delete();

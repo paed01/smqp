@@ -53,5 +53,5 @@ function getRoutingKeyPattern(pattern) {
 }
 
 function sortByPriority(a, b) {
-  return b.options.priority - a.options.priority;
+  return (b.options.priority || 0) - (a.options.priority || 0);
 }

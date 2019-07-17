@@ -271,6 +271,26 @@ describe('Smqp', () => {
       function onMessage() {}
     });
 
+    it('subscribeOnce with high priority receives messages according to priority', () => {
+      const broker = Broker();
+
+      const messages = [];
+
+      broker.assertExchange('event');
+      broker.subscribeTmp('event', '#', onMessage, {consumerTag: '_tmp', noAck: true, priority: 99});
+      broker.subscribeOnce('event', '#', onMessage, {consumerTag: '_once', priority: 100});
+
+      broker.publish('event', 'test.priority');
+
+      expect(messages).to.have.length(2);
+      expect(messages[0].fields).to.have.property('consumerTag', '_once');
+      expect(messages[1].fields).to.have.property('consumerTag', '_tmp');
+
+      function onMessage(_, msg) {
+        messages.push(msg);
+      }
+    });
+
     it('closes consumer immediately after message is received', () => {
       const broker = Broker();
 

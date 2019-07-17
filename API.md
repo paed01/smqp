@@ -1,5 +1,5 @@
 <!-- version -->
-# 1.6.0 API Reference
+# 1.7.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -141,6 +141,7 @@ Same as `subscribeTmp` and will immediately close consumer when first message ar
 - `onMessage`: message callback
 - `options`:
   - `consumerTag`: unique consumer tag
+  - `priority`: integer, defaults to `0`, higher value gets messages first
 
 Oh, btw, option `noAck` will be set to `true` so there is no need to ack message in message callback.
 
