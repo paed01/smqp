@@ -270,7 +270,7 @@ function Broker(owner) {
     queue.on('consume', (_, event) => consumers.push(event.content));
     queue.on('consumer.cancel', (_, event) => {
       const idx = consumers.indexOf(event.content);
-      consumers.splice(idx, 1);
+      if (idx !== -1) consumers.splice(idx, 1);
     });
     queues.push(queue);
     return queue;
