@@ -378,7 +378,7 @@ describe('Smqp', () => {
       }
     });
 
-    it('unsubscribe from durable, persistant queue nacks all messages', () => {
+    it('unsubscribe from durable, persistent queue nacks all messages', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q', {durable: true, autoDelete: false});
       broker.sendToQueue('test-q', 'test.1');
@@ -1100,6 +1100,22 @@ describe('Smqp', () => {
 
       broker.cancel('cancel-me');
 
+      broker.publish('event', 'test.2');
+      expect(messages).to.have.length(1);
+    });
+
+    it('stops consuming messages if cancelled in message callback', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+      const messages = [];
+
+      broker.subscribeTmp('event', '#', (routingKey) => {
+        messages.push(routingKey);
+        broker.cancel('cancel-me');
+        broker.publish('event', 'test.3');
+      }, {consumerTag: 'cancel-me', noAck: true});
+
+      broker.publish('event', 'test.1');
       broker.publish('event', 'test.2');
       expect(messages).to.have.length(1);
     });

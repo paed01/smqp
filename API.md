@@ -1,5 +1,5 @@
 <!-- version -->
-# 1.7.0 API Reference
+# 1.7.1 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -156,7 +156,7 @@ Publish message to exchange.
 - `content`: message content
 - `options`: Message options
   - `mandatory`: boolean indicating if message is mandatory. Value `true` emits `return` if not routed to any queue
-  - `persistant`: boolean indicating if message is persistant, defaults to undef (true). Value `false` ignores the message when queue is recovered from state
+  - `persistent`: boolean indicating if message is persistent, defaults to undef (true). Value `false` ignores the message when queue is recovered from state
 
 ### `broker.close()`
 Close exchanges, queues, and all consumers
@@ -325,7 +325,7 @@ Queue message.
   - `routingKey`: routing key
 - `content`: message content
 - `properties`: message properties, basic properties are:
-  - `persistant`: boolean indicating if message is persistant, defaults to undef (true). Value `false` ignores the message when queue is recovered from state
+  - `persistent`: boolean indicating if message is persistent, defaults to undef (true). Value `false` ignores the message when queue is recovered from state
 - `onMessageQueued`: optional function mainly used for interal purposes. Called when message was queued
 
 ### `recover([state])`
