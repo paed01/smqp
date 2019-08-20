@@ -41,6 +41,19 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.on(eventName, callback)`](#brokeroneventname-callback)
     - [`broker.off(eventName, callback)`](#brokeroffeventname-callback)
     - [`broker.prefetch(count)`](#brokerprefetchcount)
+  - [Exchange](#exchange)
+    - [`bind(queue, pattern[, bindOptions])`](#bindqueue-pattern-bindoptions)
+    - [`close()`](#close)
+    - [`emit(eventName[, content])`](#emiteventname-content)
+    - [`getBinding(queueName, pattern)`](#getbindingqueuename-pattern)
+    - [`getState()`](#getstate)
+    - [`on(pattern, handler[, consumeOptions])`](#onpattern-handler-consumeoptions)
+    - [`off(pattern, handler)`](#offpattern-handler)
+    - [`publish(routingKey[, content, properties])`](#publishroutingkey-content-properties)
+    - [`recover(state, getQueue)`](#recoverstate-getqueue)
+    - [`stop()`](#stop)
+    - [`unbind(queue, pattern)`](#unbindqueue-pattern)
+    - [`unbindQueueByName(queueName)`](#unbindqueuebynamequeuename)
   - [Queue](#queue)
     - [`ack(message)`](#ackmessage)
     - [`ackAll()`](#ackall)
@@ -169,6 +182,8 @@ Creates exchange with name.
   - `durable`: boolean, defaults to `true`, makes queue durable, i.e. will be returned when getting state
   - `autoDelete`: boolean, defaults to `true`, the exchange will be removed when all consumers are down
 
+Returns [Exchange](#exchange).
+
 ### `broker.deleteExchange(exchangeName[, ifUnused])`
 
 ### `broker.bindExchange()`
@@ -211,8 +226,10 @@ Delete queue by name.
   - `ifEmpty`: delete if no messages, defaults to false
 
 ### `broker.getExchange(exchangeName)`
+Get [exchange](#exchange) by name.
+
 ### `broker.getQueue(queueName)`
-Get queue by name. Returns existing queue or nothing
+Get [queue](#queue) by name. Returns existing queue or nothing
 
 ### `broker.getState()`
 Return serializable object containing durable exchanges, bindings, and durable queues with messages.
@@ -259,6 +276,53 @@ Turn off event listener(s) associated with event callback.
 
 Noop, only placeholder.
 
+## Exchange
+Exchange
+
+Properties:
+- `name`: exchange name
+- `type`: exchange type, topic or direct
+- `options`: exchange options
+- `bindingCount`: getter for number of bindings
+- `bindings`: getter for list of bindings
+- `stopped`: boolean for if the exchange is stopped
+
+### `bind(queue, pattern[, bindOptions])`
+Bind queue to exchange.
+
+Arguments:
+- `queue`: queue instance
+- `pattern`: binding pattern
+- `bindOptions`: optional binding options
+  - `priority`: defaults to 0
+
+### `close()`
+Close exchange and all bindings.
+
+### `emit(eventName[, content])`
+### `getBinding(queueName, pattern)`
+Get binding to queue by name and with pattern.
+
+### `getState()`
+Get recoverable exchange state.
+
+### `on(pattern, handler[, consumeOptions])`
+### `off(pattern, handler)`
+### `publish(routingKey[, content, properties])`
+Publish message on exchange.
+
+### `recover(state, getQueue)`
+### `stop()`
+### `unbind(queue, pattern)`
+Unbind queue from exchange.
+
+Arguments:
+- `queue`: queue instance
+- `pattern`: binding pattern
+
+### `unbindQueueByName(queueName)`
+Remove all bindings to queue.
+
 ## Queue
 Queue
 
@@ -304,7 +368,7 @@ Listen for events from queue.
 Events:
 - `cancel`: consumer was cancelled
 - `consume`: consumer was added
-- `dead-letter`: message was dead-lettered, sends `deadLetterExhange` name and message
+- `dead-letter`: message was dead-lettered, sends `deadLetterExchange` name and message
 - `delete`: queue was deleted
 - `depleted`: queue is depleted
 - `message`: message was queued
@@ -350,6 +414,17 @@ Queue consumer
 Cancel consumption and unsubscribe from queue
 
 ## Message
+What it is all about - convey messages.
+
+**Properties**:
+- `fields`: message fields
+  - `routingKey`: routing key if any
+  - `redelivered`: message is redelivered
+  - `consumerTag`: consumer tag when consumed
+- `content`: message content
+- `properties`: message properties, any number of properties can be set, known:
+  - `messageId`: message id
+  - `persistent`: persist message, if unset queue option durable prevails
 
 ### `ack([allUpTo])`
 Acknowledge message
