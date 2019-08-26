@@ -512,4 +512,34 @@ describe('Broker queue', () => {
       expect(topic.bindingCount).to.equal(0);
     });
   });
+
+  describe('events', () => {
+    it('emits depleted when all messages were consumed', (done) => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+
+      queue.on('depleted', () => done());
+      queue.queueMessage({}, {});
+
+      queue.get().ack();
+    });
+
+    it('off() turns off even handler', (done) => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+
+      queue.on('depleted', onDepleted);
+      queue.queueMessage({}, {});
+
+      queue.off('depleted', onDepleted);
+
+      queue.get().ack();
+
+      done();
+
+      function onDepleted() {
+        done();
+      }
+    });
+  });
 });

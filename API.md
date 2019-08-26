@@ -1,5 +1,5 @@
 <!-- version -->
-# 1.7.1 API Reference
+# 1.8.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -68,6 +68,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`getState()`](#getstate)
     - [`nack(message[, allUpTo, requeue = true])`](#nackmessage-allupto-requeue--true)
     - [`nackAll([requeue = true])`](#nackallrequeue--true)
+    - [`off(eventName, handler)`](#offeventname-handler)
     - [`on(eventName, handler)`](#oneventname-handler)
     - [`peek([ignoreDelivered])`](#peekignoredelivered)
     - [`purge()`](#purge)
@@ -362,6 +363,9 @@ Dismiss first consumer with `onMessage` handler.
 ### `getState()`
 ### `nack(message[, allUpTo, requeue = true])`
 ### `nackAll([requeue = true])`
+### `off(eventName, handler)`
+Stop listening for events from queue.
+
 ### `on(eventName, handler)`
 Listen for events from queue.
 

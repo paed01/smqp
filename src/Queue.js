@@ -31,6 +31,7 @@ function Queue(name, options = {}, eventEmitter) {
     getState,
     nack,
     nackAll,
+    off,
     on,
     peek,
     purge,
@@ -330,6 +331,12 @@ function Queue(name, options = {}, eventEmitter) {
     if (!eventEmitter || !eventEmitter.on) return;
     const pattern = `queue.${eventName}`;
     return eventEmitter.on(pattern, handler);
+  }
+
+  function off(eventName, handler) {
+    if (!eventEmitter || !eventEmitter.off) return;
+    const pattern = `queue.${eventName}`;
+    return eventEmitter.off(pattern, handler);
   }
 
   function purge() {

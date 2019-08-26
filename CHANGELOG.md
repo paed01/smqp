@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 1.8.0
+
+- Support turning off queue event listener - `queue.off(eventName, handler)`
+
 # 1.7.0
 
 - `subscribeOnce` also takes priority option, as it should've from the beginning
