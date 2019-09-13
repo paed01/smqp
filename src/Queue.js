@@ -429,6 +429,7 @@ function Queue(name, options = {}, eventEmitter) {
 }
 
 function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
+  if (typeof onMessage !== 'function') throw new Error('message callback is required and must be a function');
   options = {prefetch: 1, priority: 0, noAck: false, ...options};
   if (!options.consumerTag) options.consumerTag = `smq.ctag-${generateId()}`;
 

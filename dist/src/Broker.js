@@ -182,13 +182,15 @@ function Broker(owner) {
   }
 
   function stop() {
-    exchanges.forEach(exchange => exchange.stop());
-    queues.forEach(queue => queue.stop());
+    for (const exchange of exchanges) exchange.stop();
+
+    for (const queue of queues) queue.stop();
   }
 
   function close() {
-    exchanges.forEach(e => e.close());
-    queues.forEach(q => q.close());
+    for (const exchange of exchanges) exchange.close();
+
+    for (const queue of queues) queue.close();
   }
 
   function getState() {
@@ -196,28 +198,22 @@ function Broker(owner) {
       exchanges: getExchangeState(),
       queues: getQueuesState()
     };
-
-    function getExchangeState() {
-      return exchanges.reduce((result, exchange) => {
-        if (!exchange.options.durable) return result;
-        if (!result) result = [];
-        result.push(exchange.getState());
-        return result;
-      }, undefined);
-    }
   }
 
   function recover(state) {
-    if (!state) {
-      queues.forEach(queue => queue.stopped && queue.recover());
-      exchanges.forEach(exchange => exchange.stopped && exchange.recover(null, getQueue));
-      return;
+    if (state) {
+      if (state.queues) for (const qState of state.queues) recoverQueue(qState);
+      if (state.exchanges) for (const eState of state.exchanges) recoverExchange(eState);
+    } else {
+      for (const queue of queues) {
+        if (queue.stopped) queue.recover();
+      }
+
+      for (const exchange of exchanges) {
+        if (exchange.stopped) exchange.recover(null, getQueue);
+      }
     }
 
-    if (state.queues) state.queues.forEach(recoverQueue);
-    queues.forEach(queue => queue.stopped && queue.recover());
-    if (state.exchanges) state.exchanges.forEach(recoverExchange);
-    exchanges.forEach(exchange => exchange.stopped && exchange.recover(null, getQueue));
     return broker;
 
     function recoverQueue(qState) {
@@ -258,6 +254,15 @@ function Broker(owner) {
       if (!queue.options.durable) return result;
       if (!result) result = [];
       result.push(queue.getState());
+      return result;
+    }, undefined);
+  }
+
+  function getExchangeState() {
+    return exchanges.reduce((result, exchange) => {
+      if (!exchange.options.durable) return result;
+      if (!result) result = [];
+      result.push(exchange.getState());
       return result;
     }, undefined);
   }
@@ -330,7 +335,7 @@ function Broker(owner) {
   }
 
   function ackAll() {
-    queues.forEach(q => q.ackAll());
+    for (const queue of queues) queue.ackAll();
   }
 
   function nack(message, allUpTo, requeue) {
@@ -338,7 +343,7 @@ function Broker(owner) {
   }
 
   function nackAll(requeue) {
-    queues.forEach(q => q.nackAll(requeue));
+    for (const queue of queues) queue.nackAll(requeue);
   }
 
   function reject(message, requeue) {

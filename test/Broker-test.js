@@ -443,6 +443,16 @@ describe('Smqp', () => {
       expect(consumer).to.have.property('cancel').that.is.a('function');
     });
 
+    it('throws if called without message handler', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+
+      expect(() => {
+        broker.consume('test');
+      }).to.throw(Error, /message callback/);
+    });
+
     it('keeps count of consumers', () => {
       const broker = Broker();
 
