@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 1.9.0
+
+- Add ability to reset everything, i.e. queues, exchanges, consumers you name it
+
 # 1.8.0
 
 - Support turning off queue event listener - `queue.off(eventName, handler)`

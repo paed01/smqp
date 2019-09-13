@@ -45,6 +45,7 @@ function Broker(owner) {
     purgeQueue,
     recover,
     reject,
+    reset,
     sendToQueue,
     stop,
     unbindExchange,
@@ -191,6 +192,14 @@ function Broker(owner) {
     for (const exchange of exchanges) exchange.close();
 
     for (const queue of queues) queue.close();
+  }
+
+  function reset() {
+    stop();
+    close();
+    exchanges.splice(0);
+    queues.splice(0);
+    consumers.splice(0);
   }
 
   function getState() {

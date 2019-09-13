@@ -1670,4 +1670,57 @@ describe('Smqp', () => {
       expect(broker.consumerCount).to.equal(1);
     });
   });
+
+  describe('reset()', () => {
+    it('stops and clears exchanges, queues, and consumers', () => {
+      const broker = Broker();
+      broker.assertExchange('temp');
+      const exchange = broker.assertExchange('event');
+      const queue = broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+      broker.consume('event-q', () => {});
+
+      expect(broker).to.have.property('exchangeCount', 2);
+      expect(broker).to.have.property('queueCount', 1);
+      expect(broker).to.have.property('consumerCount', 1);
+
+      expect(exchange).to.have.property('bindingCount', 1);
+
+      broker.reset();
+
+      expect(exchange).to.have.property('stopped', true);
+
+      expect(queue).to.have.property('stopped', true);
+      expect(queue).to.have.property('consumerCount', 0);
+
+      expect(broker).to.have.property('consumerCount', 0);
+      expect(broker).to.have.property('queueCount', 0);
+      expect(broker).to.have.property('exchangeCount', 0);
+    });
+
+    it('can be used again after reset', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+      broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+      broker.consume('event-q', () => {});
+      broker.publish('event', 'test', 12);
+
+      broker.reset();
+
+      broker.assertExchange('event');
+      broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+
+      const messages = [];
+      broker.consume('event-q', (_, msg) => {
+        messages.push(msg);
+      });
+
+      broker.publish('event', 'test', 13);
+
+      expect(messages).to.have.length(1);
+      expect(messages[0]).to.have.property('content', 13);
+    });
+  });
 });

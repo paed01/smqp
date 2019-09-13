@@ -41,6 +41,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.on(eventName, callback)`](#brokeroneventname-callback)
     - [`broker.off(eventName, callback)`](#brokeroffeventname-callback)
     - [`broker.prefetch(count)`](#brokerprefetchcount)
+    - [`broker.reset()`](#brokerreset)
   - [Exchange](#exchange)
     - [`bind(queue, pattern[, bindOptions])`](#bindqueue-pattern-bindoptions)
     - [`close()`](#close)
@@ -276,6 +277,10 @@ Turn off event listener(s) associated with event callback.
 ### `broker.prefetch(count)`
 
 Noop, only placeholder.
+
+### `broker.reset()`
+
+Reset everything. Deletes exchanges, queues, consumers, and bindings.
 
 ## Exchange
 Exchange
