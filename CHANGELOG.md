@@ -7,7 +7,7 @@ Changelog
 - Support message expiration and queue `messageTtl`
 
 ## Fixes
-- Acked messages where sent to dead letter exchange, they shouldn't, and are not anymore
+- Acked messages were sent to dead letter exchange, they shouldn't, and are not anymore
 
 # 1.9.0
 
