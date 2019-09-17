@@ -1,5 +1,5 @@
 <!-- version -->
-# 1.9.0 API Reference
+# 1.10.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -87,6 +87,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`nack([allUpTo, requeue])`](#nackallupto-requeue)
     - [`reject([requeue])`](#rejectrequeue)
   - [`getRoutingKeyPattern(pattern)`](#getroutingkeypatternpattern)
+  - [Message eviction](#message-eviction)
 
 <!-- tocstop -->
 
@@ -125,7 +126,7 @@ broker.subscribe('events', '#', 'event-queue', onMessage);
 
 broker.publish('events', 'start', {arg: 1});
 
-function onMessage(routingKey, message, brokerOwner) {
+function onMessage(routingKey, message, brokerOwner) {
   console.log('received:', routingKey);
   console.log('with message:', message);
   console.log('owned by:', brokerOwner.name);
@@ -172,6 +173,7 @@ Publish message to exchange.
 - `options`: Message options
   - `mandatory`: boolean indicating if message is mandatory. Value `true` emits `return` if not routed to any queue
   - `persistent`: boolean indicating if message is persistent, defaults to undef (true). Value `false` ignores the message when queue is recovered from state
+  - `eviction`: integer, expire message after milliseconds, [see Message Eviction](#message-eviction)
 
 ### `broker.close()`
 Close exchanges, queues, and all consumers
@@ -342,6 +344,7 @@ Properties:
 - `exclusive`: is exclusively consumed
 - `maxLength`: get or set max length of queue
 - `capacity`: `maxLength - messageCount`
+- `messageTtl`: expire messages after milliseconds, [see Message Eviction](#message-eviction)
 
 ### `ack(message)`
 ### `ackAll()`
@@ -434,6 +437,7 @@ What it is all about - convey messages.
 - `properties`: message properties, any number of properties can be set, known:
   - `messageId`: message id
   - `persistent`: persist message, if unset queue option durable prevails
+  - `timestamp`: `Date.now()`
 
 ### `ack([allUpTo])`
 Acknowledge message
@@ -463,3 +467,7 @@ const {test} = getRoutingKeyPattern('activity.*');
 console.log(test('activity.start')); // true
 console.log(test('activity.execution.completed')); // false
 ```
+
+## Message eviction
+
+A little about message eviction. There are no timeouts that will automatically evict expired messages. Expired messages will simply not be returned in the message callback when the queue is consumed. Use a dead letter exchange to pick them up.

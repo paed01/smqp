@@ -22,6 +22,7 @@ function Queue(name, options = {}, eventEmitter) {
     ...options
   };
   let maxLength = 'maxLength' in options ? options.maxLength : Infinity;
+  const messageTtl = options.messageTtl;
   const {
     deadLetterExchange,
     deadLetterRoutingKey
@@ -83,7 +84,10 @@ function Queue(name, options = {}, eventEmitter) {
 
   function queueMessage(fields, content, properties, onMessageQueued) {
     if (stopped) return;
-    const message = (0, _Message.Message)(fields, content, properties, onMessageConsumed);
+    const messageProperties = { ...properties
+    };
+    if (messageTtl) messageProperties.expiration = messageProperties.expiration || messageTtl;
+    const message = (0, _Message.Message)(fields, content, messageProperties, onMessageConsumed);
     const capacity = getCapacity();
     messages.push(message);
     pendingMessageCount++;
@@ -192,15 +196,25 @@ function Queue(name, options = {}, eventEmitter) {
 
   function consumeMessages(n, consumeOptions) {
     if (stopped || !pendingMessageCount || !n) return [];
+    const now = Date.now();
     const msgs = [];
+    const evict = [];
 
     for (const message of messages) {
       if (message.pending) continue;
+
+      if (message.ttl && message.ttl < now) {
+        evict.push(message);
+        continue;
+      }
+
       message.consume(consumeOptions);
       pendingMessageCount--;
       msgs.push(message);
       if (! --n) break;
     }
+
+    for (const expired of evict) nack(expired, false, false);
 
     return msgs;
   }
@@ -220,6 +234,7 @@ function Queue(name, options = {}, eventEmitter) {
   function onMessageConsumed(message, operation, allUpTo, requeue) {
     if (stopped) return;
     const pending = allUpTo && getPendingMessages(message);
+    let deadLetter = false;
 
     switch (operation) {
       case 'ack':
@@ -235,6 +250,7 @@ function Queue(name, options = {}, eventEmitter) {
         }
 
         if (!dequeue(message)) return;
+        deadLetter = !!deadLetterExchange;
         break;
     }
 
@@ -242,8 +258,10 @@ function Queue(name, options = {}, eventEmitter) {
     if (!messages.length) emit('depleted', queue);else if ((capacity = getCapacity()) === 1) emit('ready', capacity);
     if (!pending || !pending.length) consumeNext();
 
-    if (deadLetterExchange) {
-      const deadMessage = (0, _Message.Message)(message.fields, message.content, message.properties);
+    if (deadLetter) {
+      const deadMessage = (0, _Message.Message)(message.fields, message.content, { ...message.properties,
+        expiration: undefined
+      });
       if (deadLetterRoutingKey) deadMessage.fields.routingKey = deadLetterRoutingKey;
       emit('dead-letter', {
         deadLetterExchange,

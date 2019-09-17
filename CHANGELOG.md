@@ -1,6 +1,14 @@
 Changelog
 =========
 
+# 1.10.0
+
+## Additions
+- Support message expiration and queue `messageTtl`
+
+## Fixes
+- Acked messages where sent to dead letter exchange, they shouldn't, and are not anymore
+
 # 1.9.0
 
 - Add ability to reset everything, i.e. queues, exchanges, consumers you name it

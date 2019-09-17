@@ -7,10 +7,17 @@ function Message(fields = {}, content, properties = {}, onConsumed) {
   let consumedCallback;
 
   const messageId = properties.messageId || `smq.mid-${generateId()}`;
+  const messageProperties = {...properties, messageId};
+  const timestamp = messageProperties.timestamp = properties.timestamp || Date.now();
+  let ttl;
+  if (properties.expiration) {
+    ttl = messageProperties.ttl = timestamp + parseInt(properties.expiration);
+  }
+
   const message = {
     fields: {...fields, consumerTag: undefined},
     content,
-    properties: {...properties, messageId},
+    properties: messageProperties,
     consume,
     ack,
     nack,
@@ -18,7 +25,13 @@ function Message(fields = {}, content, properties = {}, onConsumed) {
   };
 
   Object.defineProperty(message, 'messageId', {
-    get: () => messageId
+    get() {
+      return messageId;
+    }
+  });
+
+  Object.defineProperty(message, 'ttl', {
+    value: ttl
   });
 
   Object.defineProperty(message, 'consumerTag', {

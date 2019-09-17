@@ -1,4 +1,5 @@
 import {Broker} from '../index';
+import ck from 'chronokinesis';
 
 describe('Smqp', () => {
   describe('broker properties', () => {
@@ -1157,6 +1158,26 @@ describe('Smqp', () => {
       }
     });
 
+    it('doesn\'t send acked message to dead letter exchange', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      broker.assertExchange('dead-letter');
+      const deadLetterQueue = broker.assertQueue('dead-letter-q');
+      broker.bindQueue('dead-letter-q', 'dead-letter', '#');
+
+      broker.subscribe('event', 'test.#', 'test-q', onMessage, {deadLetterExchange: 'dead-letter'});
+
+      broker.publish('event', 'test.1');
+      broker.publish('event', 'test.2');
+
+      expect(deadLetterQueue.messageCount).to.equal(0);
+
+      function onMessage(_, message) {
+        message.ack();
+      }
+    });
+
     it('sends rejected message to dead letter exchange', () => {
       const broker = Broker();
 
@@ -1198,6 +1219,125 @@ describe('Smqp', () => {
         messages.push(message);
         if (routingKey === 'test.reject') message.reject(true);
         message.nack(false, true);
+      }
+    });
+  });
+
+  describe('expired messages', () => {
+    afterEach(ck.reset);
+
+    it('message with expiration and thus expired is not returned in message callback', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+
+      ck.freeze();
+      broker.publish('event', 'test.expired', {}, {expiration: 100});
+      ck.travel(Date.now() + 200);
+      broker.publish('event', 'test.1');
+
+      const messages = [];
+      broker.consume('event-q', onMessage);
+
+      expect(messages).to.have.length(1);
+      expect(messages[0]).to.have.property('fields').with.property('routingKey', 'test.1');
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+        message.ack();
+      }
+    });
+
+    it('queue with messageTtl and thus expired message is not returned in message callback', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      broker.assertQueue('event-q', {messageTtl: 100});
+      broker.bindQueue('event-q', 'event', '#');
+
+      ck.freeze();
+      broker.publish('event', 'test.expired');
+      ck.travel(Date.now() + 200);
+      broker.publish('event', 'test.1');
+
+      const messages = [];
+      broker.consume('event-q', onMessage);
+
+      expect(messages).to.have.length(1);
+      expect(messages[0]).to.have.property('fields').with.property('routingKey', 'test.1');
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+        message.ack();
+      }
+    });
+
+    it('message expiration overrides queue messageTtl', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      broker.assertQueue('event-q', {messageTtl: 100});
+      broker.bindQueue('event-q', 'event', '#');
+
+      ck.freeze();
+      broker.publish('event', 'test.expired', {}, {expiration: 300});
+      ck.travel(Date.now() + 200);
+      broker.publish('event', 'test.1');
+
+      const messages = [];
+      broker.consume('event-q', onMessage);
+
+      expect(messages).to.have.length(2);
+      expect(messages[0]).to.have.property('fields').with.property('routingKey', 'test.expired');
+      expect(messages[1]).to.have.property('fields').with.property('routingKey', 'test.1');
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+        message.ack();
+      }
+    });
+
+    it('expired message is sent on dead letter exchange', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      broker.assertExchange('dead-letter');
+
+      broker.assertQueue('event-q', {deadLetterExchange: 'dead-letter'});
+      broker.bindQueue('event-q', 'event', '#');
+
+      broker.assertQueue('dead-letter-q');
+      broker.bindQueue('dead-letter-q', 'dead-letter', '#');
+
+      ck.freeze();
+      broker.publish('event', 'test.expired', {}, {expiration: 100});
+      ck.travel(Date.now() + 200);
+      broker.publish('event', 'test.1');
+
+      const messages = [];
+      broker.consume('event-q', onMessage);
+
+      expect(messages).to.have.length(1);
+
+      const deadMessages = [];
+      broker.consume('dead-letter-q', onDeadMessage);
+
+      expect(deadMessages).to.have.length(1);
+      expect(deadMessages[0]).to.have.property('fields').with.property('routingKey', 'test.expired');
+      expect(deadMessages[0]).to.have.property('properties').with.property('timestamp');
+      expect(deadMessages[0].properties).to.not.have.property('expired');
+      expect(deadMessages[0].properties).to.have.property('ttl').that.is.ok;
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+        message.ack();
+      }
+
+      function onDeadMessage(routingKey, message) {
+        deadMessages.push(message);
+        message.ack();
       }
     });
   });
