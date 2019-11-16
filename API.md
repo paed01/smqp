@@ -1,5 +1,5 @@
 <!-- version -->
-# 1.10.0 API Reference
+# 1.11.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -38,6 +38,9 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.nack(message[, allUpTo, requeue])`](#brokernackmessage-allupto-requeue)
     - [`broker.nackAll([requeue])`](#brokernackallrequeue)
     - [`broker.reject(message[, requeue])`](#brokerrejectmessage-requeue)
+    - [`broker.createShovel(name, source, destination[, cloneMessage])`](#brokercreateshovelname-source-destination-clonemessage)
+    - [`broker.getShovel(name)`](#brokergetshovelname)
+    - [`broker.closeShovel(name)`](#brokercloseshovelname)
     - [`broker.on(eventName, callback)`](#brokeroneventname-callback)
     - [`broker.off(eventName, callback)`](#brokeroffeventname-callback)
     - [`broker.prefetch(count)`](#brokerprefetchcount)
@@ -259,6 +262,38 @@ Get message from queue.
 ### `broker.nackAll([requeue])`
 
 ### `broker.reject(message[, requeue])`
+
+### `broker.createShovel(name, source, destination[, cloneMessage])`
+
+Shovel messages from current broker to another broker exchange.
+
+> NB! Shovels are not recovered, the source exchange and queue may be recoverable depending on how they were created.
+
+Arguments:
+- `name`: mandatory name of shovel
+- `source`: source options
+  - `exchange`: exchange name
+  - `pattern`: optional binding pattern, defaults to all (`#`)
+  - `queue`: optional queue name, defaults to temporary queue
+- `destination`: destination broker options
+  - `broker`: destiniation broker instance
+  - `exchange`: destination exchange name, must be asserted into existance
+- `cloneMessage`: optional clone message function
+
+Returns
+- `name`: name of shovel
+- `source`: input source options
+- `destination`: input destination broker options
+- `consumerTag`: consumer tag for source queue
+- `close()`: close shovel, cancels consumer tag
+
+### `broker.getShovel(name)`
+
+Get shovel by name.
+
+### `broker.closeShovel(name)`
+
+Close shovel by name.
 
 ### `broker.on(eventName, callback)`
 

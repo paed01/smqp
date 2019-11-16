@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 1.11.0
+
+## Additions
+- Introduce shovel, shoveling messages between brokers
+
 # 1.10.0
 
 ## Additions

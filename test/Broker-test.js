@@ -1,8 +1,8 @@
 import {Broker} from '../index';
 import ck from 'chronokinesis';
 
-describe('Smqp', () => {
-  describe('broker properties', () => {
+describe('Broker', () => {
+  describe('api', () => {
     it('exposes owner as owner', () => {
       const owner = {};
       const broker = Broker(owner);
@@ -1351,6 +1351,22 @@ describe('Smqp', () => {
       broker.deleteQueue('test-q');
       expect(broker.queueCount).to.equal(0);
     });
+
+    it('createQueue(name) creates queue', () => {
+      const broker = Broker();
+      expect(broker.queueCount).to.equal(0);
+      broker.createQueue('test-q');
+      expect(broker.queueCount).to.equal(1);
+    });
+
+    it('createQueue(name) when queue exists throws', () => {
+      const broker = Broker();
+      broker.createQueue('test-q');
+
+      expect(() => {
+        broker.createQueue('test-q');
+      }).to.throw(/test-q already exists/);
+    });
   });
 
   describe('exchanges', () => {
@@ -1655,7 +1671,7 @@ describe('Smqp', () => {
   });
 
   describe('broker.prefetch(count)', () => {
-    it('has expected behaviour', () => {
+    it('has expected placeholder behaviour', () => {
       const broker = Broker();
       broker.prefetch();
     });

@@ -9,10 +9,13 @@ var _Exchange = require("./Exchange");
 
 var _Queue = require("./Queue");
 
+var _Shovel = require("./Shovel");
+
 function Broker(owner) {
   const exchanges = [];
   const queues = [];
   const consumers = [];
+  const shovels = [];
   const events = (0, _Exchange.EventExchange)();
   const broker = {
     owner,
@@ -20,6 +23,9 @@ function Broker(owner) {
     subscribeOnce,
     subscribeTmp,
     unsubscribe,
+    createShovel,
+    closeShovel,
+    getShovel,
     assertExchange,
     ack,
     ackAll,
@@ -35,6 +41,7 @@ function Broker(owner) {
     createQueue,
     deleteQueue,
     get: getMessageFromQueue,
+    getConsumer,
     getExchange,
     getQueue,
     getState,
@@ -158,10 +165,14 @@ function Broker(owner) {
   }
 
   function cancel(consumerTag) {
-    const consumer = consumers.find(c => c.consumerTag === consumerTag);
+    const consumer = getConsumer(consumerTag);
     if (!consumer) return false;
     consumer.cancel(false);
     return true;
+  }
+
+  function getConsumer(consumerTag) {
+    return consumers.find(c => c.consumerTag === consumerTag);
   }
 
   function getExchange(exchangeName) {
@@ -189,6 +200,8 @@ function Broker(owner) {
   }
 
   function close() {
+    for (const shovel of shovels) shovel.close();
+
     for (const exchange of exchanges) exchange.close();
 
     for (const queue of queues) queue.close();
@@ -200,6 +213,7 @@ function Broker(owner) {
     exchanges.splice(0);
     queues.splice(0);
     consumers.splice(0);
+    shovels.splice(0);
   }
 
   function getState() {
@@ -362,11 +376,41 @@ function Broker(owner) {
   function validateConsumerTag(consumerTag) {
     if (!consumerTag) return true;
 
-    if (consumers.find(c => c.consumerTag === consumerTag)) {
+    if (getConsumer(consumerTag)) {
       throw new Error(`Consumer tag must be unique, ${consumerTag} is occupied`);
     }
 
     return true;
+  }
+
+  function createShovel(name, source, destination, cloneMessage) {
+    if (getShovel(name)) throw new Error(`Shovel name must be unique, ${name} is occupied`);
+    const shovel = (0, _Shovel.Shovel)(name, { ...source,
+      broker
+    }, destination, cloneMessage);
+    shovels.push(shovel);
+    shovel.on('close', onClose);
+    return shovel;
+
+    function onClose() {
+      const idx = shovels.indexOf(shovel);
+      if (idx > -1) shovels.splice(idx, 1);
+    }
+  }
+
+  function closeShovel(name) {
+    const shovel = getShovel(name);
+
+    if (shovel) {
+      shovel.close();
+      return true;
+    }
+
+    return false;
+  }
+
+  function getShovel(name) {
+    return shovels.find(s => s.name === name);
   }
 
   function on(eventName, callback) {
