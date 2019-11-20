@@ -524,7 +524,7 @@ describe('Broker queue', () => {
       queue.get().ack();
     });
 
-    it('off() turns off even handler', (done) => {
+    it('off() turns off event handler', (done) => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
 

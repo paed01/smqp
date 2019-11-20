@@ -75,6 +75,8 @@ describe('Broker', () => {
       const consumer1 = broker.subscribe('event', 'test.*', 'test-q', onMessage);
       const consumer2 = broker.subscribe('event', 'test.*', 'test-q', onMessage);
 
+      expect(consumer1).to.be.ok.and.have.property('consumerTag');
+      expect(consumer2).to.be.ok.and.have.property('consumerTag');
       expect(consumer1 === consumer2).to.be.true;
 
       broker.publish('event', 'test.1');

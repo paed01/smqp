@@ -1,5 +1,5 @@
 <!-- version -->
-# 1.11.0 API Reference
+# 1.11.1 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -274,18 +274,22 @@ Arguments:
 - `source`: source options
   - `exchange`: exchange name
   - `pattern`: optional binding pattern, defaults to all (`#`)
-  - `queue`: optional queue name, defaults to temporary queue
+  - `queue`: optional queue name, defaults to temporary autodeleted queue
 - `destination`: destination broker options
   - `broker`: destiniation broker instance
   - `exchange`: destination exchange name, must be asserted into existance
-- `cloneMessage`: optional clone message function
+- `cloneMessage`: optional clone message function called with shoveled message
 
-Returns
+Returns Shovel:
 - `name`: name of shovel
 - `source`: input source options
 - `destination`: input destination broker options
+  - `queue`: name of queue, added if not provided when creating shovel
 - `consumerTag`: consumer tag for source queue
-- `close()`: close shovel, cancels consumer tag
+- `on(eventName, handler)`: listen for shovel events, returns event consumer
+- `close()`: close shovel and cancel source consumer tag
+
+Shovel is also closed if source- or destination change is closed, or source consumer is canceled.
 
 ### `broker.getShovel(name)`
 

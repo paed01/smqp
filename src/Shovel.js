@@ -37,11 +37,15 @@ export function Shovel(name, source, destination, cloneMessage) {
     sourceExchange.on('delete', close),
     destinationExchange.on('delete', close),
   ];
+
+  let consumer;
   if (queue) {
-    sourceBroker.subscribe(sourceExchangeName, routingKeyPattern, queue, onShovelMessage, {consumerTag});
+    consumer = sourceBroker.subscribe(sourceExchangeName, routingKeyPattern, queue, onShovelMessage, {consumerTag});
   } else {
-    sourceBroker.subscribeTmp(sourceExchangeName, routingKeyPattern, onShovelMessage, {consumerTag});
+    consumer = sourceBroker.subscribeTmp(sourceExchangeName, routingKeyPattern, onShovelMessage, {consumerTag});
+    api.source.queue = consumer.queue.name;
   }
+  eventHandlers.push(consumer.on('cancel', close));
 
   return api;
 
@@ -54,7 +58,7 @@ export function Shovel(name, source, destination, cloneMessage) {
   function close() {
     if (closed) return;
     closed = true;
-    eventHandlers.forEach((e) => e.cancel());
+    eventHandlers.splice(0).forEach((e) => e.cancel());
     events.emit('close', api);
     events.close();
     sourceBroker.cancel(consumerTag);

@@ -432,6 +432,83 @@ describe('Shovel', () => {
       }
     });
 
+    it('closes shovel if source consumer is canceled', () => {
+      const broker = Broker();
+      broker.assertExchange('events', 'topic', {autoDelete: false});
+
+      const destinationBroker = Broker();
+      destinationBroker.assertExchange('dest-events', 'topic');
+
+      const messages = [];
+      destinationBroker.subscribeTmp('dest-events', '#', onMessage, {noAck: true});
+
+      const shovel = broker.createShovel('events-shovel', {exchange: 'events'}, {broker: destinationBroker, exchange: 'dest-events'});
+      broker.publish('events', 'test.1');
+
+      expect(messages).to.have.length(1);
+
+      function onMessage(routingKey) {
+        messages.push(routingKey);
+        broker.cancel(shovel.consumerTag);
+        expect(shovel).to.have.property('closed', true);
+        expect(broker.getShovel('events-shovel')).to.not.be.ok;
+      }
+    });
+
+    it('closes shovel if source queue is closed', () => {
+      const broker = Broker();
+      broker.assertExchange('events', 'topic', {autoDelete: false});
+      const queue = broker.assertQueue('events-q', {autoDelete: false});
+
+      const destinationBroker = Broker();
+      destinationBroker.assertExchange('dest-events', 'topic');
+
+      const messages = [];
+      destinationBroker.subscribeTmp('dest-events', '#', onMessage, {noAck: true});
+
+      const shovel = broker.createShovel('events-shovel', {
+        exchange: 'events',
+        queue: queue.name,
+      }, {broker: destinationBroker, exchange: 'dest-events'});
+      broker.publish('events', 'test.1');
+
+      expect(messages).to.have.length(1);
+
+      function onMessage(routingKey) {
+        messages.push(routingKey);
+        queue.close();
+        expect(shovel).to.have.property('closed', true);
+        expect(broker.getShovel('events-shovel')).to.not.be.ok;
+      }
+    });
+
+    it('closes shovel if source queue is deleted', () => {
+      const broker = Broker();
+      broker.assertExchange('events', 'topic', {autoDelete: false});
+      const queue = broker.assertQueue('events-q', {autoDelete: false});
+
+      const destinationBroker = Broker();
+      destinationBroker.assertExchange('dest-events', 'topic');
+
+      const messages = [];
+      destinationBroker.subscribeTmp('dest-events', '#', onMessage, {noAck: true});
+
+      const shovel = broker.createShovel('events-shovel', {
+        exchange: 'events',
+        queue: queue.name,
+      }, {broker: destinationBroker, exchange: 'dest-events'});
+      broker.publish('events', 'test.1');
+
+      expect(messages).to.have.length(1);
+
+      function onMessage(routingKey) {
+        messages.push(routingKey);
+        broker.deleteQueue(queue.name);
+        expect(shovel).to.have.property('closed', true);
+        expect(broker.getShovel('events-shovel')).to.not.be.ok;
+      }
+    });
+
     it('shovel name must be unique', () => {
       const broker = Broker();
       broker.assertExchange('events', 'topic');

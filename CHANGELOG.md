@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 1.11.1
+
+- Fix consumer eventlistener not working at all due to messed up binary code
+- Close shovel if source consumer is closed
+
 # 1.11.0
 
 ## Additions

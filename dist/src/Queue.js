@@ -145,7 +145,7 @@ function Queue(name, options = {}, eventEmitter) {
     function consumerEmitter() {
       return {
         emit: onConsumerEmit,
-        on: onConsumer
+        on
       };
 
       function onConsumerEmit(eventName, ...args) {
@@ -154,11 +154,6 @@ function Queue(name, options = {}, eventEmitter) {
         }
 
         emit(eventName, ...args);
-      }
-
-      function onConsumer(...args) {
-        if (eventEmitter && eventEmitter.on) return;
-        eventEmitter.on(...args);
       }
     }
   }
@@ -575,13 +570,11 @@ function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
   }
 
   function emit(eventName, content) {
-    if (!eventEmitter) return;
     const routingKey = `consumer.${eventName}`;
     eventEmitter.emit(routingKey, content);
   }
 
   function on(eventName, handler) {
-    if (!eventEmitter) return;
     const pattern = `consumer.${eventName}`;
     return eventEmitter.on(pattern, handler);
   }

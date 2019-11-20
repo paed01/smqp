@@ -1,51 +1,75 @@
 import {Broker} from '../index';
 
 describe('consumer', () => {
-  it('noAck option consumes message immediately', () => {
-    const broker = Broker();
+  describe('noAck', () => {
+    it('noAck option consumes message immediately', () => {
+      const broker = Broker();
 
-    broker.assertExchange('test', 'topic');
+      broker.assertExchange('test', 'topic');
 
-    broker.subscribe('test', 'test.#', 'persist', onMessageAck);
-    broker.subscribeTmp('test', '#', onMessage, {noAck: true});
+      broker.subscribe('test', 'test.#', 'persist', onMessageAck);
+      broker.subscribeTmp('test', '#', onMessage, {noAck: true});
 
-    const ackMessages = [];
-    const messages = [];
+      const ackMessages = [];
+      const messages = [];
 
-    broker.publish('test', 'tst', {msg: 1});
-    broker.publish('test', 'test.1', {msg: 2});
-    broker.publish('test', 'test.2', {msg: 3});
+      broker.publish('test', 'tst', {msg: 1});
+      broker.publish('test', 'test.1', {msg: 2});
+      broker.publish('test', 'test.2', {msg: 3});
 
-    expect(messages).to.have.length(3);
-    expect(messages[0].fields).to.have.property('routingKey', 'tst');
-    expect(messages[1].fields).to.have.property('routingKey', 'test.1');
-    expect(messages[2].fields).to.have.property('routingKey', 'test.2');
+      expect(messages).to.have.length(3);
+      expect(messages[0].fields).to.have.property('routingKey', 'tst');
+      expect(messages[1].fields).to.have.property('routingKey', 'test.1');
+      expect(messages[2].fields).to.have.property('routingKey', 'test.2');
 
-    expect(ackMessages).to.have.length(1);
-    expect(ackMessages[0].fields).to.have.property('routingKey', 'test.1');
+      expect(ackMessages).to.have.length(1);
+      expect(ackMessages[0].fields).to.have.property('routingKey', 'test.1');
 
-    function onMessage(routingKey, message) {
-      messages.push(message);
-    }
+      function onMessage(routingKey, message) {
+        messages.push(message);
+      }
 
-    function onMessageAck(routingKey, message) {
-      ackMessages.push(message);
-    }
+      function onMessageAck(routingKey, message) {
+        ackMessages.push(message);
+      }
+    });
+
+    it('noAck option consumes removes message from queue before message callback', () => {
+      const broker = Broker();
+
+      const queue = broker.assertQueue('event-q');
+      broker.consume(queue.name, onMessage, {noAck: true});
+
+      queue.queueMessage('test');
+
+      expect(queue.messageCount).to.equal(0);
+
+      function onMessage() {
+        expect(queue.messageCount).to.equal(0);
+      }
+    });
   });
 
-  it('noAck option consumes removes message from queue before message callback', () => {
-    const broker = Broker();
+  describe('events', () => {
+    it('emits cancel when canceled', (done) => {
+      const broker = Broker();
 
-    const queue = broker.assertQueue('event-q');
-    broker.consume(queue.name, onMessage, {noAck: true});
+      const queue = broker.assertQueue('event-q');
+      const consumer = broker.consume(queue.name, onMessage, {noAck: true});
 
-    queue.queueMessage('test');
+      queue.queueMessage('test');
 
-    expect(queue.messageCount).to.equal(0);
+      consumer.on('cancel', () => {
+        expect(queue.messageCount).to.equal(0);
+        done();
+      });
 
-    function onMessage() {
-      expect(queue.messageCount).to.equal(0);
-    }
+      consumer.cancel();
+
+      function onMessage() {
+        expect(queue.messageCount).to.equal(0);
+      }
+    });
   });
 
   describe('prefetch', () => {
