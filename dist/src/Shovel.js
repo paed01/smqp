@@ -7,7 +7,7 @@ exports.Shovel = Shovel;
 
 var _Exchange = require("./Exchange");
 
-function Shovel(name, source, destination, cloneMessage) {
+function Shovel(name, source, destination, options = {}) {
   const {
     broker: sourceBroker,
     exchange: sourceExchangeName,
@@ -18,6 +18,9 @@ function Shovel(name, source, destination, cloneMessage) {
     broker: destinationBroker,
     exchange: destinationExchangeName
   } = destination;
+  const {
+    cloneMessage
+  } = options;
   const sourceExchange = sourceBroker.getExchange(sourceExchangeName);
 
   if (!sourceExchange) {
@@ -30,7 +33,8 @@ function Shovel(name, source, destination, cloneMessage) {
     throw new Error(`shovel ${name} destination exchange <${destinationExchangeName}> not found`);
   }
 
-  const consumerTag = `smq.shoveltag-${name}`;
+  const sameBroker = sourceBroker === destinationBroker;
+  const consumerTag = source.consumerTag || `smq.shoveltag-${name}`;
   const routingKeyPattern = pattern || '#';
   const events = (0, _Exchange.EventExchange)();
   let closed = false;
@@ -71,9 +75,11 @@ function Shovel(name, source, destination, cloneMessage) {
       content,
       properties
     } = messageHandler(message);
-    destinationExchange.publish(routingKey, content, { ...properties,
-      'shovel-name': name
-    });
+    const props = { ...properties,
+      'source-exchange': sourceExchangeName
+    };
+    if (!sameBroker) props['shovel-name'] = name;
+    destinationExchange.publish(routingKey, content, props);
     message.ack();
   }
 

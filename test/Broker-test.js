@@ -1881,4 +1881,232 @@ describe('Broker', () => {
       expect(messages[0]).to.have.property('content', 13);
     });
   });
+
+  describe('bindExchange()', () => {
+    it('returns e2e binding or actually a shovel', () => {
+      const broker = Broker();
+      broker.assertExchange('source-events');
+      broker.assertExchange('dest-events');
+
+      const e2e = broker.bindExchange('source-events', 'dest-events');
+      expect(e2e).to.have.property('name', 'e2e-source-events2dest-events-#');
+      expect(e2e).to.have.property('source', 'source-events');
+      expect(e2e).to.have.property('destination', 'dest-events');
+      expect(e2e).to.have.property('consumerTag', 'smq.ctag-e2e-source-events2dest-events-#');
+      expect(e2e).to.have.property('close').that.is.a('function');
+      expect(e2e).to.have.property('on').that.is.a('function');
+    });
+
+    it('shovels messages from source exchange to destination exchange', () => {
+      const broker = Broker();
+      broker.assertExchange('source-events');
+      broker.assertExchange('dest-events');
+
+      broker.bindExchange('source-events', 'dest-events');
+
+      const messages = [];
+      broker.subscribeTmp('dest-events', '#', (routingKey) => {
+        messages.push(routingKey);
+      }, {noAck: true});
+
+      broker.publish('source-events', 'test.1');
+      broker.publish('source-events', 'test.2');
+
+      expect(messages).to.eql(['test.1', 'test.2']);
+    });
+
+    it('shovels messages meeting pattern', () => {
+      const broker = Broker();
+      broker.assertExchange('source-events');
+      broker.assertExchange('dest-events');
+
+      broker.bindExchange('source-events', 'dest-events', 'event.#');
+
+      const messages = [];
+      broker.subscribeTmp('dest-events', '#', (routingKey) => {
+        messages.push(routingKey);
+      }, {noAck: true});
+
+      broker.publish('source-events', 'test.1');
+      broker.publish('source-events', 'event.1');
+
+      expect(messages).to.eql(['event.1']);
+    });
+
+    it('takes cloneMessage function as option', () => {
+      const broker = Broker();
+      broker.assertExchange('source-events');
+      broker.assertExchange('dest-events');
+
+      broker.bindExchange('source-events', 'dest-events', 'event.#', {
+        cloneMessage(msg) {
+          return {
+            content: {...msg.content}
+          };
+        }
+      });
+
+      const messages = [];
+      broker.subscribeTmp('dest-events', '#', (_, msg) => {
+        messages.push(msg.content);
+      }, {noAck: true});
+
+      const content = {data: 1};
+      broker.publish('source-events', 'event.1', content);
+      broker.publish('source-events', 'test.1', content);
+
+      content.data = 3;
+
+      expect(messages).to.eql([{data: 1}]);
+    });
+
+    it('forwards message properties', () => {
+      const broker = Broker();
+      broker.assertExchange('source-events');
+      broker.assertExchange('dest-events');
+
+      broker.bindExchange('source-events', 'dest-events', 'event.#', {
+        cloneMessage(msg) {
+          return {
+            content: {...msg.content}
+          };
+        }
+      });
+
+      const messages = [];
+      broker.subscribeTmp('dest-events', '#', (_, msg) => {
+        messages.push(msg.properties);
+      }, {noAck: true});
+
+      const content = {data: 1};
+      broker.publish('source-events', 'event.1', content, {type: 'event'});
+      broker.publish('source-events', 'test.1', content, {type: 'test'});
+
+      content.data = 3;
+      expect(messages).to.have.length(1);
+      expect(messages[0]).to.have.property('source-exchange', 'source-events');
+      expect(Object.keys(messages[0])).to.have.same.members(['messageId', 'timestamp', 'type', 'source-exchange']);
+    });
+
+    it('calling e2e binding close function stops shoveling', () => {
+      const broker = Broker();
+      broker.assertExchange('source-events');
+      broker.assertExchange('dest-events');
+
+      const e2e = broker.bindExchange('source-events', 'dest-events');
+
+      const messages = [];
+      broker.subscribeTmp('dest-events', '#', (routingKey) => {
+        messages.push(routingKey);
+      }, {noAck: true});
+
+      broker.publish('source-events', 'test.1');
+      broker.publish('source-events', 'test.2');
+
+      e2e.close();
+
+      broker.publish('source-events', 'test.2');
+      broker.publish('source-events', 'test.3');
+
+      expect(messages).to.eql(['test.1', 'test.2']);
+    });
+  });
+
+  describe('unbindExchange()', () => {
+    it('stops e2e binding', () => {
+      const broker = Broker();
+      broker.assertExchange('source-events');
+      broker.assertExchange('dest-events');
+
+      broker.bindExchange('source-events', 'dest-events');
+
+      const messages = [];
+      broker.subscribeTmp('dest-events', '#', (routingKey) => {
+        messages.push(routingKey);
+      }, {noAck: true});
+
+      broker.publish('source-events', 'test.1');
+      broker.publish('source-events', 'test.2');
+
+      broker.unbindExchange('source-events', 'dest-events');
+
+      broker.publish('source-events', 'test.2');
+      broker.publish('source-events', 'test.3');
+
+      expect(messages).to.eql(['test.1', 'test.2']);
+    });
+
+    it('shovels messages meeting pattern', () => {
+      const broker = Broker();
+      broker.assertExchange('source-events');
+      broker.assertExchange('dest-events');
+
+      broker.bindExchange('source-events', 'dest-events', 'event.#');
+
+      const messages = [];
+      broker.subscribeTmp('dest-events', '#', (routingKey) => {
+        messages.push(routingKey);
+      }, {noAck: true});
+
+      broker.publish('source-events', 'test.1');
+      broker.publish('source-events', 'event.1');
+
+      expect(messages).to.eql(['event.1']);
+    });
+
+    it('takes cloneMessage function as option', () => {
+      const broker = Broker();
+      broker.assertExchange('source-events');
+      broker.assertExchange('dest-events');
+
+      broker.bindExchange('source-events', 'dest-events', 'event.#', {
+        cloneMessage(msg) {
+          return {
+            content: {...msg.content}
+          };
+        }
+      });
+
+      const messages = [];
+      broker.subscribeTmp('dest-events', '#', (_, msg) => {
+        messages.push(msg.content);
+      }, {noAck: true});
+
+      const content = {data: 1};
+      broker.publish('source-events', 'event.1', content);
+      broker.publish('source-events', 'test.1', content);
+
+      content.data = 3;
+
+      expect(messages).to.eql([{data: 1}]);
+    });
+
+    it('forwards message properties', () => {
+      const broker = Broker();
+      broker.assertExchange('source-events');
+      broker.assertExchange('dest-events');
+
+      broker.bindExchange('source-events', 'dest-events', 'event.#', {
+        cloneMessage(msg) {
+          return {
+            content: {...msg.content}
+          };
+        }
+      });
+
+      const messages = [];
+      broker.subscribeTmp('dest-events', '#', (_, msg) => {
+        messages.push(msg.properties);
+      }, {noAck: true});
+
+      const content = {data: 1};
+      broker.publish('source-events', 'event.1', content, {type: 'event'});
+      broker.publish('source-events', 'test.1', content, {type: 'test'});
+
+      content.data = 3;
+      expect(messages).to.have.length(1);
+      expect(messages[0]).to.have.property('source-exchange', 'source-events');
+      expect(Object.keys(messages[0])).to.have.same.members(['messageId', 'timestamp', 'type', 'source-exchange']);
+    });
+  });
 });

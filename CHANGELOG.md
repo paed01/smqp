@@ -1,6 +1,14 @@
 Changelog
 =========
 
+# 2.0.0
+
+## Breaking changes
+- `createShovel` has changed signature: last argument `cloneMessage` is converted to an `args` object, and `cloneMessage` moved to a property of `args`
+
+## Additions
+- Introduce e2e by `bindExchange` and consequentaly `unbindExchange`, shoveling messages between exchanges
+
 # 1.11.1
 
 - Fix consumer eventlistener not working at all due to messed up binary code
