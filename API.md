@@ -1,5 +1,5 @@
 <!-- version -->
-# 1.11.1 API Reference
+# 2.0.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -16,8 +16,8 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.close()`](#brokerclose)
     - [`broker.assertExchange(exchangeName[, type = topic, options])`](#brokerassertexchangeexchangename-type--topic-options)
     - [`broker.deleteExchange(exchangeName[, ifUnused])`](#brokerdeleteexchangeexchangename-ifunused)
-    - [`broker.bindExchange()`](#brokerbindexchange)
-    - [`broker.unbindExchange()`](#brokerunbindexchange)
+    - [`broker.bindExchange(source, destination[, pattern, args])`](#brokerbindexchangesource-destination-pattern-args)
+    - [`broker.unbindExchange(source, destination[, pattern])`](#brokerunbindexchangesource-destination-pattern)
     - [`broker.assertQueue(queueName[, options])`](#brokerassertqueuequeuename-options)
     - [`broker.bindQueue(queueName, exchangeName, pattern[, options])`](#brokerbindqueuequeuename-exchangename-pattern-options)
     - [`broker.unbindQueue(queueName, exchangeName, pattern)`](#brokerunbindqueuequeuename-exchangename-pattern)
@@ -193,11 +193,35 @@ Returns [Exchange](#exchange).
 
 ### `broker.deleteExchange(exchangeName[, ifUnused])`
 
-### `broker.bindExchange()`
-Not yet implemented
+### `broker.bindExchange(source, destination[, pattern, args])`
 
-### `broker.unbindExchange()`
-Not yet implemented
+Shovel messages between exchanges aka e2e binding.
+
+Arguments:
+- `source`: source exchange name
+- `destination`: destination exchange name
+- `pattern`: optional binding pattern, defaults to all (`#`)
+- `args`: Optional options object
+  - `cloneMessage`: clone message function called with shoveled message
+
+Returns:
+- `name`: name of e2e binding
+- `source`: source exchange name
+- `destination`: destination exchange name
+- `pattern`: pattern
+- `queue`: name of source e2e queue
+- `consumerTag`: consumer tag for temporary source e2e queue
+- `on(eventName, handler)`: listen for shovel events, returns event consumer
+- `close()`: close e2e binding
+
+### `broker.unbindExchange(source, destination[, pattern])`
+
+Close e2e binding.
+
+Arguments:
+- `source`: source exchange name
+- `destination`: destination exchange name
+- `pattern`: optional binding pattern, defaults to all (`#`)
 
 ### `broker.assertQueue(queueName[, options])`
 Assert a queue into existence.
@@ -260,7 +284,6 @@ Get message from queue.
 ### `broker.ackAll()`
 ### `broker.nack(message[, allUpTo, requeue])`
 ### `broker.nackAll([requeue])`
-
 ### `broker.reject(message[, requeue])`
 
 ### `broker.createShovel(name, source, destination[, cloneMessage])`
@@ -275,17 +298,19 @@ Arguments:
   - `exchange`: exchange name
   - `pattern`: optional binding pattern, defaults to all (`#`)
   - `queue`: optional queue name, defaults to temporary autodeleted queue
+  - `consumerTag`: optional consumer tag, defaults to composed consumer tag
 - `destination`: destination broker options
   - `broker`: destiniation broker instance
   - `exchange`: destination exchange name, must be asserted into existance
-- `cloneMessage`: optional clone message function called with shoveled message
+- `args`: Optional options object
+  - `cloneMessage`: clone message function called with shoveled message
 
 Returns Shovel:
 - `name`: name of shovel
 - `source`: input source options
 - `destination`: input destination broker options
   - `queue`: name of queue, added if not provided when creating shovel
-- `consumerTag`: consumer tag for source queue
+- `consumerTag`: consumer tag for source shovel queue
 - `on(eventName, handler)`: listen for shovel events, returns event consumer
 - `close()`: close shovel and cancel source consumer tag
 

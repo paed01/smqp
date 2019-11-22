@@ -235,8 +235,35 @@ export function Broker(owner) {
     }
   }
 
-  function bindExchange() {}
-  function unbindExchange() {}
+  function bindExchange(source, destination, pattern = '#', args = {}) {
+    const name = `e2e-${source}2${destination}-${pattern}`;
+    const {consumerTag, on: onShovel, close: onClose, source: shovelSource} = createShovel(name, {
+      broker,
+      exchange: source,
+      pattern,
+      consumerTag: `smq.ctag-${name}`,
+    }, {
+      broker,
+      exchange: destination
+    }, {
+      ...args
+    });
+
+    return {
+      name,
+      source,
+      destination,
+      queue: shovelSource.queue,
+      consumerTag,
+      on: onShovel,
+      close: onClose,
+    };
+  }
+
+  function unbindExchange(source, destination, pattern = '#') {
+    const name = `e2e-${source}2${destination}-${pattern}`;
+    return closeShovel(name);
+  }
 
   function publish(exchangeName, routingKey, content, options) {
     const exchange = getExchangeByName(exchangeName);
