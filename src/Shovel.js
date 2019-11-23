@@ -1,7 +1,7 @@
 import {EventExchange} from './Exchange';
 
 export function Shovel(name, source, destination, options = {}) {
-  const {broker: sourceBroker, exchange: sourceExchangeName, pattern, queue} = source;
+  const {broker: sourceBroker, exchange: sourceExchangeName, pattern, queue, priority} = source;
   const {broker: destinationBroker, exchange: destinationExchangeName} = destination;
   const {cloneMessage} = options;
 
@@ -42,9 +42,9 @@ export function Shovel(name, source, destination, options = {}) {
 
   let consumer;
   if (queue) {
-    consumer = sourceBroker.subscribe(sourceExchangeName, routingKeyPattern, queue, onShovelMessage, {consumerTag});
+    consumer = sourceBroker.subscribe(sourceExchangeName, routingKeyPattern, queue, onShovelMessage, {consumerTag, priority});
   } else {
-    consumer = sourceBroker.subscribeTmp(sourceExchangeName, routingKeyPattern, onShovelMessage, {consumerTag});
+    consumer = sourceBroker.subscribeTmp(sourceExchangeName, routingKeyPattern, onShovelMessage, {consumerTag, priority});
     api.source.queue = consumer.queue.name;
   }
   eventHandlers.push(consumer.on('cancel', close));

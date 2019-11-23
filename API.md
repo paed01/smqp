@@ -1,5 +1,5 @@
 <!-- version -->
-# 2.0.0 API Reference
+# 2.0.1 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -176,7 +176,7 @@ Publish message to exchange.
 - `options`: Message options
   - `mandatory`: boolean indicating if message is mandatory. Value `true` emits `return` if not routed to any queue
   - `persistent`: boolean indicating if message is persistent, defaults to undef (true). Value `false` ignores the message when queue is recovered from state
-  - `eviction`: integer, expire message after milliseconds, [see Message Eviction](#message-eviction)
+  - `expiration`: integer, expire message after milliseconds, [see Message Eviction](#message-eviction)
 
 ### `broker.close()`
 Close exchanges, queues, and all consumers
@@ -202,6 +202,7 @@ Arguments:
 - `destination`: destination exchange name
 - `pattern`: optional binding pattern, defaults to all (`#`)
 - `args`: Optional options object
+  - `priority`: optional binding priority
   - `cloneMessage`: clone message function called with shoveled message
 
 Returns:
@@ -298,6 +299,7 @@ Arguments:
   - `exchange`: exchange name
   - `pattern`: optional binding pattern, defaults to all (`#`)
   - `queue`: optional queue name, defaults to temporary autodeleted queue
+  - `priority`: optional binding priority
   - `consumerTag`: optional consumer tag, defaults to composed consumer tag
 - `destination`: destination broker options
   - `broker`: destiniation broker instance
@@ -496,12 +498,14 @@ What it is all about - convey messages.
 - `fields`: message fields
   - `routingKey`: routing key if any
   - `redelivered`: message is redelivered
+  - `exchange`: published through exchange
   - `consumerTag`: consumer tag when consumed
 - `content`: message content
 - `properties`: message properties, any number of properties can be set, known:
-  - `messageId`: message id
+  - `messageId`: unique message id
   - `persistent`: persist message, if unset queue option durable prevails
   - `timestamp`: `Date.now()`
+  - `expiration`: Expire message after milliseconds
 
 ### `ack([allUpTo])`
 Acknowledge message

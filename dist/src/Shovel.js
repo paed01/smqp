@@ -12,7 +12,8 @@ function Shovel(name, source, destination, options = {}) {
     broker: sourceBroker,
     exchange: sourceExchangeName,
     pattern,
-    queue
+    queue,
+    priority
   } = source;
   const {
     broker: destinationBroker,
@@ -58,11 +59,13 @@ function Shovel(name, source, destination, options = {}) {
 
   if (queue) {
     consumer = sourceBroker.subscribe(sourceExchangeName, routingKeyPattern, queue, onShovelMessage, {
-      consumerTag
+      consumerTag,
+      priority
     });
   } else {
     consumer = sourceBroker.subscribeTmp(sourceExchangeName, routingKeyPattern, onShovelMessage, {
-      consumerTag
+      consumerTag,
+      priority
     });
     api.source.queue = consumer.queue.name;
   }

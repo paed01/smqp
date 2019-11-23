@@ -253,6 +253,9 @@ function Broker(owner) {
   function bindExchange(source, destination, pattern = '#', args = {}) {
     const name = `e2e-${source}2${destination}-${pattern}`;
     const {
+      priority
+    } = args;
+    const {
       consumerTag,
       on: onShovel,
       close: onClose,
@@ -261,6 +264,7 @@ function Broker(owner) {
       broker,
       exchange: source,
       pattern,
+      priority,
       consumerTag: `smq.ctag-${name}`
     }, {
       broker,

@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 2.0.1
+- Support passing source binding priority to shovel or bound exchange
+
 # 2.0.0
 
 ## Breaking changes

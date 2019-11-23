@@ -1960,6 +1960,34 @@ describe('Broker', () => {
       expect(messages).to.eql([{data: 1}]);
     });
 
+    it('takes binding priority as option', () => {
+      const broker = Broker();
+      broker.assertExchange('source-events');
+      broker.assertExchange('dest-events');
+
+      const messages = [];
+      broker.subscribeTmp('source-events', '#', (_, msg) => {
+        messages.push(msg);
+      }, {noAck: true});
+
+      broker.bindExchange('source-events', 'dest-events', 'event.#', {
+        priority: 1000
+      });
+
+      broker.subscribeTmp('dest-events', '#', (_, msg) => {
+        messages.push(msg);
+      }, {noAck: true});
+
+      broker.publish('source-events', 'event.1');
+      broker.publish('source-events', 'event.2');
+
+      expect(messages).to.have.length(4);
+      expect(messages[0].fields).to.have.property('exchange', 'dest-events');
+      expect(messages[1].fields).to.have.property('exchange', 'source-events');
+      expect(messages[2].fields).to.have.property('exchange', 'dest-events');
+      expect(messages[3].fields).to.have.property('exchange', 'source-events');
+    });
+
     it('forwards message properties', () => {
       const broker = Broker();
       broker.assertExchange('source-events');

@@ -330,6 +330,46 @@ describe('Shovel', () => {
         messages.push(routingKey);
       }
     });
+
+    it('takes source binding priority as source option', () => {
+      const broker1 = Broker();
+      broker1.assertExchange('source-events', 'topic');
+      broker1.assertQueue('events-q', {autoDelete: false});
+
+      const broker2 = Broker();
+      broker2.assertExchange('dest-events', 'topic');
+
+      const messages = [];
+      broker1.subscribeTmp('source-events', '#', (_, msg) => {
+        messages.push(msg);
+      }, {noAck: true});
+
+      const args = ['my-shovel', {
+        broker: broker1,
+        exchange: 'source-events',
+        pattern: 'event.#',
+        queue: 'events-q',
+        priority: 1000
+      }, {
+        broker: broker2,
+        exchange: 'dest-events'
+      }];
+
+      Shovel(...args);
+
+      broker2.subscribeTmp('dest-events', '#', (_, msg) => {
+        messages.push(msg);
+      }, {noAck: true});
+
+      broker1.publish('source-events', 'event.1');
+      broker1.publish('source-events', 'event.2');
+
+      expect(messages).to.have.length(4);
+      expect(messages[0].fields).to.have.property('exchange', 'dest-events');
+      expect(messages[1].fields).to.have.property('exchange', 'source-events');
+      expect(messages[2].fields).to.have.property('exchange', 'dest-events');
+      expect(messages[3].fields).to.have.property('exchange', 'source-events');
+    });
   });
 
   describe('broker', () => {
