@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 2.1.0
+
+- Support changing destination exchange key in shovel
+- Support overwriting shoveled message properties
+
 # 2.0.1
 - Support passing source binding priority to shovel or bound exchange
 

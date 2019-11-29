@@ -393,9 +393,9 @@ export function Broker(owner) {
     return true;
   }
 
-  function createShovel(name, source, destination, cloneMessage) {
+  function createShovel(name, source, destination, options) {
     if (getShovel(name)) throw new Error(`Shovel name must be unique, ${name} is occupied`);
-    const shovel = Shovel(name, {...source, broker}, destination, cloneMessage);
+    const shovel = Shovel(name, {...source, broker}, destination, options);
     shovels.push(shovel);
     shovel.on('close', onClose);
     return shovel;

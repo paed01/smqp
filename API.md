@@ -1,5 +1,5 @@
 <!-- version -->
-# 2.0.1 API Reference
+# 2.1.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -296,16 +296,18 @@ Shovel messages from current broker to another broker exchange.
 Arguments:
 - `name`: mandatory name of shovel
 - `source`: source options
-  - `exchange`: exchange name
+  - `exchange`: source exchange name
   - `pattern`: optional binding pattern, defaults to all (`#`)
   - `queue`: optional queue name, defaults to temporary autodeleted queue
   - `priority`: optional binding priority
   - `consumerTag`: optional consumer tag, defaults to composed consumer tag
 - `destination`: destination broker options
   - `broker`: destiniation broker instance
-  - `exchange`: destination exchange name, must be asserted into existance
+  - `exchange`: destination exchange name, must be asserted into existance before shovel is created
+  - `exchangeKey`: optional destination exchange key, defaults to original message's routing key
+  - `publishProperties`: optional object with properties to overwrite when shovelling messages, applied after `cloneMessage` function
 - `args`: Optional options object
-  - `cloneMessage`: clone message function called with shoveled message
+  - `cloneMessage`: clone message function called with shoveled message, should return new message
 
 Returns Shovel:
 - `name`: name of shovel

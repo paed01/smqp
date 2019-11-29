@@ -2,7 +2,7 @@ import {EventExchange} from './Exchange';
 
 export function Shovel(name, source, destination, options = {}) {
   const {broker: sourceBroker, exchange: sourceExchangeName, pattern, queue, priority} = source;
-  const {broker: destinationBroker, exchange: destinationExchangeName} = destination;
+  const {broker: destinationBroker, exchange: destinationExchangeName, publishProperties, exchangeKey} = destination;
   const {cloneMessage} = options;
 
   const sourceExchange = sourceBroker.getExchange(sourceExchangeName);
@@ -53,9 +53,9 @@ export function Shovel(name, source, destination, options = {}) {
 
   function onShovelMessage(routingKey, message) {
     const {content, properties} = messageHandler(message);
-    const props = {...properties, 'source-exchange': sourceExchangeName};
+    const props = {...properties, ...publishProperties, 'source-exchange': sourceExchangeName};
     if (!sameBroker) props['shovel-name'] = name;
-    destinationExchange.publish(routingKey, content, props);
+    destinationExchange.publish(exchangeKey || routingKey, content, props);
     message.ack();
   }
 

@@ -17,7 +17,9 @@ function Shovel(name, source, destination, options = {}) {
   } = source;
   const {
     broker: destinationBroker,
-    exchange: destinationExchangeName
+    exchange: destinationExchangeName,
+    publishProperties,
+    exchangeKey
   } = destination;
   const {
     cloneMessage
@@ -79,10 +81,11 @@ function Shovel(name, source, destination, options = {}) {
       properties
     } = messageHandler(message);
     const props = { ...properties,
+      ...publishProperties,
       'source-exchange': sourceExchangeName
     };
     if (!sameBroker) props['shovel-name'] = name;
-    destinationExchange.publish(routingKey, content, props);
+    destinationExchange.publish(exchangeKey || routingKey, content, props);
     message.ack();
   }
 

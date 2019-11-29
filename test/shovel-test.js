@@ -81,6 +81,96 @@ describe('Shovel', () => {
       }
     });
 
+    it('destination publish properties option overwrites properties before shoveling message', () => {
+      const broker1 = Broker();
+      broker1.assertExchange('source-events', 'topic');
+      broker1.assertQueue('events-q', {autoDelete: false});
+
+      const broker2 = Broker();
+      broker2.assertExchange('dest-events', 'topic');
+
+      const messages = [];
+      broker2.subscribeTmp('dest-events', '#', onMessage, {noAck: true});
+
+      Shovel('my-shovel', {
+        broker: broker1,
+        exchange: 'source-events',
+        pattern: 'event.#',
+        queue: 'events-q',
+      }, {
+        broker: broker2,
+        exchange: 'dest-events',
+        publishProperties: {
+          mandatory: false,
+          type: 'shoveled',
+          'source-exchange': 'overwrite'
+        }
+      }, {
+        cloneMessage(message) {
+          expect(message).to.not.have.property('ack');
+          expect(message).to.have.property('fields');
+          expect(message).to.have.property('content');
+          expect(message).to.have.property('properties');
+
+          return {
+            content: JSON.parse(JSON.stringify(message.content)),
+          };
+        }
+      });
+      const content = {
+        data: 1,
+      };
+
+      broker1.publish('source-events', 'event.1', content, {mandatory: true});
+
+      expect(messages).to.have.length(1);
+
+      const [message] = messages;
+
+      expect(message).to.have.property('fields').with.property('routingKey', 'event.1');
+      expect(message).to.have.property('properties').with.property('mandatory', false);
+      expect(message.properties).to.have.property('type', 'shoveled');
+      expect(message.properties).to.have.property('source-exchange', 'source-events');
+
+      function onMessage(routingKey, msg) {
+        messages.push(msg);
+      }
+    });
+
+    it('destination exchangeKey option publishes message with exchange routing key', () => {
+      const broker1 = Broker();
+      broker1.assertExchange('source-events', 'topic');
+      broker1.assertQueue('events-q', {autoDelete: false});
+
+      const broker2 = Broker();
+      broker2.assertExchange('dest-events', 'topic');
+
+      const messages = [];
+      broker2.subscribeTmp('dest-events', 'shoveled', onMessage, {noAck: true});
+
+      Shovel('my-shovel', {
+        broker: broker1,
+        exchange: 'source-events',
+        pattern: 'event.#',
+        queue: 'events-q',
+      }, {
+        broker: broker2,
+        exchange: 'dest-events',
+        exchangeKey: 'shoveled'
+      });
+
+      broker1.publish('source-events', 'event.1');
+      broker1.publish('source-events', 'event.2');
+
+      expect(messages).to.have.length(2);
+      expect(messages[0]).to.have.property('fields').with.property('routingKey', 'shoveled');
+      expect(messages[1]).to.have.property('fields').with.property('routingKey', 'shoveled');
+
+      function onMessage(routingKey, msg) {
+        messages.push(msg);
+      }
+    });
+
     it('shovels message meeting pattern from one broker to an other', () => {
       const broker1 = Broker();
       broker1.assertExchange('source-events', 'topic');
@@ -373,7 +463,7 @@ describe('Shovel', () => {
   });
 
   describe('broker', () => {
-    it('broker.createShovel() creates shovel', () => {
+    it('broker.createShovel(name, source, destination[, options]) creates shovel', () => {
       const broker = Broker();
       broker.assertExchange('events', 'topic');
 
@@ -383,7 +473,16 @@ describe('Shovel', () => {
       const messages = [];
       destinationBroker.subscribeTmp('events', '#', onMessage, {noAck: true});
 
-      broker.createShovel('events-shovel', {exchange: 'events'}, {broker: destinationBroker, exchange: 'events'}, {
+      broker.createShovel('events-shovel', {
+        exchange: 'events',
+      }, {
+        broker: destinationBroker,
+        exchange: 'events',
+        publishProperties: {
+          mandatory: false,
+          type: 'shoveled'
+        },
+      }, {
         cloneMessage(message) {
           expect(message).to.not.have.property('ack');
           expect(message).to.have.property('fields');
@@ -392,7 +491,9 @@ describe('Shovel', () => {
 
           return {
             content: JSON.parse(JSON.stringify(message.content)),
-            properties: {mandatory: false},
+            properties: {
+              type: undefined,
+            }
           };
         }
       });
@@ -411,6 +512,7 @@ describe('Shovel', () => {
       expect(message).to.have.property('fields').with.property('routingKey', 'event.1');
       expect(message).to.have.property('content').with.property('data', 1);
       expect(message).to.have.property('properties').with.property('mandatory', false);
+      expect(message).to.have.property('properties').with.property('type', 'shoveled');
 
       function onMessage(routingKey, msg) {
         messages.push(msg);
