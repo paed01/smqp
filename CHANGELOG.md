@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 2.1.1
+
+- Ignore published message if no one is listening, unless it is mandatory
+
 # 2.1.0
 
 - Support changing destination exchange key in shovel

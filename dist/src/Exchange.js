@@ -72,13 +72,19 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
   return exchange;
 
   function publish(routingKey, content, properties = {}) {
-    if (stopped) return;
+    if (!shouldIPublish(properties)) return;
     return deliveryQueue.queueMessage({
       routingKey
     }, {
       content,
       properties
     });
+  }
+
+  function shouldIPublish(messageProperties) {
+    if (stopped) return;
+    if (messageProperties.mandatory) return true;
+    return bindings.length;
   }
 
   function topic(routingKey, message) {
