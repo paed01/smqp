@@ -38,7 +38,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.nack(message[, allUpTo, requeue])`](#brokernackmessage-allupto-requeue)
     - [`broker.nackAll([requeue])`](#brokernackallrequeue)
     - [`broker.reject(message[, requeue])`](#brokerrejectmessage-requeue)
-    - [`broker.createShovel(name, source, destination[, cloneMessage])`](#brokercreateshovelname-source-destination-clonemessage)
+    - [`broker.createShovel(name, source, destination[, options])`](#brokercreateshovelname-source-destination-options)
     - [`broker.getShovel(name)`](#brokergetshovelname)
     - [`broker.closeShovel(name)`](#brokercloseshovelname)
     - [`broker.on(eventName, callback)`](#brokeroneventname-callback)
@@ -287,9 +287,9 @@ Get message from queue.
 ### `broker.nackAll([requeue])`
 ### `broker.reject(message[, requeue])`
 
-### `broker.createShovel(name, source, destination[, cloneMessage])`
+### `broker.createShovel(name, source, destination[, options])`
 
-Shovel messages from current broker to another broker exchange.
+Shovel messages from exchange to another broker exchange.
 
 > NB! Shovels are not recovered, the source exchange and queue may be recoverable depending on how they were created.
 
@@ -306,7 +306,7 @@ Arguments:
   - `exchange`: destination exchange name, must be asserted into existance before shovel is created
   - `exchangeKey`: optional destination exchange key, defaults to original message's routing key
   - `publishProperties`: optional object with properties to overwrite when shovelling messages, applied after `cloneMessage` function
-- `args`: Optional options object
+- `options`: Optional options object
   - `cloneMessage`: clone message function called with shoveled message, should return new message
 
 Returns Shovel:
@@ -318,7 +318,7 @@ Returns Shovel:
 - `on(eventName, handler)`: listen for shovel events, returns event consumer
 - `close()`: close shovel and cancel source consumer tag
 
-Shovel is also closed if source- or destination change is closed, or source consumer is canceled.
+Shovel is closed if either source- or destination exchange is closed, or source consumer is canceled.
 
 ### `broker.getShovel(name)`
 

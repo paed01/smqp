@@ -62,7 +62,7 @@
     "@babel/register": "^7.7.4",
     "chai": "^4.2.0",
     "chronokinesis": "^2.0.1",
-    "eslint": "^6.7.1",
+    "eslint": "^6.7.2",
     "markdown-toc": "^1.2.0",
     "mocha": "^6.2.2",
     "nyc": "^14.1.0"
