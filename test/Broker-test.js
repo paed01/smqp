@@ -2137,4 +2137,46 @@ describe('Broker', () => {
       expect(Object.keys(messages[0])).to.have.same.members(['messageId', 'timestamp', 'type', 'source-exchange']);
     });
   });
+
+  describe('getConsumers()', () => {
+    it('returns as a list of copied consumers with consumerTag, queue, and, options', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+      broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+      broker.consume('event-q', () => {}, {consumerTag: 'ct-test-1', channelName: 'my-channel'});
+      broker.on('return', () => {});
+
+      let consumers = broker.getConsumers();
+      expect(consumers).to.have.length(1);
+      expect(consumers[0]).to.have.property('consumerTag', 'ct-test-1');
+      expect(consumers[0]).to.have.property('queue', 'event-q');
+      expect(consumers[0]).to.have.property('options').that.deep.equal({
+        channelName: 'my-channel',
+        consumerTag: 'ct-test-1',
+        noAck: false,
+        prefetch: 1,
+        priority: 0,
+      });
+
+      consumers[0].queue = 'altered-q';
+      consumers[0].options.noAck = true;
+
+      broker.consume('event-q', () => {}, {consumerTag: 'ct-test-2', channelName: 'my-channel'});
+
+      expect(consumers).to.have.length(1);
+
+      consumers = broker.getConsumers();
+      expect(consumers).to.have.length(2);
+      expect(consumers[0]).to.have.property('consumerTag', 'ct-test-1');
+      expect(consumers[0]).to.have.property('queue', 'event-q');
+      expect(consumers[0]).to.have.property('options').that.deep.equal({
+        channelName: 'my-channel',
+        consumerTag: 'ct-test-1',
+        noAck: false,
+        prefetch: 1,
+        priority: 0,
+      });
+    });
+  });
 });

@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 2.2.0
+
+- Add broker function `getConsumers()` to get the list of consumer properties
+
 # 2.1.1
 
 - Ignore published message if no one is listening, unless it is mandatory

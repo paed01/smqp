@@ -1,5 +1,5 @@
 <!-- version -->
-# 2.1.1 API Reference
+# 2.2.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -27,6 +27,8 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.deleteQueue(queueName[, {ifUnused, ifEmpty}])`](#brokerdeletequeuequeuename-ifunused-ifempty)
     - [`broker.getExchange(exchangeName)`](#brokergetexchangeexchangename)
     - [`broker.getQueue(queueName)`](#brokergetqueuequeuename)
+    - [`broker.getConsumers()`](#brokergetconsumers)
+    - [`broker.getConsumer(consumerTag)`](#brokergetconsumerconsumertag)
     - [`broker.getState()`](#brokergetstate)
     - [`broker.recover([state])`](#brokerrecoverstate)
     - [`broker.purgeQueue(queueName)`](#brokerpurgequeuequeuename)
@@ -262,6 +264,12 @@ Get [exchange](#exchange) by name.
 
 ### `broker.getQueue(queueName)`
 Get [queue](#queue) by name. Returns existing queue or nothing
+
+### `broker.getConsumers()`
+Returns a list of consumer properties, i.e. queue name, consumer tag, and options.
+
+### `broker.getConsumer(consumerTag)`
+Get [consumer](#consumer) by consumer tag. Returns existing consumer or nothing
 
 ### `broker.getState()`
 Return serializable object containing durable exchanges, bindings, and durable queues with messages.

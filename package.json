@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Synchronous message queuing package",
   "author": {
     "name": "Pål Edman",
@@ -56,16 +56,16 @@
     "shovel"
   ],
   "devDependencies": {
-    "@babel/cli": "^7.7.4",
-    "@babel/core": "^7.7.4",
-    "@babel/preset-env": "^7.7.4",
-    "@babel/register": "^7.7.4",
+    "@babel/cli": "^7.10.1",
+    "@babel/core": "^7.10.2",
+    "@babel/preset-env": "^7.10.2",
+    "@babel/register": "^7.10.1",
     "chai": "^4.2.0",
     "chronokinesis": "^2.0.1",
-    "eslint": "^6.7.2",
+    "eslint": "^6.8.0",
     "markdown-toc": "^1.2.0",
-    "mocha": "^6.2.2",
-    "nyc": "^14.1.0"
+    "mocha": "^6.2.3",
+    "nyc": "^15.1.0"
   },
   "nyc": {
     "exclude": [

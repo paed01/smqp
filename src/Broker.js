@@ -34,6 +34,7 @@ export function Broker(owner) {
     deleteQueue,
     get: getMessageFromQueue,
     getConsumer,
+    getConsumers,
     getExchange,
     getQueue,
     getState,
@@ -160,6 +161,16 @@ export function Broker(owner) {
     if (!consumer) return false;
     consumer.cancel(false);
     return true;
+  }
+
+  function getConsumers() {
+    return consumers.map((consumer) => {
+      return {
+        queue: consumer.queue.name,
+        consumerTag: consumer.options.consumerTag,
+        options: {...consumer.options}
+      };
+    });
   }
 
   function getConsumer(consumerTag) {
