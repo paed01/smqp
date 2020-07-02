@@ -1,6 +1,18 @@
 Changelog
 =========
 
+# 3.0.0
+
+Confirm messages and node 10 and above.
+
+## Breaking changes
+- Drop nodejs 8 support, or at least for tests due to mocha
+
+## Additions
+- New message confirm option, will emit `message.nack`, `message.ack`, or `message.undelivered` on broker
+- Support offing broker events by consumerTag
+- Support offing exchange events by consumerTag
+
 # 2.2.0
 
 - Add broker function `getConsumers()` to get the list of consumer properties

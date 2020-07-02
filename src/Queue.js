@@ -45,30 +45,42 @@ function Queue(name, options = {}, eventEmitter) {
 
   Object.defineProperty(queue, 'messageCount', {
     enumerable: true,
-    get: () => messages.length
+    get() {
+      return messages.length;
+    }
   });
 
   Object.defineProperty(queue, 'consumers', {
-    get: () => consumers.slice()
+    get() {
+      return consumers.slice();
+    }
   });
 
   Object.defineProperty(queue, 'consumerCount', {
-    get: () => consumers.length
+    get() {
+      return consumers.length;
+    }
   });
 
   Object.defineProperty(queue, 'stopped', {
-    get: () => stopped
+    get() {
+      return stopped;
+    }
   });
 
   Object.defineProperty(queue, 'exclusive', {
-    get: () => exclusivelyConsumed
+    get() {
+      return exclusivelyConsumed;
+    }
   });
 
   Object.defineProperty(queue, 'maxLength', {
     set(value) {
       maxLength = options.maxLength = value;
     },
-    get: () => maxLength
+    get() {
+      return maxLength;
+    }
   });
 
   Object.defineProperty(queue, 'capacity', {
@@ -222,6 +234,7 @@ function Queue(name, options = {}, eventEmitter) {
   function onMessageConsumed(message, operation, allUpTo, requeue) {
     if (stopped) return;
     const pending = allUpTo && getPendingMessages(message);
+    const {properties} = message;
 
     let deadLetter = false;
     switch (operation) {
@@ -246,8 +259,12 @@ function Queue(name, options = {}, eventEmitter) {
 
     if (!pending || !pending.length) consumeNext();
 
+    if (!requeue && properties.confirm) {
+      emit('message.consumed.' + operation, {operation, message: {...message}});
+    }
+
     if (deadLetter) {
-      const deadMessage = Message(message.fields, message.content, {...message.properties, expiration: undefined});
+      const deadMessage = Message(message.fields, message.content, {...properties, expiration: undefined});
       if (deadLetterRoutingKey) deadMessage.fields.routingKey = deadLetterRoutingKey;
 
       emit('dead-letter', {

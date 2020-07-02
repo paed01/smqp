@@ -35,8 +35,10 @@ function Message(fields = {}, content, properties = {}, onConsumed) {
   });
 
   Object.defineProperty(message, 'consumerTag', {
-    get: () => message.fields.consumerTag,
-    set: (value) => {
+    get() {
+      return message.fields.consumerTag;
+    },
+    set(value) {
       message.fields.consumerTag = value;
     },
   });

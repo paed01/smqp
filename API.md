@@ -1,5 +1,5 @@
 <!-- version -->
-# 2.2.0 API Reference
+# 3.0.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -43,8 +43,8 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.createShovel(name, source, destination[, options])`](#brokercreateshovelname-source-destination-options)
     - [`broker.getShovel(name)`](#brokergetshovelname)
     - [`broker.closeShovel(name)`](#brokercloseshovelname)
-    - [`broker.on(eventName, callback)`](#brokeroneventname-callback)
-    - [`broker.off(eventName, callback)`](#brokeroffeventname-callback)
+    - [`broker.on(eventName, callback[, options])`](#brokeroneventname-callback-options)
+    - [`broker.off(eventName, callbackOrObject)`](#brokeroffeventname-callbackorobject)
     - [`broker.prefetch(count)`](#brokerprefetchcount)
     - [`broker.reset()`](#brokerreset)
   - [Exchange](#exchange)
@@ -54,7 +54,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`getBinding(queueName, pattern)`](#getbindingqueuename-pattern)
     - [`getState()`](#getstate)
     - [`on(pattern, handler[, consumeOptions])`](#onpattern-handler-consumeoptions)
-    - [`off(pattern, handler)`](#offpattern-handler)
+    - [`off(pattern, handlerOrObject)`](#offpattern-handlerorobject)
     - [`publish(routingKey[, content, properties])`](#publishroutingkey-content-properties)
     - [`recover(state, getQueue)`](#recoverstate-getqueue)
     - [`stop()`](#stop)
@@ -175,10 +175,11 @@ Publish message to exchange.
 - `exchangeName`: exchange name
 - `routingKey`: routing key
 - `content`: message content
-- `options`: Message options
+- `options`: optional message options
   - `mandatory`: boolean indicating if message is mandatory. Value `true` emits `return` if not routed to any queue
   - `persistent`: boolean indicating if message is persistent, defaults to undef (true). Value `false` ignores the message when queue is recovered from state
   - `expiration`: integer, expire message after milliseconds, [see Message Eviction](#message-eviction)
+  - `confirm`: boolean, confirm message delivered, emits `message.nack`, `message.ack`, or `message.undelivered` on broker
 
 ### `broker.close()`
 Close exchanges, queues, and all consumers
@@ -229,10 +230,11 @@ Arguments:
 ### `broker.assertQueue(queueName[, options])`
 Assert a queue into existence.
 
-- `options`:
+- `options`: optional queue options
   - `durable`: boolean, defaults to `true`, makes queue durable, i.e. will be returned when getting state
   - `autoDelete`: boolean, defaults to `true`, the queue will be removed when all consumers are down
   - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange if non-existing
+  - `messageTtl`: integer, expire message after milliseconds, [see Message Eviction](#message-eviction)
 
 ### `broker.bindQueue(queueName, exchangeName, pattern[, options])`
 ### `broker.unbindQueue(queueName, exchangeName, pattern)`
@@ -336,21 +338,26 @@ Get shovel by name.
 
 Close shovel by name.
 
-### `broker.on(eventName, callback)`
+### `broker.on(eventName, callback[, options])`
 
 Listen for events from Broker.
 
+Arguments:
 - `eventName`: name of event
 - `callback`: event callback
+- `options`: optional consume options
+  - `consumerTag`: optional event consumer tag
 
 Returns consumer - that can be canceled.
 
-### `broker.off(eventName, callback)`
+### `broker.off(eventName, callbackOrObject)`
 
 Turn off event listener(s) associated with event callback.
 
+Arguments:
 - `eventName`: name of event
-- `callback`: event callback
+- `callbackOrObject`: event callback function to off or object with basically one property:
+  - `consumerTag`: optional event consumer tag to off
 
 ### `broker.prefetch(count)`
 
@@ -391,7 +398,23 @@ Get binding to queue by name and with pattern.
 Get recoverable exchange state.
 
 ### `on(pattern, handler[, consumeOptions])`
-### `off(pattern, handler)`
+
+Listen for exchange events.
+
+Arguments:
+- `pattern`: event pattern
+- `handler`: event handler function
+- `consumeOptions`: optional consume options
+  - `consumerTag`: optional event consumer tag
+
+### `off(pattern, handlerOrObject)`
+
+Stop consuming events from exchange.
+
+- `pattern`: event pattern
+- `handlerOrObject`: handler function to off or object with basically one property:
+  - `consumerTag`: optional event consumer tag to off
+
 ### `publish(routingKey[, content, properties])`
 Publish message on exchange.
 
@@ -426,11 +449,13 @@ Properties:
 ### `ackAll()`
 ### `assertConsumer(onMessage[, consumeOptions, owner])`
 ### `cancel(consumerTag)`
+
 Cancel consumer with tag
 
 ### `close()`
 ### `consume(onMessage[, consumeOptions, owner])`
 ### `delete([deleteOptions])`
+
 Delete queue.
 
 - `deleteOptions`: Object with options
@@ -441,6 +466,7 @@ Delete queue.
 Remove message from queue without redelivery.
 
 ### `dismiss(onMessage)`
+
 Dismiss first consumer with `onMessage` handler.
 
 ### `get([consumeOptions])`

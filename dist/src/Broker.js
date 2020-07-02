@@ -132,7 +132,10 @@ function Broker(owner) {
         exchanges.splice(idx, 1);
       });
       exchange.on('return', (_, msg) => {
-        events.publish('return', msg);
+        events.publish('return', msg.content);
+      });
+      exchange.on('message.undelivered', (_, msg) => {
+        events.publish('message.undelivered', msg.content);
       });
       exchanges.push(exchange);
     }
@@ -311,7 +314,7 @@ function Broker(owner) {
     return queue.purge();
   }
 
-  function sendToQueue(queueName, content, options) {
+  function sendToQueue(queueName, content, options = {}) {
     const queue = getQueue(queueName);
     if (!queue) throw new Error(`Queue named ${queueName} doesn't exists`);
     return queue.queueMessage(null, content, options);
@@ -344,6 +347,13 @@ function Broker(owner) {
     queue.on('consumer.cancel', (_, event) => {
       const idx = consumers.indexOf(event.content);
       if (idx !== -1) consumers.splice(idx, 1);
+    });
+    queue.on('message.consumed.#', (_, msg) => {
+      const {
+        operation,
+        message
+      } = msg.content;
+      events.publish('message.' + operation, message);
     });
     queues.push(queue);
     return queue;
@@ -458,28 +468,32 @@ function Broker(owner) {
     return shovels.find(s => s.name === name);
   }
 
-  function on(eventName, callback) {
-    switch (eventName) {
-      case 'return':
-        {
-          return events.on('return', getEventCallback(), {
-            origin: callback
-          });
-        }
-    }
+  function on(eventName, callback, options) {
+    return events.on(eventName, getEventCallback(), { ...options,
+      origin: callback
+    });
 
     function getEventCallback() {
       return function eventCallback(_, msg) {
-        callback(msg.content.content);
+        callback(msg.content);
       };
     }
   }
 
-  function off(eventName, callback) {
+  function off(eventName, callbackOrObject) {
+    const {
+      consumerTag
+    } = callbackOrObject;
+
     for (const binding of events.bindings) {
       if (binding.pattern === eventName) {
+        if (consumerTag) {
+          binding.queue.cancel(consumerTag);
+          continue;
+        }
+
         for (const consumer of binding.queue.consumers) {
-          if (consumer.options && consumer.options.origin === callback) {
+          if (consumer.options && consumer.options.origin === callbackOrObject) {
             consumer.cancel();
           }
         }

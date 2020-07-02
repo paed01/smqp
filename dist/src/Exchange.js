@@ -83,7 +83,7 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
 
   function shouldIPublish(messageProperties) {
     if (stopped) return;
-    if (messageProperties.mandatory) return true;
+    if (messageProperties.mandatory || messageProperties.confirm) return true;
     return bindings.length;
   }
 
@@ -93,11 +93,7 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
 
     if (!deliverTo.length) {
       message.ack();
-
-      if (publishedMsg.properties.mandatory) {
-        emitReturn(routingKey, publishedMsg);
-      }
-
+      emitReturn(routingKey, publishedMsg);
       return 0;
     }
 
@@ -114,11 +110,7 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
 
     if (!first) {
       message.ack();
-
-      if (publishedMsg.properties.mandatory) {
-        emitReturn(routingKey, publishedMsg);
-      }
-
+      emitReturn(routingKey, publishedMsg);
       return 0;
     }
 
@@ -135,10 +127,24 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
   }
 
   function emitReturn(routingKey, returnMessage) {
-    emit('return', (0, _Message.Message)({
-      routingKey,
-      exchange: name
-    }, returnMessage.content, returnMessage.properties));
+    const {
+      content,
+      properties
+    } = returnMessage;
+
+    if (properties.confirm) {
+      emit('message.undelivered', (0, _Message.Message)({
+        routingKey,
+        exchange: name
+      }, content, properties));
+    }
+
+    if (properties.mandatory) {
+      emit('return', (0, _Message.Message)({
+        routingKey,
+        exchange: name
+      }, content, properties));
+    }
   }
 
   function getConcernedBindings(routingKey) {
@@ -242,7 +248,7 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
   }
 
   function on(pattern, handler, consumeOptions = {}) {
-    if (isExchange) return eventExchange.on(`exchange.${pattern}`, handler);
+    if (isExchange) return eventExchange.on(`exchange.${pattern}`, handler, consumeOptions);
     const eventQueue = (0, _Queue.Queue)(null, {
       durable: false,
       autoDelete: true
@@ -256,9 +262,13 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
 
   function off(pattern, handler) {
     if (isExchange) return eventExchange.off(`exchange.${pattern}`, handler);
+    const {
+      consumerTag
+    } = handler;
 
     for (const binding of bindings) {
       if (binding.pattern === pattern) {
+        if (consumerTag) binding.queue.cancel(consumerTag);
         binding.queue.dismiss(handler);
       }
     }

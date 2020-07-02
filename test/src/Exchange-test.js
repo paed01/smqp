@@ -664,6 +664,24 @@ describe('Exchange', () => {
       }
     });
 
+    it('events can be offed by consumerTag', () => {
+      let event;
+      const exchange = Exchange('event', 'topic', {autoDelete: true});
+
+      exchange.on('delete', onEvent, {consumerTag: 'off-tag'});
+      exchange.off('delete', {consumerTag: 'off-tag'});
+
+      const queue = Queue('event-q');
+      exchange.bind(queue, 'test.#');
+      exchange.unbind(queue, 'test.#');
+
+      expect(event).to.not.be.ok;
+
+      function onEvent(eventName, message) {
+        event = message;
+      }
+    });
+
     it('events can be offed even if they are not on', () => {
       let event;
       const exchange = Exchange('event', 'topic', {autoDelete: true});

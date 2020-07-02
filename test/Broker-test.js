@@ -1672,6 +1672,15 @@ describe('Broker', () => {
     });
   });
 
+  describe('broker.sendToQueue(queue, message)', () => {
+    it('throws if queue is missing', () => {
+      const broker = Broker();
+      expect(() => {
+        broker.sendToQueue('not-found-q');
+      }).to.throw(/not-found-q/);
+    });
+  });
+
   describe('broker.prefetch(count)', () => {
     it('has expected placeholder behaviour', () => {
       const broker = Broker();
@@ -1737,6 +1746,27 @@ describe('Broker', () => {
       expect(messages).to.have.length(1);
 
       broker.off('return', onBrokerReturn);
+
+      broker.publish('event', 'test.1', 'important', {mandatory: true});
+
+      expect(messages).to.have.length(1);
+
+      function onBrokerReturn(msg) {
+        messages.push(msg);
+      }
+    });
+
+    it('cancels listener if off is called with consumerTag', () => {
+      const broker = Broker();
+      const messages = [];
+      broker.assertExchange('event');
+      broker.on('return', onBrokerReturn, {consumerTag: 'off-tag'});
+
+      broker.publish('event', 'test.1', 'important', {mandatory: true});
+
+      expect(messages).to.have.length(1);
+
+      broker.off('return', {consumerTag: 'off-tag'});
 
       broker.publish('event', 'test.1', 'important', {mandatory: true});
 

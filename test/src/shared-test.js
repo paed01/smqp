@@ -95,6 +95,20 @@ describe('shared', () => {
       expect(pattern.test('abc')).to.be.false;
     });
 
+    it('*.suffix matches prefix that ends with suffix', () => {
+      const pattern = getRoutingKeyPattern('*.suffix');
+      expect(pattern.test('prefix.suffix')).to.be.true;
+      expect(pattern.test('a.suffix')).to.be.true;
+      expect(pattern.test('me-me.suffix')).to.be.true;
+
+      expect(pattern.test('prefix.a.suffix')).to.be.false;
+      expect(pattern.test('prefix.a.suffix.')).to.be.false;
+      expect(pattern.test('prefix.a.inter.b.c.suffix')).to.be.false;
+      expect(pattern.test('prefix.a')).to.be.false;
+      expect(pattern.test('suffix')).to.be.false;
+      expect(pattern.test('abc')).to.be.false;
+    });
+
     it('special characters match', () => {
       const pattern = getRoutingKeyPattern('prefix-a.*.b');
       expect(pattern.test('prefix-a.a.b')).to.be.true;
