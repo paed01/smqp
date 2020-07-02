@@ -440,8 +440,11 @@ export function Broker(owner) {
     return events.on(eventName, getEventCallback(), {...options, origin: callback});
 
     function getEventCallback() {
-      return function eventCallback(_, msg) {
-        callback(msg.content);
+      return function eventCallback(name, msg) {
+        callback({
+          name,
+          ...msg.content,
+        });
       };
     }
   }

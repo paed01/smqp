@@ -1,5 +1,5 @@
 <!-- version -->
-# 3.0.0 API Reference
+# 3.0.1 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -343,12 +343,20 @@ Close shovel by name.
 Listen for events from Broker.
 
 Arguments:
-- `eventName`: name of event
+- `eventName`: name of event or a "routingKey" pattern
 - `callback`: event callback
 - `options`: optional consume options
   - `consumerTag`: optional event consumer tag
 
 Returns consumer - that can be canceled.
+
+Callback is called with the event and the name of the event, in the same object.
+
+```js
+broker.on('message.*', (event) => {
+  console.log(event.name, 'fired');
+}, {consumerTag: 'my-event-consumertag'});
+```
 
 ### `broker.off(eventName, callbackOrObject)`
 
@@ -358,6 +366,22 @@ Arguments:
 - `eventName`: name of event
 - `callbackOrObject`: event callback function to off or object with basically one property:
   - `consumerTag`: optional event consumer tag to off
+
+```js
+broker.on('return', onMessageEvent, {consumerTag: 'my-event-consumertag'});
+
+function onMessageEvent(event) {
+  console.log(event.name, 'fired');
+}
+
+/* later */
+
+broker.off('return', onMessageEvent);
+
+/* or */
+
+broker.off('return', {consumerTag: 'my-event-consumertag'});
+```
 
 ### `broker.prefetch(count)`
 

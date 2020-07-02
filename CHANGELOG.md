@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 3.0.1
+
+- Sometimes you need the name of the event, especially if you listen with wildcards. The name is an exact match of the emitted message routing key.
+
 # 3.0.0
 
 Confirm messages and node 10 and above.

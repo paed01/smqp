@@ -474,8 +474,11 @@ function Broker(owner) {
     });
 
     function getEventCallback() {
-      return function eventCallback(_, msg) {
-        callback(msg.content);
+      return function eventCallback(name, msg) {
+        callback({
+          name,
+          ...msg.content
+        });
       };
     }
   }

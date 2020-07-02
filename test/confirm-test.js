@@ -9,6 +9,7 @@ describe('Confirm messages with confirm property', () => {
       const broker = Broker();
       broker.assertQueue('event-q');
       broker.on('message.ack', (event) => {
+        expect(event.name).to.equal('message.ack');
         expect(event.content).to.equal('MSG');
         expect(event.properties).to.have.property('myProp', 1);
         done();
@@ -66,7 +67,7 @@ describe('Confirm messages with confirm property', () => {
 
       const events = [];
 
-      broker.on('message.ack', (event) => {
+      broker.on('message.*', (event) => {
         events.push(event);
       });
 
@@ -83,8 +84,10 @@ describe('Confirm messages with confirm property', () => {
       message1.ack();
 
       expect(events, 'ack events').to.have.length(2);
-      expect(events[0].content).to.equal('MSG2');
-      expect(events[1].content).to.equal('MSG1');
+      expect(events[0]).to.have.property('name', 'message.ack');
+      expect(events[0]).to.have.property('content', 'MSG2');
+      expect(events[1]).to.have.property('name', 'message.ack');
+      expect(events[1]).to.have.property('content', 'MSG1');
     });
 
     it('emits ack event when second message is acks allUpTo', () => {
