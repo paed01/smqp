@@ -37,6 +37,22 @@ describe('Confirm messages with confirm property', () => {
       message.nack(false, false);
     });
 
+    it('emits nack event when message is rejected without requeue', (done) => {
+      const broker = Broker();
+      broker.assertQueue('event-q');
+      broker.on('message.nack', (event) => {
+        expect(event.content).to.equal('MSG');
+        expect(event.properties).to.have.property('myProp', 1);
+        expect(event.properties).to.have.property('confirm', 'my-confirm-id');
+        done();
+      });
+
+      broker.sendToQueue('event-q', 'MSG', {confirm: 'my-confirm-id', myProp: 1});
+
+      const message = broker.get('event-q');
+      message.reject(false);
+    });
+
     it('emits nack event when message is nacked without requeue first time but not second', () => {
       const broker = Broker();
       broker.assertQueue('event-q');

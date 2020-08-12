@@ -1823,40 +1823,6 @@ describe('Broker', () => {
         messages.push(msg);
       }
     });
-
-    it('double cancel of queue should not affect other consumers', () => {
-      const broker = Broker();
-
-      broker.assertExchange('event');
-      broker.assertExchange('event');
-
-      const queue1 = broker.assertQueue('queue1', { noAck: false });
-      const queue2 = broker.assertQueue('queue2', { noAck: false });
-
-      broker.bindQueue('queue1', 'event', 'test1.#');
-      broker.bindQueue('queue1', 'event', 'test2.#');
-
-      queue1.on('depleted', () => {
-        broker.cancel('2');
-        broker.cancel('2');
-      });
-
-      queue1.assertConsumer((key, msg) => msg.ack(), {
-        consumerTag: '2',
-      });
-
-      queue2.assertConsumer((key, msg) => msg.ack(), {
-        consumerTag: '1',
-      });
-
-      // Two consumers setup
-      expect(broker.consumerCount).to.equal(2);
-
-      // Publishing should trigger queue depeleted and remove one consumer
-      broker.publish('event', 'test1.something', 'important', {mandatory: true});
-
-      expect(broker.consumerCount).to.equal(1);
-    });
   });
 
   describe('reset()', () => {
