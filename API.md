@@ -312,7 +312,7 @@ Arguments:
   - `priority`: optional binding priority
   - `consumerTag`: optional consumer tag, defaults to composed consumer tag
 - `destination`: destination broker options
-  - `broker`: destiniation broker instance
+  - `broker`: destination broker instance
   - `exchange`: destination exchange name, must be asserted into existance before shovel is created
   - `exchangeKey`: optional destination exchange key, defaults to original message's routing key
   - `publishProperties`: optional object with properties to overwrite when shovelling messages, applied after `cloneMessage` function
