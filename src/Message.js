@@ -37,10 +37,7 @@ function Message(fields = {}, content, properties = {}, onConsumed) {
   Object.defineProperty(message, 'consumerTag', {
     get() {
       return message.fields.consumerTag;
-    },
-    set(value) {
-      message.fields.consumerTag = value;
-    },
+    }
   });
 
   Object.defineProperty(message, 'pending', {

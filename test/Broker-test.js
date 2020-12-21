@@ -724,6 +724,9 @@ describe('Broker', () => {
       const tmpQueue = broker.getQueue(consumer.queueName);
       expect(tmpQueue).to.be.ok;
       expect(tmpQueue).to.have.property('consumerCount', 1);
+      expect(tmpQueue).to.have.property('stopped', true);
+
+      expect(consumer).to.have.property('stopped', true);
 
       tmpQueue.queueMessage('event.queued');
 
@@ -1065,6 +1068,22 @@ describe('Broker', () => {
         messages.push(routingKey);
         message.ack();
       }
+    });
+
+    it('binding is ignored if queue has disappeared', () => {
+      broker.assertQueue('event-prio-q');
+      broker.bindQueue('event-prio-q', 'event', '#', {priority: 100});
+
+      broker.stop();
+
+      const state = broker.getState();
+
+      const qIdx = state.queues.findIndex(({name}) => name === 'event-q');
+      state.queues.splice(qIdx, 1);
+
+      const recovered = Broker().recover(state);
+
+      expect(recovered.getExchange('event')).to.have.property('bindingCount', 1);
     });
   });
 

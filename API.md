@@ -1,5 +1,5 @@
 <!-- version -->
-# 3.0.1 API Reference
+# 3.1.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -452,7 +452,7 @@ Arguments:
 - `pattern`: binding pattern
 
 ### `unbindQueueByName(queueName)`
-Remove all bindings to queue.
+Remove all bindings to queue by queue name.
 
 ## Queue
 Queue

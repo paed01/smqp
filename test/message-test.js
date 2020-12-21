@@ -1,4 +1,5 @@
 import {Broker} from '../index';
+import {Message} from '../src/Message';
 import ck from 'chronokinesis';
 
 describe('message', () => {
@@ -79,5 +80,22 @@ describe('message', () => {
     function onMessage2(_, message) {
       msg2 = message;
     }
+  });
+
+  it('new message without args sets fields consumer tag to undefined', () => {
+    expect(Message()).to.have.property('fields').that.deep.equal({consumerTag: undefined});
+  });
+
+  it('new message without args sets properties message id and timestamp', () => {
+    const msg = Message();
+    expect(msg).to.have.property('properties').that.is.an('object');
+    expect(msg.properties).to.have.property('messageId').that.is.a('string');
+    expect(msg.properties).to.have.property('timestamp').that.is.a('number');
+  });
+
+  it('consume(undefined) defaults consumer argument to empty object', () => {
+    const msg = Message();
+    msg.consume();
+    expect(msg).to.have.property('consumerTag', undefined);
   });
 });

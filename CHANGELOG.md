@@ -1,6 +1,13 @@
 Changelog
 =========
 
+# 3.1.0
+
+Coverage hunting.
+
+- Stop consumers when queue is stopped
+- Remove setter for message consumerTag
+
 # 3.0.1
 
 - Sometimes you need the name of the event, especially if you listen with wildcards. The name is an exact match of the emitted message routing key.

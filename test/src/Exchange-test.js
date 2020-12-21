@@ -698,4 +698,26 @@ describe('Exchange', () => {
       }
     });
   });
+
+  describe('getBinding(queueName, pattern)', () => {
+    it('finds binding matching queue and pattern', () => {
+      const exchange = Exchange('event', 'topic', {autoDelete: true});
+      const queue = Queue('event-q');
+      exchange.bind(queue, 'event.#');
+
+      const binding = exchange.getBinding('event-q', 'event.#');
+      expect(binding).to.be.ok;
+    });
+
+    it('return nothing if no binding was found', () => {
+      const exchange = Exchange('event', 'topic', {autoDelete: true});
+
+      expect(exchange.getBinding('event-q', 'event.#')).to.not.be.ok;
+
+      const queue = Queue('event-q');
+      exchange.bind(queue, 'event.#');
+
+      expect(exchange.getBinding('other-q', 'event.#')).to.not.be.ok;
+    });
+  });
 });

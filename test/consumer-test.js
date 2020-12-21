@@ -130,6 +130,38 @@ describe('consumer', () => {
       }
     });
 
+    it('consumer.prefetch(2) takes two published messages at a time', (done) => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+
+      const messages = [];
+      const consumer = broker.subscribe('test', 'test.#', 'test-q', onMessage);
+      consumer.prefetch(2);
+
+      broker.publish('test', 'test.1.1', null, {correlationId: 1});
+      broker.publish('test', 'test.2.1', null, {correlationId: 1});
+      broker.publish('test', 'test.1.2', null, {correlationId: 2});
+      broker.publish('test', 'test.2.2', null, {correlationId: 2});
+      broker.publish('test', 'test.1.3', null, {correlationId: 3});
+
+      function cb() {
+        expect(messages).to.have.length(5);
+        expect(messages.map(({fields}) => fields.routingKey)).to.eql(['test.1.1', 'test.2.1', 'test.1.2', 'test.2.2', 'test.1.3']);
+        done();
+      }
+
+      function onMessage(_, message) {
+        messages.push(message);
+
+        if (!(messages.length % 2)) {
+          messages.slice(-2).forEach((msg) => msg.ack());
+        }
+
+        if (messages.length === 5) cb();
+      }
+    });
+
     it('high prefetch consumes messages in sequence even if new message is published in message callback', () => {
       const broker = Broker();
 

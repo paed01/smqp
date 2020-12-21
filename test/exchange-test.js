@@ -279,4 +279,21 @@ describe('exchange', () => {
       expect(broker2.getExchange('test')).to.not.be.ok;
     });
   });
+
+  describe('unbindQueueByName(queueName)', () => {
+    it('unbinds queue from exchange', () => {
+      const broker = Broker();
+      const exchange = broker.assertExchange('event', 'topic', {autoDelete: true});
+
+      const consumer = broker.subscribeTmp('event', 'event.#', () => {});
+
+      expect(exchange.bindingCount).to.equal(1);
+
+      exchange.unbindQueueByName(consumer.queueName);
+
+      expect(exchange.bindingCount).to.equal(0);
+
+      expect(broker.exchangeCount).to.equal(0);
+    });
+  });
 });

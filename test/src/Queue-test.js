@@ -27,12 +27,46 @@ describe('Queue', () => {
     describe('maxLength', () => {
       it('maxLength evicts old messages', () => {
         const queue = Queue(null, {maxLength: 2});
+
+        expect(queue.maxLength).to.equal(2);
+
         queue.queueMessage({routingKey: 'test.1'});
         queue.queueMessage({routingKey: 'test.2'});
         queue.queueMessage({routingKey: 'test.3'});
 
         expect(queue.messageCount).to.equal(2);
         expect(queue.peek().fields.routingKey).to.equal('test.2');
+      });
+
+      it('maxLength property can be set', () => {
+        const queue = Queue();
+
+        queue.maxLength = 2;
+
+        queue.queueMessage({routingKey: 'test.1'});
+        queue.queueMessage({routingKey: 'test.2'});
+        queue.queueMessage({routingKey: 'test.3'});
+
+        expect(queue.messageCount).to.equal(2);
+        expect(queue.peek().fields.routingKey).to.equal('test.2');
+      });
+
+      it('maxLength property can be changed', () => {
+        const queue = Queue(null, {maxLength: 2});
+
+        queue.queueMessage({routingKey: 'test.1'});
+        queue.queueMessage({routingKey: 'test.2'});
+        queue.queueMessage({routingKey: 'test.3'});
+
+        expect(queue.messageCount).to.equal(2);
+        expect(queue.peek().fields.routingKey).to.equal('test.2');
+
+        queue.maxLength = 3;
+
+        queue.queueMessage({routingKey: 'test.4'});
+        queue.queueMessage({routingKey: 'test.5'});
+
+        expect(queue.messageCount).to.equal(3);
       });
 
       it('emits saturated when maxLength is reached', () => {

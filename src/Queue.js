@@ -397,7 +397,10 @@ function Queue(name, options = {}, eventEmitter) {
 
   function recover(state) {
     stopped = false;
-    if (!state) return consumeNext();
+    if (!state) {
+      consumers.slice().forEach((c) => c.recover());
+      return consumeNext();
+    }
 
     name = queue.name = state.name;
     messages.splice(0);
@@ -446,6 +449,7 @@ function Queue(name, options = {}, eventEmitter) {
 
   function stop() {
     stopped = true;
+    consumers.slice().forEach((consumer) => consumer.stop());
   }
 
   function getCapacity() {

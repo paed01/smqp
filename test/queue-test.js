@@ -412,6 +412,94 @@ describe('Broker queue', () => {
     });
   });
 
+  describe('maxLength', () => {
+    it('maxLength = 0 evicts all messages', () => {
+      const broker = Broker();
+
+      const queue = broker.assertQueue('test-q', {maxLength: 0});
+
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', {msg: 3});
+
+      expect(queue.messageCount).to.equal(0);
+    });
+
+    it('maxLength = 0 evicts all messages and leaves nothing to consumer', () => {
+      const broker = Broker();
+
+      const queue = broker.assertQueue('test-q', {maxLength: 0});
+      const messages = [];
+      broker.consume('test-q', onMessage);
+
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
+
+      expect(queue.messageCount).to.equal(0);
+      expect(messages).to.have.length(0);
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+        message.ack();
+      }
+    });
+
+    it('maxLength = 1 evicts old messages', () => {
+      const broker = Broker();
+
+      const queue = broker.assertQueue('test-q', {maxLength: 1});
+      const messages = [];
+
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', {msg: 3});
+
+      expect(queue.messageCount).to.equal(1);
+
+      broker.consume('test-q', onMessage);
+      expect(messages).to.have.length(1);
+      expect(messages[0].content.msg).to.equal(3);
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+        message.ack();
+      }
+    });
+
+    it('maxLength = 1 keeps unacked message', () => {
+      const broker = Broker();
+
+      const queue = broker.assertQueue('test-q', {maxLength: 1});
+      const messages = [];
+
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', {msg: 3});
+
+      expect(queue.messageCount).to.equal(1);
+
+      broker.consume('test-q', onMessage);
+      expect(messages).to.have.length(1);
+
+      let msg = messages.pop();
+      expect(msg.content.msg).to.equal(3);
+
+      broker.sendToQueue('test-q', {msg: 4});
+
+      expect(queue.messageCount).to.equal(1);
+
+      msg.nack(false, true);
+      expect(messages).to.have.length(1);
+
+      msg = messages.pop();
+      expect(msg.content.msg).to.equal(3);
+
+      function onMessage(routingKey, message) {
+        messages.push(message);
+      }
+    });
+  });
+
   describe('behaviour', () => {
     it('can be bound to same exchange with different pattern', () => {
       const broker = Broker();
@@ -540,6 +628,104 @@ describe('Broker queue', () => {
       function onDepleted() {
         done();
       }
+    });
+
+    it('emits depleted more than once', () => {
+      const broker = Broker();
+      const exchange = broker.assertExchange('event');
+      const queue = broker.assertQueue('event-q');
+
+      broker.bindQueue(queue.name, exchange.name, 'event.*');
+
+      const depletes = [];
+
+      queue.on('depleted', () => {
+        depletes.push(1);
+      });
+
+      broker.publish('event', 'event.1');
+
+      queue.get().ack();
+      expect(depletes).to.have.length(1);
+
+      broker.publish('event', 'event.2');
+
+      queue.get().ack();
+      expect(depletes).to.have.length(2);
+    });
+
+    it('emits depleted when message is acked', () => {
+      const broker = Broker();
+      const exchange = broker.assertExchange('event');
+      const queue = broker.assertQueue('event-q');
+
+      broker.bindQueue(queue.name, exchange.name, 'event.*');
+
+      const depletes = [];
+
+      queue.on('depleted', () => {
+        depletes.push(1);
+      });
+
+      broker.publish('event', 'event.1');
+
+      const msg = queue.get();
+      expect(depletes).to.have.length(0);
+
+      msg.ack();
+      expect(depletes).to.have.length(1);
+    });
+
+    it('emits depleted when all messages have been consumed', () => {
+      const broker = Broker();
+      const exchange = broker.assertExchange('event');
+      const queue = broker.assertQueue('event-q');
+
+      broker.bindQueue(queue.name, exchange.name, 'event.*');
+
+      const depletes = [];
+
+      queue.on('depleted', () => {
+        depletes.push(1);
+      });
+
+      broker.publish('event', 'event.1');
+      broker.publish('event', 'event.2');
+      broker.publish('event', 'event.3');
+
+      queue.get().ack();
+      expect(depletes).to.have.length(0);
+
+      queue.get().ack();
+      expect(depletes).to.have.length(0);
+
+      queue.get().ack();
+      expect(depletes).to.have.length(1);
+    });
+
+    it('depleted listener can be canceled inside handler', () => {
+      const broker = Broker();
+      const exchange = broker.assertExchange('event');
+      const queue = broker.assertQueue('event-q');
+
+      broker.bindQueue(queue.name, exchange.name, 'event.*');
+
+      const depletes = [];
+
+      const depleteListener = queue.on('depleted', () => {
+        depletes.push(1);
+        depleteListener.cancel();
+      });
+
+      broker.publish('event', 'event.1');
+
+      queue.get().ack();
+      expect(depletes).to.have.length(1);
+
+      broker.publish('event', 'event.2');
+
+      queue.get().ack();
+      expect(depletes).to.have.length(1);
     });
   });
 });

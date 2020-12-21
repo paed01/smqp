@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "Synchronous message queuing package",
   "author": {
     "name": "Pål Edman",
@@ -33,6 +33,7 @@
   ],
   "scripts": {
     "test": "mocha",
+    "test:lcov": "nyc mocha && nyc report --reporter lcov && npm run posttest",
     "posttest": "npm run dist &&  eslint . --cache && npm run toc",
     "cov:html": "nyc mocha && nyc report --reporter=html",
     "dist": "babel index.js -d dist && babel src/**.js -d dist/src",
@@ -56,13 +57,13 @@
     "shovel"
   ],
   "devDependencies": {
-    "@babel/cli": "^7.12.1",
-    "@babel/core": "^7.12.3",
-    "@babel/preset-env": "^7.12.1",
-    "@babel/register": "^7.12.1",
+    "@babel/cli": "^7.12.10",
+    "@babel/core": "^7.12.10",
+    "@babel/preset-env": "^7.12.11",
+    "@babel/register": "^7.12.10",
     "chai": "^4.2.0",
-    "chronokinesis": "^2.0.1",
-    "eslint": "^7.13.0",
+    "chronokinesis": "^3.0.0",
+    "eslint": "^7.16.0",
     "markdown-toc": "^1.2.0",
     "mocha": "^8.2.1",
     "nyc": "^15.1.0"
