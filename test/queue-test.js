@@ -728,4 +728,65 @@ describe('Broker queue', () => {
       expect(depletes).to.have.length(1);
     });
   });
+
+  describe('peek', () => {
+    it('returns nothing if no messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+
+      expect(queue.peek()).to.be.undefined;
+    });
+
+    it('returns first message in queue', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      queue.queueMessage({routingKey: 'test.1'});
+
+      expect(queue.peek()).to.have.property('fields').with.property('routingKey', 'test.1');
+    });
+  });
+
+  describe('cancel', () => {
+    it('cancels consumer by tag', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      queue.consume(() => {}, {consumerTag: 'c-tag'});
+      expect(queue.consumerCount).to.equal(1);
+
+      queue.cancel('c-tag');
+
+      expect(queue.consumerCount).to.equal(0);
+    });
+
+    it('keeps consumers if cancel unknown tag', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      queue.consume(() => {}, {consumerTag: 'c-tag'});
+      expect(queue.consumerCount).to.equal(1);
+
+      queue.cancel('b-tag');
+
+      expect(queue.consumerCount).to.equal(1);
+    });
+  });
+
+  describe('getState', () => {
+    it('returns only name and options if no messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+
+      expect(queue.getState()).to.deep.equal({
+        name: 'test-q',
+        options: { autoDelete: true, durable: true },
+      });
+    });
+
+    it('returns messages if any', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      queue.queueMessage({routingKey: 'test.1'});
+
+      expect(queue.getState()).to.have.property('messages').with.length(1);
+    });
+  });
 });

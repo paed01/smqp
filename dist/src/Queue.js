@@ -404,7 +404,14 @@ function Queue(name, options = {}, eventEmitter) {
   }
 
   function getState() {
-    return JSON.parse(JSON.stringify(queue));
+    return {
+      name,
+      options: { ...options
+      },
+      ...(messages.length ? {
+        messages: JSON.parse(JSON.stringify(messages))
+      } : undefined)
+    };
   }
 
   function recover(state) {
@@ -424,6 +431,7 @@ function Queue(name, options = {}, eventEmitter) {
       continueConsume = true;
     }
 
+    if (!state.messages) return queue;
     state.messages.forEach(({
       fields,
       content,
@@ -441,6 +449,8 @@ function Queue(name, options = {}, eventEmitter) {
     if (continueConsume) {
       consumeNext();
     }
+
+    return queue;
   }
 
   function deleteQueue({
@@ -455,7 +465,7 @@ function Queue(name, options = {}, eventEmitter) {
     deleteConsumers.forEach(consumer => {
       consumer.cancel();
     });
-    if (deadLetterExchange) nackAll(false);else messages.splice(0);
+    messages.splice(0);
     emit('delete', queue);
     return {
       messageCount

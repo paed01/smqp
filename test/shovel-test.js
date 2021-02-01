@@ -268,6 +268,72 @@ describe('Shovel', () => {
       }
     });
 
+    it('source broker.close() closes shovel', () => {
+      const broker1 = Broker();
+      broker1.assertExchange('source-events', 'topic');
+
+      const broker2 = Broker();
+      broker2.assertExchange('dest-events', 'topic');
+
+      const messages = [];
+      broker2.subscribeTmp('dest-events', '#', onMessage, {noAck: true});
+
+      const shovel = Shovel('my-shovel', {
+        broker: broker1,
+        exchange: 'source-events',
+        pattern: 'event.#',
+      }, {
+        broker: broker2,
+        exchange: 'dest-events'
+      });
+
+      broker1.publish('source-events', 'event.1');
+      broker1.publish('source-events', 'test.1');
+
+      expect(messages).to.have.length(1);
+
+      broker1.close();
+
+      expect(shovel.closed).to.be.true;
+
+      function onMessage(routingKey) {
+        messages.push(routingKey);
+      }
+    });
+
+    it('destination broker.close() closes shovel', () => {
+      const broker1 = Broker();
+      broker1.assertExchange('source-events', 'topic');
+
+      const broker2 = Broker();
+      broker2.assertExchange('dest-events', 'topic');
+
+      const messages = [];
+      broker2.subscribeTmp('dest-events', '#', onMessage, {noAck: true});
+
+      const shovel = Shovel('my-shovel', {
+        broker: broker1,
+        exchange: 'source-events',
+        pattern: 'event.#',
+      }, {
+        broker: broker2,
+        exchange: 'dest-events'
+      });
+
+      broker1.publish('source-events', 'event.1');
+      broker1.publish('source-events', 'test.1');
+
+      expect(messages).to.have.length(1);
+
+      broker2.close();
+
+      expect(shovel.closed).to.be.true;
+
+      function onMessage(routingKey) {
+        messages.push(routingKey);
+      }
+    });
+
     it('double close() is ok but has no effect', () => {
       const broker1 = Broker();
       broker1.assertExchange('source-events', 'topic');

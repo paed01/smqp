@@ -1,6 +1,13 @@
 Changelog
 =========
 
+# 3.2.0
+
+Slimmer and swifter state.
+
+- `getState`: Only use JSON-fns when really necessary (= messages)
+- Stop dead lettering messages when queue is deleted. Did some deep forrest coverage hunting and found no scenario when this has ever worked, maybe since it isn't part of RabbitMQ behaviour
+
 # 3.1.0
 
 Coverage hunting.

@@ -193,20 +193,22 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
   }
 
   function getState() {
-    return JSON.parse(JSON.stringify({
-      name: name,
+    return {
+      name,
       type,
       options: { ...options
       },
-      deliveryQueue,
+      ...(deliveryQueue.messageCount ? {
+        deliveryQueue: deliveryQueue.getState()
+      } : undefined),
       bindings: getBoundState()
-    }));
+    };
 
     function getBoundState() {
       return bindings.reduce((result, binding) => {
         if (!binding.queue.options.durable) return result;
         if (!result) result = [];
-        result.push(binding);
+        result.push(binding.getState());
         return result;
       }, undefined);
     }
@@ -285,7 +287,8 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
       },
       pattern,
       close: closeBinding,
-      testPattern
+      testPattern,
+      getState: getBindingState
     };
     Object.defineProperty(binding, 'queue', {
       enumerable: false,
@@ -303,6 +306,16 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
 
     function closeBinding() {
       unbind(queue, pattern);
+    }
+
+    function getBindingState() {
+      return {
+        id: binding.id,
+        options: { ...binding.options
+        },
+        queueName: binding.queueName,
+        pattern
+      };
     }
   }
 

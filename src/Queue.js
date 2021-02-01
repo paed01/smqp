@@ -392,7 +392,11 @@ function Queue(name, options = {}, eventEmitter) {
   }
 
   function getState() {
-    return JSON.parse(JSON.stringify(queue));
+    return {
+      name,
+      options: {...options},
+      ...(messages.length ? {messages: JSON.parse(JSON.stringify(messages))} : undefined),
+    };
   }
 
   function recover(state) {
@@ -403,6 +407,7 @@ function Queue(name, options = {}, eventEmitter) {
     }
 
     name = queue.name = state.name;
+
     messages.splice(0);
 
     let continueConsume;
@@ -410,6 +415,8 @@ function Queue(name, options = {}, eventEmitter) {
       consumers.forEach((c) => c.nackAll(false));
       continueConsume = true;
     }
+
+    if (!state.messages) return queue;
 
     state.messages.forEach(({fields, content, properties}) => {
       if (properties.persistent === false) return;
@@ -421,6 +428,8 @@ function Queue(name, options = {}, eventEmitter) {
     if (continueConsume) {
       consumeNext();
     }
+
+    return queue;
   }
 
   function deleteQueue({ifUnused, ifEmpty} = {}) {
@@ -435,8 +444,7 @@ function Queue(name, options = {}, eventEmitter) {
       consumer.cancel();
     });
 
-    if (deadLetterExchange) nackAll(false);
-    else messages.splice(0);
+    messages.splice(0);
 
     emit('delete', queue);
     return {messageCount};

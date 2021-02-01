@@ -970,7 +970,6 @@ describe('Broker', () => {
 
       broker.stop();
       const recovered = Broker().recover(broker.getState());
-
       expect(broker.getState()).to.deep.eql(recovered.getState());
 
       recovered.consume('event-q', onMessage);
@@ -1242,6 +1241,58 @@ describe('Broker', () => {
         message.nack(false, true);
       }
     });
+
+    it('recovered queue sends nacked message to dead letter exchange', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      broker.assertExchange('dead-letter');
+      broker.assertQueue('dead-letter-q');
+      broker.bindQueue('dead-letter-q', 'dead-letter', 'deceased.msg', {durable: true});
+
+      broker.assertQueue('event-q', {autoDelete: false, deadLetterExchange: 'dead-letter', deadLetterRoutingKey: 'deceased.msg'});
+
+      const recovered = Broker().recover(broker.getState());
+
+      const deadLetterQueue = recovered.getQueue('dead-letter-q');
+
+      recovered.subscribe('event', 'test.#', 'event-q', onMessage);
+
+      recovered.publish('event', 'test.1');
+      recovered.publish('event', 'test.2');
+
+      expect(deadLetterQueue.messageCount).to.equal(2);
+
+      function onMessage(_, message) {
+        message.nack(false, false);
+      }
+    });
+
+    it('recovered queue with non-existing dead letter exchange is ok', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event');
+      broker.assertExchange('dead-letter', 'topic', {durable: false});
+      broker.assertQueue('dead-letter-q');
+      broker.bindQueue('dead-letter-q', 'dead-letter', 'deceased.msg', {durable: true});
+
+      broker.assertQueue('event-q', {autoDelete: false, deadLetterExchange: 'dead-letter', deadLetterRoutingKey: 'deceased.msg'});
+
+      const recovered = Broker().recover(broker.getState());
+
+      const deadLetterQueue = recovered.getQueue('dead-letter-q');
+
+      recovered.subscribe('event', 'test.#', 'event-q', onMessage);
+
+      recovered.publish('event', 'test.1');
+      recovered.publish('event', 'test.2');
+
+      expect(deadLetterQueue.messageCount).to.equal(0);
+
+      function onMessage(_, message) {
+        message.nack(false, false);
+      }
+    });
   });
 
   describe('expired messages', () => {
@@ -1387,6 +1438,21 @@ describe('Broker', () => {
       expect(() => {
         broker.createQueue('test-q');
       }).to.throw(/test-q already exists/);
+    });
+
+    it('deleteQueue returns false if queueName is empty', () => {
+      const broker = Broker();
+      expect(broker.deleteQueue()).to.be.false;
+    });
+
+    it('deleteQueue returns false if queueName was not found', () => {
+      const broker = Broker();
+      expect(broker.deleteQueue('test-q')).to.be.false;
+    });
+
+    it('get from unknown queue returns nothing', () => {
+      const broker = Broker();
+      expect(broker.get('test-q')).to.be.undefined;
     });
   });
 
