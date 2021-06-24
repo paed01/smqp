@@ -19,6 +19,19 @@ function Broker(owner) {
   const events = (0, _Exchange.EventExchange)();
   const broker = {
     owner,
+
+    get exchangeCount() {
+      return exchanges.length;
+    },
+
+    get queueCount() {
+      return queues.length;
+    },
+
+    get consumerCount() {
+      return consumers.length;
+    },
+
     subscribe,
     subscribeOnce,
     subscribeTmp,
@@ -59,18 +72,6 @@ function Broker(owner) {
     unbindExchange,
     unbindQueue
   };
-  Object.defineProperty(broker, 'exchangeCount', {
-    enumerable: true,
-    get: () => exchanges.length
-  });
-  Object.defineProperty(broker, 'queueCount', {
-    enumerable: true,
-    get: () => queues.length
-  });
-  Object.defineProperty(broker, 'consumerCount', {
-    enumerable: true,
-    get: () => consumers.length
-  });
   return broker;
 
   function subscribe(exchangeName, pattern, queueName, onMessage, options = {

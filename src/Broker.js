@@ -11,6 +11,15 @@ export function Broker(owner) {
 
   const broker = {
     owner,
+    get exchangeCount() {
+      return exchanges.length;
+    },
+    get queueCount() {
+      return queues.length;
+    },
+    get consumerCount() {
+      return consumers.length;
+    },
     subscribe,
     subscribeOnce,
     subscribeTmp,
@@ -51,21 +60,6 @@ export function Broker(owner) {
     unbindExchange,
     unbindQueue,
   };
-
-  Object.defineProperty(broker, 'exchangeCount', {
-    enumerable: true,
-    get: () => exchanges.length
-  });
-
-  Object.defineProperty(broker, 'queueCount', {
-    enumerable: true,
-    get: () => queues.length
-  });
-
-  Object.defineProperty(broker, 'consumerCount', {
-    enumerable: true,
-    get: () => consumers.length
-  });
 
   return broker;
 

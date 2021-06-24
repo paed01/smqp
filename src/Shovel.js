@@ -23,17 +23,15 @@ export function Shovel(name, source, destination, options = {}) {
   let closed = false;
   const api = {
     name,
+    get closed() {
+      return closed;
+    },
     source: {...source, pattern: routingKeyPattern},
     destination: {...destination},
     consumerTag,
     close,
     on: events.on,
   };
-
-  Object.defineProperty(api, 'closed', {
-    enumerable: true,
-    get: () => closed
-  });
 
   const eventHandlers = [
     sourceExchange.on('delete', close),

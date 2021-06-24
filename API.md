@@ -280,7 +280,7 @@ Return serializable object containing durable exchanges, bindings, and durable q
 Recovers exchanges, bindings, and queues with messages. A state can be passed, preferably from [`getState()`](#brokergetstate).
 
 ### `broker.purgeQueue(queueName)`
-Purge queue by name if found
+Purge queue by name if found. Removes all non consumed messages.
 
 ### `broker.sendToQueue(queueName, content[, options])`
 Send message directly to queue, bypassing routing key patterns etc.
@@ -519,6 +519,8 @@ Peek into queue.
 - `ignoreDelivered`: ignore if message was delivered or not
 
 ### `purge()`
+Removes all non consumed messages from queue.
+
 ### `queueMessage(fields[, content, properties, onMessageQueued])`
 Queue message.
 

@@ -27,29 +27,28 @@ function Message(fields = {}, content, properties = {}, onConsumed) {
     },
     content,
     properties: messageProperties,
+
+    get messageId() {
+      return messageId;
+    },
+
+    get ttl() {
+      return ttl;
+    },
+
+    get consumerTag() {
+      return message.fields.consumerTag;
+    },
+
+    get pending() {
+      return pending;
+    },
+
     consume,
     ack,
     nack,
     reject
   };
-  Object.defineProperty(message, 'messageId', {
-    get() {
-      return messageId;
-    }
-
-  });
-  Object.defineProperty(message, 'ttl', {
-    value: ttl
-  });
-  Object.defineProperty(message, 'consumerTag', {
-    get() {
-      return message.fields.consumerTag;
-    }
-
-  });
-  Object.defineProperty(message, 'pending', {
-    get: () => pending
-  });
   return message;
 
   function consume({

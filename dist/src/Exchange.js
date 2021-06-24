@@ -44,6 +44,19 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
     name,
     type,
     options,
+
+    get bindingCount() {
+      return bindings.length;
+    },
+
+    get bindings() {
+      return bindings.slice();
+    },
+
+    get stopped() {
+      return stopped;
+    },
+
     bind,
     close,
     emit,
@@ -57,18 +70,6 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
     unbind,
     unbindQueueByName
   };
-  Object.defineProperty(exchange, 'bindingCount', {
-    enumerable: true,
-    get: () => bindings.length
-  });
-  Object.defineProperty(exchange, 'bindings', {
-    enumerable: true,
-    get: () => bindings.slice()
-  });
-  Object.defineProperty(exchange, 'stopped', {
-    enumerable: true,
-    get: () => stopped
-  });
   return exchange;
 
   function publish(routingKey, content, properties = {}) {
@@ -286,18 +287,19 @@ function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExcha
         ...bindOptions
       },
       pattern,
+
+      get queue() {
+        return queue;
+      },
+
+      get queueName() {
+        return queue.name;
+      },
+
       close: closeBinding,
       testPattern,
       getState: getBindingState
     };
-    Object.defineProperty(binding, 'queue', {
-      enumerable: false,
-      value: queue
-    });
-    Object.defineProperty(binding, 'queueName', {
-      enumerable: true,
-      get: () => queue.name
-    });
     return binding;
 
     function testPattern(routingKey) {

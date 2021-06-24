@@ -43,6 +43,11 @@ function Shovel(name, source, destination, options = {}) {
   let closed = false;
   const api = {
     name,
+
+    get closed() {
+      return closed;
+    },
+
     source: { ...source,
       pattern: routingKeyPattern
     },
@@ -52,10 +57,6 @@ function Shovel(name, source, destination, options = {}) {
     close,
     on: events.on
   };
-  Object.defineProperty(api, 'closed', {
-    enumerable: true,
-    get: () => closed
-  });
   const eventHandlers = [sourceExchange.on('delete', close), destinationExchange.on('delete', close)];
   let consumer;
 

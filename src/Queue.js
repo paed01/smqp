@@ -18,6 +18,30 @@ function Queue(name, options = {}, eventEmitter) {
   const queue = {
     name,
     options,
+    get messageCount() {
+      return messages.length;
+    },
+    get consumers() {
+      return consumers.slice();
+    },
+    get consumerCount() {
+      return consumers.length;
+    },
+    get stopped() {
+      return stopped;
+    },
+    get exclusive() {
+      return exclusivelyConsumed;
+    },
+    get maxLength() {
+      return maxLength;
+    },
+    set maxLength(value) {
+      maxLength = options.maxLength = value;
+    },
+    get capacity() {
+      return getCapacity();
+    },
     messages,
     ack,
     ackAll,
@@ -42,50 +66,6 @@ function Queue(name, options = {}, eventEmitter) {
     stop,
     unbindConsumer,
   };
-
-  Object.defineProperty(queue, 'messageCount', {
-    enumerable: true,
-    get() {
-      return messages.length;
-    }
-  });
-
-  Object.defineProperty(queue, 'consumers', {
-    get() {
-      return consumers.slice();
-    }
-  });
-
-  Object.defineProperty(queue, 'consumerCount', {
-    get() {
-      return consumers.length;
-    }
-  });
-
-  Object.defineProperty(queue, 'stopped', {
-    get() {
-      return stopped;
-    }
-  });
-
-  Object.defineProperty(queue, 'exclusive', {
-    get() {
-      return exclusivelyConsumed;
-    }
-  });
-
-  Object.defineProperty(queue, 'maxLength', {
-    set(value) {
-      maxLength = options.maxLength = value;
-    },
-    get() {
-      return maxLength;
-    }
-  });
-
-  Object.defineProperty(queue, 'capacity', {
-    get: getCapacity
-  });
 
   return queue;
 
@@ -475,6 +455,24 @@ function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
 
   const consumer = {
     queue,
+    get consumerTag() {
+      return options.consumerTag;
+    },
+    get messageCount() {
+      return internalQueue.messageCount;
+    },
+    get capacity() {
+      return internalQueue.capacity;
+    },
+    get queueName() {
+      return queue.name;
+    },
+    get ready() {
+      return ready && !stopped;
+    },
+    get stopped() {
+      return stopped;
+    },
     options,
     on,
     onMessage,
@@ -486,30 +484,6 @@ function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
     recover,
     stop,
   };
-
-  Object.defineProperty(consumer, 'consumerTag', {
-    value: options.consumerTag
-  });
-
-  Object.defineProperty(consumer, 'messageCount', {
-    get: () => internalQueue.messageCount
-  });
-
-  Object.defineProperty(consumer, 'capacity', {
-    get: () => internalQueue.capacity
-  });
-
-  Object.defineProperty(consumer, 'queueName', {
-    get: () => queue.name
-  });
-
-  Object.defineProperty(consumer, 'ready', {
-    get: () => ready && !stopped
-  });
-
-  Object.defineProperty(consumer, 'stopped', {
-    get: () => stopped
-  });
 
   return consumer;
 
