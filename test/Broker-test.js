@@ -9,6 +9,58 @@ describe('Broker', () => {
 
       expect(broker.owner).to.equal(owner);
     });
+
+    it('should export only enumerable properties', () => {
+      const enumerableProperties = [
+        'owner',
+        'subscribe',
+        'subscribeOnce',
+        'subscribeTmp',
+        'unsubscribe',
+        'createShovel',
+        'closeShovel',
+        'getShovel',
+        'assertExchange',
+        'ack',
+        'ackAll',
+        'nack',
+        'nackAll',
+        'cancel',
+        'close',
+        'deleteExchange',
+        'bindExchange',
+        'bindQueue',
+        'assertQueue',
+        'consume',
+        'createQueue',
+        'deleteQueue',
+        'get',
+        'getConsumer',
+        'getConsumers',
+        'getExchange',
+        'getQueue',
+        'getState',
+        'on',
+        'off',
+        'prefetch',
+        'publish',
+        'purgeQueue',
+        'recover',
+        'reject',
+        'reset',
+        'sendToQueue',
+        'stop',
+        'unbindExchange',
+        'unbindQueue',
+        'exchangeCount',
+        'queueCount',
+        'consumerCount',
+      ];
+      const broker = Broker();
+      const keys = Object.keys(broker);
+
+      expect(keys).deep.to.equal(enumerableProperties);
+    });
   });
 
   describe('subscribe()', () => {

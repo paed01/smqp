@@ -21,6 +21,40 @@ describe('Queue', () => {
       const queue = Queue();
       expect(queue).to.have.property('options').that.eql({autoDelete: true});
     });
+
+    it('should export only enumerable properties', () => {
+      const enumerableProperties = [
+        'name',
+        'options',
+        'messages',
+        'ack',
+        'ackAll',
+        'assertConsumer',
+        'cancel',
+        'close',
+        'consume',
+        'delete',
+        'dequeueMessage',
+        'dismiss',
+        'get',
+        'getState',
+        'nack',
+        'nackAll',
+        'off',
+        'on',
+        'peek',
+        'purge',
+        'queueMessage',
+        'recover',
+        'reject',
+        'stop',
+        'unbindConsumer',
+        'messageCount',
+      ];
+      const queue = Queue();
+      const keys = Object.keys(queue);
+      expect(keys).deep.to.equal(enumerableProperties);
+    });
   });
 
   describe('queue options', () => {
