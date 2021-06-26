@@ -28,7 +28,7 @@ describe('Queue', () => {
       it('maxLength evicts old messages', () => {
         const queue = Queue(null, {maxLength: 2});
 
-        expect(queue.maxLength).to.equal(2);
+        expect(queue.options.maxLength).to.equal(2);
 
         queue.queueMessage({routingKey: 'test.1'});
         queue.queueMessage({routingKey: 'test.2'});
@@ -41,7 +41,7 @@ describe('Queue', () => {
       it('maxLength property can be set', () => {
         const queue = Queue();
 
-        queue.maxLength = 2;
+        queue.options.maxLength = 2;
 
         queue.queueMessage({routingKey: 'test.1'});
         queue.queueMessage({routingKey: 'test.2'});
@@ -61,7 +61,7 @@ describe('Queue', () => {
         expect(queue.messageCount).to.equal(2);
         expect(queue.peek().fields.routingKey).to.equal('test.2');
 
-        queue.maxLength = 3;
+        queue.options.maxLength = 3;
 
         queue.queueMessage({routingKey: 'test.4'});
         queue.queueMessage({routingKey: 'test.5'});
@@ -1447,6 +1447,7 @@ describe('Consumer', () => {
     queue.queueMessage({routingKey: 'test.1'});
 
     const consumer = queue.consume(onMessage);
+
     expect(consumer.ready).to.be.false;
     messages[0].ack();
 

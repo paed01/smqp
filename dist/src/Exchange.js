@@ -28,7 +28,7 @@ function EventExchange(name) {
 function ExchangeBase(name, isExchange, type = 'topic', options = {}, eventExchange) {
   if (!name) throw new Error('Exchange name is required');
   if (['topic', 'direct'].indexOf(type) === -1) throw Error('Exchange type must be one of topic or direct');
-  const deliveryQueue = (0, _Queue.Queue)('delivery-q', {}, {
+  const deliveryQueue = new _Queue.Queue('delivery-q', {}, {
     emit: onInternalQueueEmit
   });
   let consumer = deliveryQueue.consume(type === 'topic' ? topic : direct);

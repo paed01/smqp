@@ -314,7 +314,7 @@ export function Broker(owner) {
   function createQueue(queueName, options) {
     if (getQueue(queueName)) throw new Error(`Queue named ${queueName} already exists`);
 
-    const queue = Queue(queueName, options, EventExchange(queueName + '-events'));
+    const queue = new Queue(queueName, options, EventExchange(queueName + '-events'));
     queue.on('delete', onDelete);
     queue.on('dead-letter', onDeadLetter);
     queue.on('consume', (_, event) => consumers.push(event.content));
