@@ -30,7 +30,7 @@ export function Shovel(name, source, destination, options = {}) {
     destination: {...destination},
     consumerTag,
     close,
-    on: events.on,
+    on: events.on.bind(events),
   };
 
   const eventHandlers = [

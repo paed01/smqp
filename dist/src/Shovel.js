@@ -55,7 +55,7 @@ function Shovel(name, source, destination, options = {}) {
     },
     consumerTag,
     close,
-    on: events.on
+    on: events.on.bind(events)
   };
   const eventHandlers = [sourceExchange.on('delete', close), destinationExchange.on('delete', close)];
   let consumer;

@@ -108,7 +108,7 @@ export function Broker(owner) {
     if (exchange) {
       if (type && exchange.type !== type) throw new Error('Type doesn\'t match');
     } else {
-      exchange = Exchange(exchangeName, type || 'topic', options);
+      exchange = new Exchange(exchangeName, type || 'topic', options);
       exchange.on('delete', () => {
         const idx = exchanges.indexOf(exchange);
         if (idx === -1) return;

@@ -18,6 +18,8 @@ const internalQueueSymbol = Symbol.for('internalQueue');
 const pendingMessageCountSymbol = Symbol.for('pendingMessageCount');
 const isReadySymbol = Symbol.for('isReady');
 const stoppedSymbol = Symbol.for('stopped');
+const onMessageConsumedSymbol = Symbol.for('onMessageConsumed');
+const onConsumedSymbol = Symbol.for('onConsumedSymbol');
 
 function Queue(name, options = {}, eventEmitter) {
   if (!(this instanceof Queue)) {
@@ -36,6 +38,7 @@ function Queue(name, options = {}, eventEmitter) {
   this[pendingMessageCountSymbol] = 0;
   this[exclusiveSymbol] = false;
   this[eventEmitterSymbol] = eventEmitter;
+  this[onConsumedSymbol] = this[onMessageConsumedSymbol].bind(this);
 }
 
 Object.defineProperty(Queue.prototype, 'capacity', {
@@ -82,7 +85,7 @@ Queue.prototype.queueMessage = function queueMessage(fields, content, properties
   };
   const messageTtl = self.options.messageTtl;
   if (messageTtl) messageProperties.expiration = messageProperties.expiration || messageTtl;
-  const message = new _Message.Message(fields, content, messageProperties, onConsumedWrapper(self));
+  const message = new _Message.Message(fields, content, messageProperties, this[onConsumedSymbol]);
   const capacity = self.getCapacity();
   self.messages.push(message);
   self[pendingMessageCountSymbol]++;
@@ -222,18 +225,18 @@ Queue.prototype.consumeMessages = function consumeMessages(n, consumeOptions) {
 };
 
 Queue.prototype.ack = function ack(message, allUpTo) {
-  this.onMessageConsumed(message, 'ack', allUpTo);
+  this[onMessageConsumedSymbol](message, 'ack', allUpTo);
 };
 
 Queue.prototype.nack = function nack(message, allUpTo, requeue = true) {
-  this.onMessageConsumed(message, 'nack', allUpTo, requeue);
+  this[onMessageConsumedSymbol](message, 'nack', allUpTo, requeue);
 };
 
 Queue.prototype.reject = function reject(message, requeue = true) {
-  this.onMessageConsumed(message, 'nack', false, requeue);
+  this[onMessageConsumedSymbol](message, 'nack', false, requeue);
 };
 
-Queue.prototype.onMessageConsumed = function onMessageConsumed(message, operation, allUpTo, requeue) {
+Queue.prototype[onMessageConsumedSymbol] = function onMessageConsumed(message, operation, allUpTo, requeue) {
   if (this[stoppedSymbol]) return;
   const pending = allUpTo && this.getPendingMessages(message);
   const {
@@ -312,7 +315,7 @@ Queue.prototype.requeueMessage = function requeueMessage(message) {
   this[pendingMessageCountSymbol]++;
   this.messages.splice(msgIdx, 1, new _Message.Message({ ...message.fields,
     redelivered: true
-  }, message.content, message.properties, onConsumedWrapper(this)));
+  }, message.content, message.properties, this[onConsumedSymbol]));
 };
 
 Queue.prototype.peek = function peek(ignoreDelivered) {
@@ -443,7 +446,7 @@ Queue.prototype.recover = function recover(state) {
     if (properties.persistent === false) return;
     const msg = new _Message.Message({ ...fields,
       redelivered: true
-    }, content, properties, onConsumedWrapper(this));
+    }, content, properties, this[onConsumedSymbol]);
     this.messages.push(msg);
   });
   this[pendingMessageCountSymbol] = this.messages.length;
@@ -490,12 +493,6 @@ Queue.prototype.getCapacity = function getCapacity() {
   const maxLength = 'maxLength' in this.options ? this.options.maxLength : Infinity;
   return maxLength - this.messages.length;
 };
-
-function onConsumedWrapper(queue) {
-  return function onConsumed(...args) {
-    return queue.onMessageConsumed(...args);
-  };
-}
 
 function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
   if (typeof onMessage !== 'function') throw new Error('message callback is required and must be a function');
