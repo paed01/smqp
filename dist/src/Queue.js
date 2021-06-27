@@ -41,12 +41,6 @@ function Queue(name, options = {}, eventEmitter) {
   this[onConsumedSymbol] = this[onMessageConsumedSymbol].bind(this);
 }
 
-Object.defineProperty(Queue.prototype, 'capacity', {
-  get() {
-    return this.getCapacity();
-  }
-
-});
 Object.defineProperty(Queue.prototype, 'consumerCount', {
   get() {
     return this[consumersSymbol].length;

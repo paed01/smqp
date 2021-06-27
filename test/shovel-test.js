@@ -1,6 +1,20 @@
 import {Broker, Shovel} from '../index';
 
 describe('Shovel', () => {
+  describe('api', () => {
+    it('exposes on and close', () => {
+      const broker1 = Broker();
+      broker1.assertExchange('source-events', 'topic');
+
+      const broker2 = Broker();
+      broker2.assertExchange('dest-events', 'topic');
+
+      const shovel = new Shovel('my-shovel', {broker: broker1, exchange: 'source-events'}, {broker: broker2, exchange: 'dest-events'});
+      expect(shovel).to.have.property('on').that.is.a('function');
+      expect(shovel).to.have.property('close').that.is.a('function');
+    });
+  });
+
   describe('behaviour', () => {
     it('shovels message with properies from one broker to an other', () => {
       const broker1 = Broker();

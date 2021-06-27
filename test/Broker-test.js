@@ -228,6 +228,7 @@ describe('Broker', () => {
     it('creates exchange and temporary queue', () => {
       const broker = Broker();
       const consumer = broker.subscribeOnce('event', 'test.#', onMessage);
+
       expect(broker.assertExchange('event')).to.be.ok;
       expect(broker.getQueue(consumer.queue.name)).to.be.ok;
       expect(broker.getQueue(consumer.queue.name).options).to.include({durable: false, autoDelete: true});
