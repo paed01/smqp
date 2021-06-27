@@ -271,12 +271,7 @@ function Broker(owner) {
     const {
       priority
     } = args;
-    const {
-      consumerTag,
-      on: onShovel,
-      close: onClose,
-      source: shovelSource
-    } = createShovel(name, {
+    const shovel = createShovel(name, {
       broker,
       exchange: source,
       pattern,
@@ -287,14 +282,25 @@ function Broker(owner) {
       exchange: destination
     }, { ...args
     });
+    const {
+      consumerTag,
+      source: shovelSource
+    } = shovel;
     return {
       name,
       source,
       destination,
       queue: shovelSource.queue,
       consumerTag,
-      on: onShovel,
-      close: onClose
+
+      on(...onargs) {
+        return shovel.on(...onargs);
+      },
+
+      close() {
+        return shovel.close();
+      }
+
     };
   }
 
@@ -441,7 +447,7 @@ function Broker(owner) {
 
   function createShovel(name, source, destination, options) {
     if (getShovel(name)) throw new Error(`Shovel name must be unique, ${name} is occupied`);
-    const shovel = (0, _Shovel.Shovel)(name, { ...source,
+    const shovel = new _Shovel.Shovel(name, { ...source,
       broker
     }, destination, options);
     shovels.push(shovel);

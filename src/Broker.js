@@ -246,7 +246,7 @@ export function Broker(owner) {
   function bindExchange(source, destination, pattern = '#', args = {}) {
     const name = `e2e-${source}2${destination}-${pattern}`;
     const {priority} = args;
-    const {consumerTag, on: onShovel, close: onClose, source: shovelSource} = createShovel(name, {
+    const shovel = createShovel(name, {
       broker,
       exchange: source,
       pattern,
@@ -259,14 +259,20 @@ export function Broker(owner) {
       ...args
     });
 
+    const {consumerTag, source: shovelSource} = shovel;
+
     return {
       name,
       source,
       destination,
       queue: shovelSource.queue,
       consumerTag,
-      on: onShovel,
-      close: onClose,
+      on(...onargs) {
+        return shovel.on(...onargs);
+      },
+      close() {
+        return shovel.close();
+      },
     };
   }
 
@@ -406,7 +412,7 @@ export function Broker(owner) {
 
   function createShovel(name, source, destination, options) {
     if (getShovel(name)) throw new Error(`Shovel name must be unique, ${name} is occupied`);
-    const shovel = Shovel(name, {...source, broker}, destination, options);
+    const shovel = new Shovel(name, {...source, broker}, destination, options);
     shovels.push(shovel);
     shovel.on('close', onClose);
     return shovel;
