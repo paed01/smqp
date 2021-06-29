@@ -21,11 +21,9 @@ function Message(fields = {}, content, properties = {}, onConsumed) {
   this[messageIdSymbol] = properties.messageId || `smq.mid-${generateId()}`;
 
   const messageProperties = { ...properties, messageId: this[messageIdSymbol] };
-  const timestamp = (messageProperties.timestamp =
-    properties.timestamp || Date.now());
+  const timestamp = (messageProperties.timestamp = properties.timestamp || Date.now());
   if (properties.expiration) {
-    this[ttlSymbol] = messageProperties.ttl =
-      timestamp + parseInt(properties.expiration);
+    this[ttlSymbol] = messageProperties.ttl = timestamp + parseInt(properties.expiration);
   }
 
   this.fields = { ...fields, consumerTag: undefined };

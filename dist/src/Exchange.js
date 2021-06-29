@@ -89,8 +89,7 @@ Object.defineProperty(ExchangeBase.prototype, 'stopped', {
 });
 
 ExchangeBase.prototype.publish = function publish(routingKey, content, properties = {}) {
-  if (this[stoppedSymbol]) return; // if (properties.mandatory || properties.confirm) return true;
-
+  if (this[stoppedSymbol]) return;
   if (!properties.mandatory && !properties.confirm && !this[bindingsSymbol].length) return;
   return this[deliveryQueueSymbol].queueMessage({
     routingKey
@@ -159,14 +158,14 @@ ExchangeBase.prototype[emitReturnSymbol] = function emitReturn(routingKey, retur
   } = returnMessage;
 
   if (properties.confirm) {
-    this.emit('message.undelivered', (0, _Message.Message)({
+    this.emit('message.undelivered', new _Message.Message({
       routingKey,
       exchange: this.name
     }, content, properties));
   }
 
   if (properties.mandatory) {
-    this.emit('return', (0, _Message.Message)({
+    this.emit('return', new _Message.Message({
       routingKey,
       exchange: this.name
     }, content, properties));
@@ -237,28 +236,26 @@ ExchangeBase.prototype.stop = function stop() {
 };
 
 ExchangeBase.prototype.recover = function recover(state, getQueue) {
-  const self = this;
-  const deliveryQueue = self[deliveryQueueSymbol];
-  self[stoppedSymbol] = false;
-  recoverBindings();
+  const deliveryQueue = this[deliveryQueueSymbol];
+  this[stoppedSymbol] = false;
 
   if (state) {
     this.name = state.name;
+
+    if (state.bindings) {
+      state.bindings.forEach(bindingState => {
+        const queue = getQueue(bindingState.queueName);
+        if (!queue) return;
+        this.bind(queue, bindingState.pattern, bindingState.options);
+      });
+    }
+
     deliveryQueue.recover(state.deliveryQueue);
     const onMessage = (this[typeSymbol] === 'topic' ? this[onTopicMessageSymbol] : this[onDirectMessageSymbol]).bind(this);
     this[deliveryConsumerSymbol] = deliveryQueue.consume(onMessage);
   }
 
-  return self;
-
-  function recoverBindings() {
-    if (!state || !state.bindings) return;
-    state.bindings.forEach(bindingState => {
-      const queue = getQueue(bindingState.queueName);
-      if (!queue) return;
-      self.bind(queue, bindingState.pattern, bindingState.options);
-    });
-  }
+  return this;
 };
 
 ExchangeBase.prototype.getBinding = function getBinding(queueName, pattern) {
@@ -272,15 +269,14 @@ ExchangeBase.prototype.emit = function emit(eventName, content) {
 
 ExchangeBase.prototype.on = function on(pattern, handler, consumeOptions = {}) {
   if (this[isExchangeSymbol]) return this[eventExchangeSymbol].on(`exchange.${pattern}`, handler, consumeOptions);
-  const eventQueue = (0, _Queue.Queue)(null, {
+  const eventQueue = new _Queue.Queue(null, {
     durable: false,
     autoDelete: true
   });
   this.bind(eventQueue, pattern);
-  const eventConsumer = eventQueue.consume(handler, { ...consumeOptions,
+  return eventQueue.consume(handler, { ...consumeOptions,
     noAck: true
   }, this);
-  return eventConsumer;
 };
 
 ExchangeBase.prototype.off = function off(pattern, handler) {

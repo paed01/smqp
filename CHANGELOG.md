@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 4.0.0/1
+
+For performance reasons the Broker has been prototyped. Thank you @roberto-naharro and co for discovering and resolving this (#5). This means that functions cannot be deconstructed and called without binding or using call/apply.
+
 # 3.2.0
 
 Slimmer and swifter state.

@@ -8,11 +8,11 @@ const consumingSymbol = Symbol.for('consuming');
 const eventEmitterSymbol = Symbol.for('eventEmitter');
 const exclusiveSymbol = Symbol.for('exclusive');
 const internalQueueSymbol = Symbol.for('internalQueue');
-const pendingMessageCountSymbol = Symbol.for('pendingMessageCount');
 const isReadySymbol = Symbol.for('isReady');
-const stoppedSymbol = Symbol.for('stopped');
-const onMessageConsumedSymbol = Symbol.for('onMessageConsumed');
 const onConsumedSymbol = Symbol.for('onConsumedSymbol');
+const onMessageConsumedSymbol = Symbol.for('onMessageConsumed');
+const pendingMessageCountSymbol = Symbol.for('pendingMessageCount');
+const stoppedSymbol = Symbol.for('stopped');
 
 function Queue(name, options = {}, eventEmitter) {
   if (!(this instanceof Queue)) {
@@ -34,6 +34,7 @@ function Queue(name, options = {}, eventEmitter) {
 }
 
 Object.defineProperty(Queue.prototype, 'consumerCount', {
+  enumerable: true,
   get() {
     return this[consumersSymbol].length;
   },
@@ -52,49 +53,50 @@ Object.defineProperty(Queue.prototype, 'exclusive', {
 });
 
 Object.defineProperty(Queue.prototype, 'messageCount', {
+  enumerable: true,
   get() {
     return this.messages.length;
   },
 });
 
 Object.defineProperty(Queue.prototype, 'stopped', {
+  enumerable: true,
   get() {
     return this[stoppedSymbol];
   },
 });
 
 Queue.prototype.queueMessage = function queueMessage(fields, content, properties, onMessageQueued) {
-  const self = this;
-  if (self[stoppedSymbol]) return;
+  if (this[stoppedSymbol]) return;
 
   const messageProperties = {...properties};
-  const messageTtl = self.options.messageTtl;
+  const messageTtl = this.options.messageTtl;
   if (messageTtl) messageProperties.expiration = messageProperties.expiration || messageTtl;
   const message = new Message(fields, content, messageProperties, this[onConsumedSymbol]);
 
-  const capacity = self.getCapacity();
-  self.messages.push(message);
-  self[pendingMessageCountSymbol]++;
+  const capacity = this.getCapacity();
+  this.messages.push(message);
+  this[pendingMessageCountSymbol]++;
 
   let discarded;
   switch (capacity) {
     case 0:
-      discarded = evictOld();
+      discarded = this.evictFirst(message);
     case 1:
-      self.emit('saturated', self);
+      this.emit('saturated', this);
   }
 
   if (onMessageQueued) onMessageQueued(message);
-  self.emit('message', message);
+  this.emit('message', message);
 
-  return discarded ? 0 : self.consumeNext();
+  return discarded ? 0 : this.consumeNext();
+};
 
-  function evictOld() {
-    const evict = self.get();
-    if (!evict) return;
-    evict.nack(false, false);
-    return evict === message;
-  }
+Queue.prototype.evictFirst = function evictFirst(compareMessage) {
+  const evict = this.get();
+  if (!evict) return;
+  evict.nack(false, false);
+  return evict === compareMessage;
 };
 
 Queue.prototype.consumeNext = function consumeNext() {
@@ -118,42 +120,25 @@ Queue.prototype.consumeNext = function consumeNext() {
 };
 
 Queue.prototype.consume = function consume(onMessage, consumeOptions = {}, owner) {
-  const self = this;
-  const consumers = self[consumersSymbol];
+  const consumers = this[consumersSymbol];
 
-  if (self[exclusiveSymbol] && consumers.length) throw new Error(`Queue ${self.name} is exclusively consumed by ${consumers[0].consumerTag}`);
-  else if (consumeOptions.exclusive && consumers.length) throw new Error(`Queue ${self.name} already has consumers and cannot be exclusively consumed`);
+  if (this[exclusiveSymbol] && consumers.length) throw new Error(`Queue ${this.name} is exclusively consumed by ${consumers[0].consumerTag}`);
+  else if (consumeOptions.exclusive && consumers.length) throw new Error(`Queue ${this.name} already has consumers and cannot be exclusively consumed`);
 
-  const consumer = new Consumer(self, onMessage, consumeOptions, owner, consumerEmitter());
+  const consumer = new Consumer(this, onMessage, consumeOptions, owner, new ConsumerEmitter(this));
   consumers.push(consumer);
   consumers.sort(sortByPriority);
 
   if (consumer.options.exclusive) {
-    self[exclusiveSymbol] = consumer.options.exclusive;
+    this[exclusiveSymbol] = consumer.options.exclusive;
   }
 
-  self.emit('consume', consumer);
+  this.emit('consume', consumer);
 
-  const pendingMessages = self.consumeMessages(consumer.capacity, consumer.options);
+  const pendingMessages = this.consumeMessages(consumer.capacity, consumer.options);
   if (pendingMessages.length) consumer.push(pendingMessages);
 
   return consumer;
-
-  function consumerEmitter() {
-    return {
-      emit: onConsumerEmit,
-      on(...args) {
-        return self.on(...args);
-      },
-    };
-
-    function onConsumerEmit(eventName, ...args) {
-      if (eventName === 'consumer.cancel') {
-        self.unbindConsumer(consumer);
-      }
-      self.emit(eventName, ...args);
-    }
-  }
 };
 
 Queue.prototype.assertConsumer = function assertConsumer(onMessage, consumeOptions = {}, owner) {
@@ -538,18 +523,18 @@ Object.defineProperty(Consumer.prototype, 'queueName', {
 });
 
 Consumer.prototype.push = function push(messages) {
-  const self = this;
   const internalQueue = this[internalQueueSymbol];
+  const options = this.options;
   messages.forEach((message) => {
-    internalQueue.queueMessage(message.fields, message, message.properties, onInternalMessageQueued);
+    internalQueue.queueMessage(message.fields, message, message.properties, onMessageQueued);
   });
-  if (!self[consumingSymbol]) {
-    self.consume();
+  if (!this[consumingSymbol]) {
+    this.consume();
   }
 
-  function onInternalMessageQueued(msg) {
+  function onMessageQueued(msg) {
     const message = msg.content;
-    message.consume(self.options, onConsumed);
+    message.consume(options, onConsumed);
 
     function onConsumed() {
       internalQueue.dequeueMessage(msg);
@@ -623,3 +608,17 @@ Consumer.prototype.stop = function stop() {
   this[stoppedSymbol] = true;
 };
 
+function ConsumerEmitter(queue) {
+  this.queue = queue;
+}
+
+ConsumerEmitter.prototype.on = function on(...args) {
+  return this.queue.on(...args);
+};
+
+ConsumerEmitter.prototype.emit = function emit(eventName, content) {
+  if (eventName === 'consumer.cancel') {
+    this.queue.unbindConsumer(content);
+  }
+  this.queue.emit(eventName, content);
+};
