@@ -259,10 +259,6 @@ ExchangeBase.prototype.off = function off(pattern, handler) {
 };
 
 function Binding(exchange, queue, pattern, bindOptions = {}) {
-  if (!(this instanceof Binding)) {
-    return new Binding(exchange, queue, pattern, bindOptions);
-  }
-
   this.id = `${queue.name}/${pattern}`;
   this.options = {priority: 0, ...bindOptions};
   this.pattern = pattern;

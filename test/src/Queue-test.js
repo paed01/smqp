@@ -1,7 +1,7 @@
 import {Queue} from '../../src/Queue';
 
 describe('Queue', () => {
-  describe('ctorish', () => {
+  describe('ctor', () => {
     it('takes name', () => {
       const queue = Queue('test-q');
       expect(queue).to.have.property('name', 'test-q');
@@ -1068,6 +1068,24 @@ describe('Queue', () => {
 
       function emit(eventName) {
         if (eventName === 'queue.ready') triggered = true;
+      }
+    });
+
+    it('forwards events from consumer', () => {
+      let triggered;
+      const queue = Queue('test-q', {maxLength: 2}, {emit});
+      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({routingKey: 'test.2'});
+
+      queue.get().nack(false, false);
+
+      const consumer = queue.consume(() => {});
+      consumer.emit('madeup');
+
+      expect(triggered).to.be.true;
+
+      function emit(eventName) {
+        if (eventName === 'queue.consumer.madeup') triggered = true;
       }
     });
   });

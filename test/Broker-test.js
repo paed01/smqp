@@ -2120,6 +2120,33 @@ describe('Broker', () => {
 
       expect(messages).to.eql(['test.1', 'test.2']);
     });
+
+    it('emits close if exchange is closed', () => {
+      const broker = Broker();
+      const source = broker.assertExchange('source-events');
+      broker.assertExchange('dest-events');
+
+      const e2e = broker.bindExchange('source-events', 'dest-events');
+
+      const messages = [];
+      e2e.on('close', () => {
+        messages.push('closed');
+      });
+
+      broker.subscribeTmp('dest-events', '#', (routingKey) => {
+        messages.push(routingKey);
+      }, {noAck: true});
+
+      broker.publish('source-events', 'test.1');
+      broker.publish('source-events', 'test.2');
+
+      source.close();
+
+      broker.publish('source-events', 'test.2');
+      broker.publish('source-events', 'test.3');
+
+      expect(messages).to.eql(['test.1', 'test.2', 'closed']);
+    });
   });
 
   describe('unbindExchange()', () => {

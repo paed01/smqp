@@ -2,7 +2,7 @@ import {Exchange} from '../../src/Exchange';
 import {Queue} from '../../src/Queue';
 
 describe('Exchange', () => {
-  describe('ctorish', () => {
+  describe('ctor', () => {
     it('requires name', () => {
       const exchange = Exchange('event');
       expect(exchange).to.have.property('name', 'event');

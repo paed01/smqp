@@ -370,7 +370,7 @@ describe('Shovel', () => {
       expect(shovel).to.have.property('closed', true);
     });
 
-    it('accumulates messages is source queue is passed', () => {
+    it('accumulates messages if source queue is passed', () => {
       const broker1 = Broker();
       broker1.assertExchange('source-events', 'topic');
       const eventsQ = broker1.assertQueue('events-q', {autoDelete: false});
