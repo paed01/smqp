@@ -13,6 +13,10 @@ describe('Broker', () => {
     it('should export only enumerable properties', () => {
       const enumerableProperties = [
         'owner',
+        // XXX non enumerable getters
+        // 'exchangeCount',
+        // 'queueCount',
+        // 'consumerCount',
         'subscribe',
         'subscribeOnce',
         'subscribeTmp',
@@ -34,7 +38,6 @@ describe('Broker', () => {
         'consume',
         'createQueue',
         'deleteQueue',
-        'get',
         'getConsumer',
         'getConsumers',
         'getExchange',
@@ -42,7 +45,6 @@ describe('Broker', () => {
         'getState',
         'on',
         'off',
-        'prefetch',
         'publish',
         'purgeQueue',
         'recover',
@@ -52,9 +54,8 @@ describe('Broker', () => {
         'stop',
         'unbindExchange',
         'unbindQueue',
-        'exchangeCount',
-        'queueCount',
-        'consumerCount',
+        'prefetch',
+        'get',
       ];
       const broker = Broker();
       const keys = Object.keys(broker);

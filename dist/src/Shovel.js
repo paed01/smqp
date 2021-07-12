@@ -7,100 +7,116 @@ exports.Shovel = Shovel;
 
 var _Exchange = require("./Exchange");
 
-function Shovel(name, source, destination, options = {}) {
-  const {
-    broker: sourceBroker,
-    exchange: sourceExchangeName,
-    pattern,
-    queue,
-    priority
-  } = source;
-  const {
-    broker: destinationBroker,
-    exchange: destinationExchangeName,
-    publishProperties,
-    exchangeKey
-  } = destination;
-  const {
-    cloneMessage
-  } = options;
-  const sourceExchange = sourceBroker.getExchange(sourceExchangeName);
+const prv = Symbol('private');
+const shovelPublicMethods = ['close'];
 
-  if (!sourceExchange) {
-    throw new Error(`shovel ${name} source exchange <${sourceExchangeName}> not found`);
-  }
+class _Shovel {
+  constructor(name, source, destination, options = {}) {
+    const {
+      broker: sourceBroker,
+      exchange: sourceExchangeName,
+      pattern,
+      queue,
+      priority
+    } = source;
+    const {
+      broker: destinationBroker,
+      exchange: destinationExchangeName,
+      publishProperties,
+      exchangeKey
+    } = destination;
+    const {
+      cloneMessage
+    } = options;
+    const sourceExchange = sourceBroker.getExchange(sourceExchangeName);
 
-  const destinationExchange = destinationBroker.getExchange(destinationExchangeName);
+    if (!sourceExchange) {
+      throw new Error(`shovel ${name} source exchange <${sourceExchangeName}> not found`);
+    }
 
-  if (!destinationExchange) {
-    throw new Error(`shovel ${name} destination exchange <${destinationExchangeName}> not found`);
-  }
+    const destinationExchange = destinationBroker.getExchange(destinationExchangeName);
 
-  const sameBroker = sourceBroker === destinationBroker;
-  const consumerTag = source.consumerTag || `smq.shoveltag-${name}`;
-  const routingKeyPattern = pattern || '#';
-  const events = (0, _Exchange.EventExchange)();
-  let closed = false;
-  const api = {
-    name,
+    if (!destinationExchange) {
+      throw new Error(`shovel ${name} destination exchange <${destinationExchangeName}> not found`);
+    }
 
-    get closed() {
-      return closed;
-    },
-
-    source: { ...source,
+    shovelPublicMethods.forEach(fn => {
+      this[fn] = _Shovel.prototype[fn].bind(this);
+    });
+    const eventHandlers = [sourceExchange.on('delete', this.close), destinationExchange.on('delete', this.close)];
+    const consumerTag = source.consumerTag || `smq.shoveltag-${name}`;
+    const routingKeyPattern = pattern || '#';
+    this[prv] = {
+      sameBroker: sourceBroker === destinationBroker,
+      events: (0, _Exchange.EventExchange)(),
+      closed: false,
+      cloneMessage,
+      destination,
+      destinationExchange,
+      eventHandlers,
+      exchangeKey,
+      publishProperties,
+      sourceBroker,
+      sourceExchangeName
+    };
+    this.name = name;
+    this.source = { ...source,
       pattern: routingKeyPattern
-    },
-    destination: { ...destination
-    },
-    consumerTag,
-    close,
-    on: events.on
-  };
-  const eventHandlers = [sourceExchange.on('delete', close), destinationExchange.on('delete', close)];
-  let consumer;
+    };
+    this.destination = { ...destination
+    };
+    this.consumerTag = consumerTag;
+    this.on = this[prv].events.on;
 
-  if (queue) {
-    consumer = sourceBroker.subscribe(sourceExchangeName, routingKeyPattern, queue, onShovelMessage, {
-      consumerTag,
-      priority
-    });
-  } else {
-    consumer = sourceBroker.subscribeTmp(sourceExchangeName, routingKeyPattern, onShovelMessage, {
-      consumerTag,
-      priority
-    });
-    api.source.queue = consumer.queue.name;
+    const onShovelMessage = _Shovel.prototype.onShovelMessage.bind(this);
+
+    let consumer;
+
+    if (queue) {
+      consumer = sourceBroker.subscribe(sourceExchangeName, routingKeyPattern, queue, onShovelMessage, {
+        consumerTag,
+        priority
+      });
+    } else {
+      consumer = sourceBroker.subscribeTmp(sourceExchangeName, routingKeyPattern, onShovelMessage, {
+        consumerTag,
+        priority
+      });
+      this.source.queue = consumer.queue.name;
+    }
+
+    eventHandlers.push(consumer.on('cancel', this.close));
   }
 
-  eventHandlers.push(consumer.on('cancel', close));
-  return api;
+  get closed() {
+    return this[prv].closed;
+  }
 
-  function onShovelMessage(routingKey, message) {
+  onShovelMessage(routingKey, message) {
     const {
       content,
       properties
-    } = messageHandler(message);
+    } = this.messageHandler(message);
     const props = { ...properties,
-      ...publishProperties,
-      'source-exchange': sourceExchangeName
+      ...this[prv].publishProperties,
+      'source-exchange': this[prv].sourceExchangeName
     };
-    if (!sameBroker) props['shovel-name'] = name;
-    destinationExchange.publish(exchangeKey || routingKey, content, props);
+    if (!this[prv].sameBroker) props['shovel-name'] = this.name;
+    this[prv].destinationExchange.publish(this[prv].exchangeKey || routingKey, content, props);
     message.ack();
   }
 
-  function close() {
-    if (closed) return;
-    closed = true;
-    eventHandlers.splice(0).forEach(e => e.cancel());
-    events.emit('close', api);
-    events.close();
-    sourceBroker.cancel(consumerTag);
+  close() {
+    if (this[prv].closed) return;
+    this[prv].closed = true;
+    this[prv].eventHandlers.splice(0).forEach(e => e.cancel());
+    this[prv].events.emit('close', this);
+    this[prv].events.close();
+    this[prv].sourceBroker.cancel(this.consumerTag);
   }
 
-  function messageHandler(message) {
-    if (!cloneMessage) return message;
+  messageHandler(message) {
+    if (!this[prv].cloneMessage) return message;
     const {
       fields,
       content,
@@ -109,7 +125,7 @@ function Shovel(name, source, destination, options = {}) {
     const {
       content: newContent,
       properties: newProperties
-    } = cloneMessage({
+    } = this[prv].cloneMessage({
       fields: { ...fields
       },
       content,
@@ -124,4 +140,9 @@ function Shovel(name, source, destination, options = {}) {
       }
     };
   }
+
+}
+
+function Shovel(name, source, destination, options = {}) {
+  return new _Shovel(name, source, destination, options);
 }

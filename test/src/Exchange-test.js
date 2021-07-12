@@ -33,6 +33,10 @@ describe('Exchange', () => {
         'name',
         'type',
         'options',
+        // XXX non enumerable getters
+        // 'bindingCount',
+        // 'bindings',
+        // 'stopped',
         'bind',
         'close',
         'emit',
@@ -45,9 +49,6 @@ describe('Exchange', () => {
         'stop',
         'unbind',
         'unbindQueueByName',
-        'bindingCount',
-        'bindings',
-        'stopped',
       ];
       const exchange = Exchange('test');
       const keys = Object.keys(exchange);

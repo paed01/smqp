@@ -11,99 +11,69 @@ var _Queue = require("./Queue");
 
 var _Shovel = require("./Shovel");
 
-function Broker(owner) {
-  const exchanges = [];
-  const queues = [];
-  const consumers = [];
-  const shovels = [];
-  const events = (0, _Exchange.EventExchange)();
-  const broker = {
-    owner,
+const prv = Symbol('private');
+const brokerPublicMethods = ['subscribe', 'subscribeOnce', 'subscribeTmp', 'unsubscribe', 'createShovel', 'closeShovel', 'getShovel', 'assertExchange', 'ack', 'ackAll', 'nack', 'nackAll', 'cancel', 'close', 'deleteExchange', 'bindExchange', 'bindQueue', 'assertQueue', 'consume', 'createQueue', 'deleteQueue', 'getConsumer', 'getConsumers', 'getExchange', 'getQueue', 'getState', 'on', 'off', 'publish', 'purgeQueue', 'recover', 'reject', 'reset', 'sendToQueue', 'stop', 'unbindExchange', 'unbindQueue'];
 
-    get exchangeCount() {
-      return exchanges.length;
-    },
+class _Broker {
+  constructor(owner) {
+    this[prv] = {
+      exchanges: [],
+      queues: [],
+      consumers: [],
+      shovels: [],
+      events: (0, _Exchange.EventExchange)()
+    };
+    this.owner = owner;
+    brokerPublicMethods.forEach(fn => {
+      this[fn] = _Broker.prototype[fn].bind(this);
+    }); // renamed methods
 
-    get queueCount() {
-      return queues.length;
-    },
+    this.prefetch = _Broker.prototype.setPrefetch;
+    this.get = _Broker.prototype.getMessageFromQueue.bind(this);
+  }
 
-    get consumerCount() {
-      return consumers.length;
-    },
+  get exchangeCount() {
+    return this[prv].exchanges.length;
+  }
 
-    subscribe,
-    subscribeOnce,
-    subscribeTmp,
-    unsubscribe,
-    createShovel,
-    closeShovel,
-    getShovel,
-    assertExchange,
-    ack,
-    ackAll,
-    nack,
-    nackAll,
-    cancel,
-    close,
-    deleteExchange,
-    bindExchange,
-    bindQueue,
-    assertQueue,
-    consume,
-    createQueue,
-    deleteQueue,
-    get: getMessageFromQueue,
-    getConsumer,
-    getConsumers,
-    getExchange,
-    getQueue,
-    getState,
-    on,
-    off,
-    prefetch: setPrefetch,
-    publish,
-    purgeQueue,
-    recover,
-    reject,
-    reset,
-    sendToQueue,
-    stop,
-    unbindExchange,
-    unbindQueue
-  };
-  return broker;
+  get queueCount() {
+    return this[prv].queues.length;
+  }
 
-  function subscribe(exchangeName, pattern, queueName, onMessage, options = {
+  get consumerCount() {
+    return this[prv].consumers.length;
+  }
+
+  subscribe(exchangeName, pattern, queueName, onMessage, options = {
     durable: true
   }) {
     if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and message callback are required');
-    if (options && options.consumerTag) validateConsumerTag(options.consumerTag);
-    assertExchange(exchangeName);
-    const queue = assertQueue(queueName, options);
-    bindQueue(queue.name, exchangeName, pattern, options);
-    return queue.assertConsumer(onMessage, options, owner);
+    if (options && options.consumerTag) this._validateConsumerTag(options.consumerTag);
+    this.assertExchange(exchangeName);
+    const queue = this.assertQueue(queueName, options);
+    this.bindQueue(queue.name, exchangeName, pattern, options);
+    return queue.assertConsumer(onMessage, options, this.owner);
   }
 
-  function subscribeTmp(exchangeName, pattern, onMessage, options = {}) {
-    return subscribe(exchangeName, pattern, null, onMessage, { ...options,
+  subscribeTmp(exchangeName, pattern, onMessage, options = {}) {
+    return this.subscribe(exchangeName, pattern, null, onMessage, { ...options,
       durable: false
     });
   }
 
-  function subscribeOnce(exchangeName, pattern, onMessage, options = {}) {
+  subscribeOnce(exchangeName, pattern, onMessage, options = {}) {
     if (typeof onMessage !== 'function') throw new Error('message callback is required');
-    if (options && options.consumerTag) validateConsumerTag(options.consumerTag);
-    assertExchange(exchangeName);
+    if (options && options.consumerTag) this._validateConsumerTag(options.consumerTag);
+    this.assertExchange(exchangeName);
     const onceOptions = {
       autoDelete: true,
       durable: false,
       priority: options.priority || 0
     };
-    const onceQueue = createQueue(null, onceOptions);
-    bindQueue(onceQueue.name, exchangeName, pattern, { ...onceOptions
+    const onceQueue = this.createQueue(null, onceOptions);
+    this.bindQueue(onceQueue.name, exchangeName, pattern, { ...onceOptions
     });
-    return consume(onceQueue.name, wrappedOnMessage, {
+    return this.consume(onceQueue.name, wrappedOnMessage, {
       noAck: true,
       consumerTag: options.consumerTag
     });
@@ -114,70 +84,70 @@ function Broker(owner) {
     }
   }
 
-  function unsubscribe(queueName, onMessage) {
-    const queue = getQueue(queueName);
+  unsubscribe(queueName, onMessage) {
+    const queue = this.getQueue(queueName);
     if (!queue) return;
     queue.dismiss(onMessage);
   }
 
-  function assertExchange(exchangeName, type, options) {
-    let exchange = getExchangeByName(exchangeName);
+  assertExchange(exchangeName, type, options) {
+    let exchange = this._getExchangeByName(exchangeName);
 
     if (exchange) {
       if (type && exchange.type !== type) throw new Error('Type doesn\'t match');
     } else {
       exchange = (0, _Exchange.Exchange)(exchangeName, type || 'topic', options);
       exchange.on('delete', () => {
-        const idx = exchanges.indexOf(exchange);
+        const idx = this[prv].exchanges.indexOf(exchange);
         if (idx === -1) return;
-        exchanges.splice(idx, 1);
+        this[prv].exchanges.splice(idx, 1);
       });
       exchange.on('return', (_, msg) => {
-        events.publish('return', msg.content);
+        this[prv].events.publish('return', msg.content);
       });
       exchange.on('message.undelivered', (_, msg) => {
-        events.publish('message.undelivered', msg.content);
+        this[prv].events.publish('message.undelivered', msg.content);
       });
-      exchanges.push(exchange);
+      this[prv].exchanges.push(exchange);
     }
 
     return exchange;
   }
 
-  function getExchangeByName(exchangeName) {
-    return exchanges.find(exchange => exchange.name === exchangeName);
+  _getExchangeByName(exchangeName) {
+    return this[prv].exchanges.find(exchange => exchange.name === exchangeName);
   }
 
-  function bindQueue(queueName, exchangeName, pattern, bindOptions) {
-    const exchange = getExchange(exchangeName);
-    const queue = getQueue(queueName);
+  bindQueue(queueName, exchangeName, pattern, bindOptions) {
+    const exchange = this.getExchange(exchangeName);
+    const queue = this.getQueue(queueName);
     exchange.bind(queue, pattern, bindOptions);
   }
 
-  function unbindQueue(queueName, exchangeName, pattern) {
-    const exchange = getExchange(exchangeName);
+  unbindQueue(queueName, exchangeName, pattern) {
+    const exchange = this.getExchange(exchangeName);
     if (!exchange) return;
-    const queue = getQueue(queueName);
+    const queue = this.getQueue(queueName);
     if (!queue) return;
     exchange.unbind(queue, pattern);
   }
 
-  function consume(queueName, onMessage, options) {
-    const queue = getQueue(queueName);
+  consume(queueName, onMessage, options) {
+    const queue = this.getQueue(queueName);
     if (!queue) throw new Error(`Queue with name <${queueName}> was not found`);
-    if (options) validateConsumerTag(options.consumerTag);
-    return queue.consume(onMessage, options, owner);
+    if (options) this._validateConsumerTag(options.consumerTag);
+    return queue.consume(onMessage, options, this.owner);
   }
 
-  function cancel(consumerTag) {
-    const consumer = getConsumer(consumerTag);
+  cancel(consumerTag) {
+    const consumer = this.getConsumer(consumerTag);
     if (!consumer) return false;
     consumer.cancel(false);
     return true;
   }
 
-  function getConsumers() {
-    return consumers.map(consumer => {
+  getConsumers() {
+    return this[prv].consumers.map(consumer => {
       return {
         queue: consumer.queue.name,
         consumerTag: consumer.options.consumerTag,
@@ -187,86 +157,78 @@ function Broker(owner) {
     });
   }
 
-  function getConsumer(consumerTag) {
-    return consumers.find(c => c.consumerTag === consumerTag);
+  getConsumer(consumerTag) {
+    return this[prv].consumers.find(c => c.consumerTag === consumerTag);
   }
 
-  function getExchange(exchangeName) {
-    return exchanges.find(({
+  getExchange(exchangeName) {
+    return this[prv].exchanges.find(({
       name
     }) => name === exchangeName);
   }
 
-  function deleteExchange(exchangeName, {
+  deleteExchange(exchangeName, {
     ifUnused
   } = {}) {
-    const idx = exchanges.findIndex(exchange => exchange.name === exchangeName);
+    const idx = this[prv].exchanges.findIndex(exchange => exchange.name === exchangeName);
     if (idx === -1) return false;
-    const exchange = exchanges[idx];
+    const exchange = this[prv].exchanges[idx];
     if (ifUnused && exchange.bindingCount) return false;
-    exchanges.splice(idx, 1);
+    this[prv].exchanges.splice(idx, 1);
     exchange.close();
     return true;
   }
 
-  function stop() {
-    for (const exchange of exchanges) exchange.stop();
-
-    for (const queue of queues) queue.stop();
+  stop() {
+    this[prv].exchanges.forEach(exchange => exchange.stop());
+    this[prv].queues.forEach(queue => queue.stop());
   }
 
-  function close() {
-    for (const shovel of shovels) shovel.close();
-
-    for (const exchange of exchanges) exchange.close();
-
-    for (const queue of queues) queue.close();
+  close() {
+    this[prv].shovels.forEach(shovel => shovel.close());
+    this[prv].exchanges.forEach(exchange => exchange.close());
+    this[prv].queues.forEach(queue => queue.close());
   }
 
-  function reset() {
-    stop();
-    close();
-    exchanges.splice(0);
-    queues.splice(0);
-    consumers.splice(0);
-    shovels.splice(0);
+  reset() {
+    this.stop();
+    this.close();
+    this[prv].exchanges.splice(0);
+    this[prv].queues.splice(0);
+    this[prv].consumers.splice(0);
+    this[prv].shovels.splice(0);
   }
 
-  function getState() {
+  getState() {
     return {
-      exchanges: getExchangeState(),
-      queues: getQueuesState()
+      exchanges: this.getExchangeState(),
+      queues: this.getQueuesState()
     };
   }
 
-  function recover(state) {
-    if (state) {
-      if (state.queues) for (const qState of state.queues) recoverQueue(qState);
-      if (state.exchanges) for (const eState of state.exchanges) recoverExchange(eState);
-    } else {
-      for (const queue of queues) {
-        if (queue.stopped) queue.recover();
-      }
-
-      for (const exchange of exchanges) {
-        if (exchange.stopped) exchange.recover(null, getQueue);
-      }
-    }
-
-    return broker;
-
-    function recoverQueue(qState) {
-      const queue = assertQueue(qState.name, qState.options);
+  recover(state) {
+    const recoverQueue = qState => {
+      const queue = this.assertQueue(qState.name, qState.options);
       queue.recover(qState);
+    };
+
+    const recoverExchange = eState => {
+      const exchange = this.assertExchange(eState.name, eState.type, eState.options);
+      exchange.recover(eState, this.getQueue);
+    };
+
+    if (state) {
+      if (state.queues) state.queues.forEach(recoverQueue);
+      if (state.exchanges) state.exchanges.forEach(recoverExchange);
+    } else {
+      this[prv].queues.forEach(queue => queue.stopped && queue.recover());
+      this[prv].exchanges.forEach(exchange => exchange.stopped && exchange.recover(null, this.getQueue));
     }
 
-    function recoverExchange(eState) {
-      const exchange = assertExchange(eState.name, eState.type, eState.options);
-      exchange.recover(eState, getQueue);
-    }
+    return this;
   }
 
-  function bindExchange(source, destination, pattern = '#', args = {}) {
+  bindExchange(source, destination, pattern = '#', args = {}) {
     const name = `e2e-${source}2${destination}-${pattern}`;
     const {
       priority
@@ -276,14 +238,14 @@ function Broker(owner) {
       on: onShovel,
       close: onClose,
       source: shovelSource
-    } = createShovel(name, {
-      broker,
+    } = this.createShovel(name, {
+      broker: this,
       exchange: source,
       pattern,
       priority,
       consumerTag: `smq.ctag-${name}`
     }, {
-      broker,
+      broker: this,
       exchange: destination
     }, { ...args
     });
@@ -298,31 +260,32 @@ function Broker(owner) {
     };
   }
 
-  function unbindExchange(source, destination, pattern = '#') {
+  unbindExchange(source, destination, pattern = '#') {
     const name = `e2e-${source}2${destination}-${pattern}`;
-    return closeShovel(name);
+    return this.closeShovel(name);
   }
 
-  function publish(exchangeName, routingKey, content, options) {
-    const exchange = getExchangeByName(exchangeName);
+  publish(exchangeName, routingKey, content, options) {
+    const exchange = this._getExchangeByName(exchangeName);
+
     if (!exchange) return;
     return exchange.publish(routingKey, content, options);
   }
 
-  function purgeQueue(queueName) {
-    const queue = getQueue(queueName);
+  purgeQueue(queueName) {
+    const queue = this.getQueue(queueName);
     if (!queue) return;
     return queue.purge();
   }
 
-  function sendToQueue(queueName, content, options = {}) {
-    const queue = getQueue(queueName);
+  sendToQueue(queueName, content, options = {}) {
+    const queue = this.getQueue(queueName);
     if (!queue) throw new Error(`Queue named ${queueName} doesn't exists`);
     return queue.queueMessage(null, content, options);
   }
 
-  function getQueuesState() {
-    return queues.reduce((result, queue) => {
+  getQueuesState() {
+    return this[prv].queues.reduce((result, queue) => {
       if (!queue.options.durable) return result;
       if (!result) result = [];
       result.push(queue.getState());
@@ -330,8 +293,8 @@ function Broker(owner) {
     }, undefined);
   }
 
-  function getExchangeState() {
-    return exchanges.reduce((result, exchange) => {
+  getExchangeState() {
+    return this[prv].exchanges.reduce((result, exchange) => {
       if (!exchange.options.durable) return result;
       if (!result) result = [];
       result.push(exchange.getState());
@@ -339,123 +302,125 @@ function Broker(owner) {
     }, undefined);
   }
 
-  function createQueue(queueName, options) {
-    if (getQueue(queueName)) throw new Error(`Queue named ${queueName} already exists`);
+  createQueue(queueName, options) {
+    if (this.getQueue(queueName)) throw new Error(`Queue named ${queueName} already exists`);
     const queue = (0, _Queue.Queue)(queueName, options, (0, _Exchange.EventExchange)(queueName + '-events'));
+
+    const onDelete = () => {
+      const idx = this[prv].queues.indexOf(queue);
+      if (idx === -1) return;
+      this[prv].queues.splice(idx, 1);
+    };
+
+    const onDeadLetter = (_, {
+      content
+    }) => {
+      const exchange = this.getExchange(content.deadLetterExchange);
+      if (!exchange) return;
+      exchange.publish(content.message.fields.routingKey, content.message.content, content.message.properties);
+    };
+
     queue.on('delete', onDelete);
     queue.on('dead-letter', onDeadLetter);
-    queue.on('consume', (_, event) => consumers.push(event.content));
+    queue.on('consume', (_, event) => this[prv].consumers.push(event.content));
     queue.on('consumer.cancel', (_, event) => {
-      const idx = consumers.indexOf(event.content);
-      if (idx !== -1) consumers.splice(idx, 1);
+      const idx = this[prv].consumers.indexOf(event.content);
+      if (idx !== -1) this[prv].consumers.splice(idx, 1);
     });
     queue.on('message.consumed.#', (_, msg) => {
       const {
         operation,
         message
       } = msg.content;
-      events.publish('message.' + operation, message);
+      this[prv].events.publish('message.' + operation, message);
     });
-    queues.push(queue);
+    this[prv].queues.push(queue);
     return queue;
-
-    function onDelete() {
-      const idx = queues.indexOf(queue);
-      if (idx === -1) return;
-      queues.splice(idx, 1);
-    }
-
-    function onDeadLetter(_, {
-      content
-    }) {
-      const exchange = getExchange(content.deadLetterExchange);
-      if (!exchange) return;
-      exchange.publish(content.message.fields.routingKey, content.message.content, content.message.properties);
-    }
   }
 
-  function getQueue(queueName) {
+  getQueue(queueName) {
     if (!queueName) return;
-    const idx = queues.findIndex(queue => queue.name === queueName);
-    if (idx > -1) return queues[idx];
+    const idx = this[prv].queues.findIndex(queue => queue.name === queueName);
+    if (idx > -1) return this[prv].queues[idx];
   }
 
-  function assertQueue(queueName, options = {}) {
-    if (!queueName) return createQueue(null, options);
-    const queue = getQueue(queueName);
+  assertQueue(queueName, options = {}) {
+    if (!queueName) return this.createQueue(null, options);
+    const queue = this.getQueue(queueName);
     options = {
       durable: true,
       ...options
     };
-    if (!queue) return createQueue(queueName, options);
+    if (!queue) return this.createQueue(queueName, options);
     if (queue.options.durable !== options.durable) throw new Error('Durable doesn\'t match');
     return queue;
   }
 
-  function deleteQueue(queueName, options) {
+  deleteQueue(queueName, options) {
     if (!queueName) return false;
-    const queue = getQueue(queueName);
+    const queue = this.getQueue(queueName);
     if (!queue) return false;
     return queue.delete(options);
   }
 
-  function getMessageFromQueue(queueName, {
+  getMessageFromQueue(queueName, {
     noAck
   } = {}) {
-    const queue = getQueue(queueName);
+    const queue = this.getQueue(queueName);
     if (!queue) return;
     return queue.get({
       noAck
     });
   }
 
-  function ack(message, allUpTo) {
+  ack(message, allUpTo) {
     message.ack(allUpTo);
   }
 
-  function ackAll() {
-    for (const queue of queues) queue.ackAll();
+  ackAll() {
+    this[prv].queues.forEach(queue => queue.ackAll());
   }
 
-  function nack(message, allUpTo, requeue) {
+  nack(message, allUpTo, requeue) {
     message.nack(allUpTo, requeue);
   }
 
-  function nackAll(requeue) {
-    for (const queue of queues) queue.nackAll(requeue);
+  nackAll(requeue) {
+    this[prv].queues.forEach(queue => queue.nackAll(requeue));
   }
 
-  function reject(message, requeue) {
+  reject(message, requeue) {
     message.reject(requeue);
   }
 
-  function validateConsumerTag(consumerTag) {
+  _validateConsumerTag(consumerTag) {
     if (!consumerTag) return true;
 
-    if (getConsumer(consumerTag)) {
+    if (this.getConsumer(consumerTag)) {
       throw new Error(`Consumer tag must be unique, ${consumerTag} is occupied`);
     }
 
     return true;
   }
 
-  function createShovel(name, source, destination, options) {
-    if (getShovel(name)) throw new Error(`Shovel name must be unique, ${name} is occupied`);
+  createShovel(name, source, destination, options) {
+    if (this.getShovel(name)) throw new Error(`Shovel name must be unique, ${name} is occupied`);
+
+    const onClose = () => {
+      const idx = this[prv].shovels.indexOf(shovel);
+      if (idx > -1) this[prv].shovels.splice(idx, 1);
+    };
+
     const shovel = (0, _Shovel.Shovel)(name, { ...source,
-      broker
+      broker: this
     }, destination, options);
-    shovels.push(shovel);
+    this[prv].shovels.push(shovel);
     shovel.on('close', onClose);
     return shovel;
-
-    function onClose() {
-      const idx = shovels.indexOf(shovel);
-      if (idx > -1) shovels.splice(idx, 1);
-    }
   }
 
-  function closeShovel(name) {
-    const shovel = getShovel(name);
+  closeShovel(name) {
+    const shovel = this.getShovel(name);
 
     if (shovel) {
       shovel.close();
@@ -465,12 +430,12 @@ function Broker(owner) {
     return false;
   }
 
-  function getShovel(name) {
-    return shovels.find(s => s.name === name);
+  getShovel(name) {
+    return this[prv].shovels.find(s => s.name === name);
   }
 
-  function on(eventName, callback, options) {
-    return events.on(eventName, getEventCallback(), { ...options,
+  on(eventName, callback, options) {
+    return this[prv].events.on(eventName, getEventCallback(), { ...options,
       origin: callback
     });
 
@@ -484,12 +449,12 @@ function Broker(owner) {
     }
   }
 
-  function off(eventName, callbackOrObject) {
+  off(eventName, callbackOrObject) {
     const {
       consumerTag
     } = callbackOrObject;
 
-    for (const binding of events.bindings) {
+    for (const binding of this[prv].events.bindings) {
       if (binding.pattern === eventName) {
         if (consumerTag) {
           binding.queue.cancel(consumerTag);
@@ -505,5 +470,10 @@ function Broker(owner) {
     }
   }
 
-  function setPrefetch() {}
+  setPrefetch() {}
+
+}
+
+function Broker(owner) {
+  return new _Broker(owner);
 }

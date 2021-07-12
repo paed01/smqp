@@ -14,12 +14,12 @@ describe('Queue', () => {
 
     it('takes options', () => {
       const queue = Queue(null, {autoDelete: false, durable: true});
-      expect(queue).to.have.property('options').that.eql({autoDelete: false, durable: true});
+      expect(queue).to.have.property('options').that.eql({autoDelete: false, durable: true, maxLength: Infinity});
     });
 
     it('defaults to option autoDelete if not passed', () => {
       const queue = Queue();
-      expect(queue).to.have.property('options').that.eql({autoDelete: true});
+      expect(queue).to.have.property('options').that.eql({autoDelete: true, maxLength: Infinity});
     });
 
     it('should export only enumerable properties', () => {
@@ -49,7 +49,8 @@ describe('Queue', () => {
         'reject',
         'stop',
         'unbindConsumer',
-        'messageCount',
+        // XXX non enumerable getter
+        // 'messageCount',
       ];
       const queue = Queue();
       const keys = Object.keys(queue);
@@ -960,7 +961,8 @@ describe('Queue', () => {
       const state = queue.getState();
       expect(state).to.have.property('name', 'test-q');
       expect(state).to.have.property('options').that.eql({
-        autoDelete: true
+        autoDelete: true,
+        maxLength: Infinity,
       });
       expect(state).to.have.property('messages').have.length(2);
     });
