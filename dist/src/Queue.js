@@ -10,126 +10,117 @@ var _shared = require("./shared");
 
 var _Message = require("./Message");
 
-function Queue(name, options = {}, eventEmitter) {
-  if (!name) name = `smq.qname-${(0, _shared.generateId)()}`;
-  const messages = [],
-        consumers = [];
-  let exclusivelyConsumed,
-      stopped,
-      pendingMessageCount = 0;
-  options = {
-    autoDelete: true,
-    ...options
-  };
-  let maxLength = 'maxLength' in options ? options.maxLength : Infinity;
-  const messageTtl = options.messageTtl;
-  const {
-    deadLetterExchange,
-    deadLetterRoutingKey
-  } = options;
-  const queue = {
-    name,
-    options,
+const prv = Symbol('private');
+const queuePublicMethods = ['ack', 'ackAll', 'assertConsumer', 'cancel', 'close', 'consume', 'delete', 'dequeueMessage', 'dismiss', 'get', 'getState', 'nack', 'nackAll', 'off', 'on', 'peek', 'purge', 'queueMessage', 'recover', 'reject', 'stop', 'unbindConsumer' //'messageCount',
+];
 
-    get messageCount() {
-      return messages.length;
-    },
+class _Queue {
+  constructor(name, options = {}, eventEmitter) {
+    this[prv] = {
+      eventEmitter,
+      consumers: [],
+      pendingMessageCount: 0,
+      onMessageConsumed: _Queue.prototype._onMessageConsumed.bind(this)
+    };
+    this.name = name || `smq.qname-${(0, _shared.generateId)()}`;
+    this.options = {
+      autoDelete: true,
+      ...options
+    };
 
-    get consumers() {
-      return consumers.slice();
-    },
+    if (this.options.maxLength === undefined) {
+      this.options.maxLength = Infinity;
+    }
 
-    get consumerCount() {
-      return consumers.length;
-    },
+    this.messages = [];
+    queuePublicMethods.forEach(fn => {
+      this[fn] = _Queue.prototype[fn].bind(this);
+    });
+  }
 
-    get stopped() {
-      return stopped;
-    },
+  get messageCount() {
+    return this.messages.length;
+  }
 
-    get exclusive() {
-      return exclusivelyConsumed;
-    },
+  get consumers() {
+    return this[prv].consumers.slice();
+  }
 
-    get maxLength() {
-      return maxLength;
-    },
+  get consumerCount() {
+    return this[prv].consumers.length;
+  }
 
-    set maxLength(value) {
-      maxLength = options.maxLength = value;
-    },
+  get stopped() {
+    return this[prv].stopped;
+  }
 
-    get capacity() {
-      return getCapacity();
-    },
+  get exclusive() {
+    return this[prv].exclusivelyConsumed;
+  }
 
-    messages,
-    ack,
-    ackAll,
-    assertConsumer,
-    cancel,
-    close,
-    consume,
-    delete: deleteQueue,
-    dequeueMessage,
-    dismiss,
-    get,
-    getState,
-    nack,
-    nackAll,
-    off,
-    on,
-    peek,
-    purge,
-    queueMessage,
-    recover,
-    reject,
-    stop,
-    unbindConsumer
-  };
-  return queue;
+  get maxLength() {
+    return this.options.maxLength;
+  }
 
-  function queueMessage(fields, content, properties, onMessageQueued) {
-    if (stopped) return;
+  set maxLength(maxLength) {
+    this.options.maxLength = maxLength;
+  }
+
+  get capacity() {
+    return this.getCapacity();
+  }
+
+  queueMessage(fields, content, properties, onMessageQueued) {
+    if (this[prv].stopped) return;
     const messageProperties = { ...properties
     };
-    if (messageTtl) messageProperties.expiration = messageProperties.expiration || messageTtl;
-    const message = (0, _Message.Message)(fields, content, messageProperties, onMessageConsumed);
-    const capacity = getCapacity();
-    messages.push(message);
-    pendingMessageCount++;
+    const messageTtl = this.options.messageTtl;
+
+    if (messageTtl) {
+      messageProperties.expiration = messageProperties.expiration || messageTtl;
+    }
+
+    const message = (0, _Message.Message)(fields, content, messageProperties, this[prv].onMessageConsumed);
+    const capacity = this.getCapacity();
+    this.messages.push(message);
+    this[prv].pendingMessageCount++;
     let discarded;
+
+    const evictOld = () => {
+      const evict = this.get();
+      if (!evict) return;
+      evict.nack(false, false);
+      return evict === message;
+    };
 
     switch (capacity) {
       case 0:
         discarded = evictOld();
 
       case 1:
-        emit('saturated');
+        this._emit('saturated');
+
     }
 
     if (onMessageQueued) onMessageQueued(message);
-    emit('message', message);
-    return discarded ? 0 : consumeNext();
 
-    function evictOld() {
-      const evict = get();
-      if (!evict) return;
-      evict.nack(false, false);
-      return evict === message;
-    }
+    this._emit('message', message);
+
+    return discarded ? 0 : this._consumeNext();
   }
 
-  function consumeNext() {
-    if (stopped) return;
-    if (!pendingMessageCount) return;
+  _consumeNext() {
+    const consumers = this[prv].consumers;
+    if (this[prv].stopped) return;
+    if (!this[prv].pendingMessageCount) return;
     if (!consumers.length) return;
     const readyConsumers = consumers.filter(consumer => consumer.ready);
     if (!readyConsumers.length) return 0;
     let consumed = 0;
 
     for (const consumer of readyConsumers) {
-      const msgs = consumeMessages(consumer.capacity, consumer.options);
+      const msgs = this._consumeMessages(consumer.capacity, consumer.options);
+
       if (!msgs.length) return consumed;
       consumer.push(msgs);
       consumed += msgs.length;
@@ -138,35 +129,44 @@ function Queue(name, options = {}, eventEmitter) {
     return consumed;
   }
 
-  function consume(onMessage, consumeOptions = {}, owner) {
-    if (exclusivelyConsumed && consumers.length) throw new Error(`Queue ${name} is exclusively consumed by ${consumers[0].consumerTag}`);else if (consumeOptions.exclusive && consumers.length) throw new Error(`Queue ${name} already has consumers and cannot be exclusively consumed`);
-    const consumer = Consumer(queue, onMessage, consumeOptions, owner, consumerEmitter());
-    consumers.push(consumer);
-    consumers.sort(_shared.sortByPriority);
-    exclusivelyConsumed = consumer.options.exclusive;
-    emit('consume', consumer);
-    const pendingMessages = consumeMessages(consumer.capacity, consumer.options);
-    if (pendingMessages.length) consumer.push(pendingMessages);
-    return consumer;
+  consume(onMessage, consumeOptions = {}, owner) {
+    const consumers = this[prv].consumers;
 
-    function consumerEmitter() {
-      return {
-        emit: onConsumerEmit,
-        on
-      };
+    if (this[prv].exclusivelyConsumed && consumers.length) {
+      throw new Error(`Queue ${this.name} is exclusively consumed by ${consumers[0].consumerTag}`);
+    } else if (consumeOptions.exclusive && consumers.length) {
+      throw new Error(`Queue ${this.name} already has consumers and cannot be exclusively consumed`);
+    }
 
-      function onConsumerEmit(eventName, ...args) {
+    const consumerEmitter = {
+      emit: (eventName, ...args) => {
         if (eventName === 'consumer.cancel') {
-          unbindConsumer(consumer);
+          this.unbindConsumer(consumer);
         }
 
-        emit(eventName, ...args);
-      }
-    }
+        this._emit(eventName, ...args);
+      },
+      on: this.on
+    };
+    const consumer = Consumer(this, onMessage, consumeOptions, owner, consumerEmitter);
+    consumers.push(consumer);
+    consumers.sort(_shared.sortByPriority);
+    this[prv].exclusivelyConsumed = consumer.options.exclusive;
+
+    this._emit('consume', consumer);
+
+    const pendingMessages = this._consumeMessages(consumer.capacity, consumer.options);
+
+    if (pendingMessages.length) consumer.push(pendingMessages);
+    return consumer;
   }
 
-  function assertConsumer(onMessage, consumeOptions = {}, owner) {
-    if (!consumers.length) return consume(onMessage, consumeOptions, owner);
+  assertConsumer(onMessage, consumeOptions = {}, owner) {
+    const consumers = this[prv].consumers;
+
+    if (!consumers.length) {
+      return this.consume(onMessage, consumeOptions, owner);
+    }
 
     for (const consumer of consumers) {
       if (consumer.onMessage !== onMessage) continue;
@@ -180,29 +180,30 @@ function Queue(name, options = {}, eventEmitter) {
       return consumer;
     }
 
-    return consume(onMessage, consumeOptions, owner);
+    return this.consume(onMessage, consumeOptions, owner);
   }
 
-  function get({
+  get({
     noAck,
     consumerTag
   } = {}) {
-    const message = consumeMessages(1, {
+    const message = this._consumeMessages(1, {
       noAck,
       consumerTag
     })[0];
+
     if (!message) return;
-    if (noAck) dequeue(message);
+    if (noAck) this._dequeue(message);
     return message;
   }
 
-  function consumeMessages(n, consumeOptions) {
-    if (stopped || !pendingMessageCount || !n) return [];
+  _consumeMessages(n, consumeOptions) {
+    if (this[prv].stopped || !this[prv].pendingMessageCount || !n) return [];
     const now = Date.now();
     const msgs = [];
     const evict = [];
 
-    for (const message of messages) {
+    for (const message of this.messages) {
       if (message.pending) continue;
 
       if (message.ttl && message.ttl < now) {
@@ -211,31 +212,33 @@ function Queue(name, options = {}, eventEmitter) {
       }
 
       message.consume(consumeOptions);
-      pendingMessageCount--;
+      this[prv].pendingMessageCount--;
       msgs.push(message);
       if (! --n) break;
     }
 
-    for (const expired of evict) nack(expired, false, false);
+    for (const expired of evict) this.nack(expired, false, false);
 
     return msgs;
   }
 
-  function ack(message, allUpTo) {
-    onMessageConsumed(message, 'ack', allUpTo);
+  ack(message, allUpTo) {
+    this[prv].onMessageConsumed(message, 'ack', allUpTo);
   }
 
-  function nack(message, allUpTo, requeue = true) {
-    onMessageConsumed(message, 'nack', allUpTo, requeue);
+  nack(message, allUpTo, requeue = true) {
+    this[prv].onMessageConsumed(message, 'nack', allUpTo, requeue);
   }
 
-  function reject(message, requeue = true) {
-    onMessageConsumed(message, 'nack', false, requeue);
+  reject(message, requeue = true) {
+    this[prv].onMessageConsumed(message, 'nack', false, requeue);
   }
 
-  function onMessageConsumed(message, operation, allUpTo, requeue) {
-    if (stopped) return;
-    const pending = allUpTo && getPendingMessages(message);
+  _onMessageConsumed(message, operation, allUpTo, requeue) {
+    if (this[prv].stopped) return;
+
+    const pending = allUpTo && this._getPendingMessages(message);
+
     const {
       properties
     } = message;
@@ -244,27 +247,30 @@ function Queue(name, options = {}, eventEmitter) {
     switch (operation) {
       case 'ack':
         {
-          if (!dequeue(message)) return;
+          if (!this._dequeue(message)) return;
           break;
         }
 
       case 'nack':
         if (requeue) {
-          requeueMessage(message);
+          this._requeueMessage(message);
+
           break;
         }
 
-        if (!dequeue(message)) return;
-        deadLetter = !!deadLetterExchange;
+        if (!this._dequeue(message)) return;
+        deadLetter = !!this.options.deadLetterExchange;
         break;
     }
 
     let capacity;
-    if (!messages.length) emit('depleted', queue);else if ((capacity = getCapacity()) === 1) emit('ready', capacity);
-    if (!pending || !pending.length) consumeNext();
+    if (!this.messages.length) this._emit('depleted', this);else if ((capacity = this.getCapacity()) === 1) {
+      this._emit('ready', capacity);
+    }
+    if (!pending || !pending.length) this._consumeNext();
 
     if (!requeue && properties.confirm) {
-      emit('message.consumed.' + operation, {
+      this._emit('message.consumed.' + operation, {
         operation,
         message: { ...message
         }
@@ -275,9 +281,13 @@ function Queue(name, options = {}, eventEmitter) {
       const deadMessage = (0, _Message.Message)(message.fields, message.content, { ...properties,
         expiration: undefined
       });
-      if (deadLetterRoutingKey) deadMessage.fields.routingKey = deadLetterRoutingKey;
-      emit('dead-letter', {
-        deadLetterExchange,
+
+      if (this.options.deadLetterRoutingKey) {
+        deadMessage.fields.routingKey = this.options.deadLetterRoutingKey;
+      }
+
+      this._emit('dead-letter', {
+        deadLetterExchange: this.options.deadLetterExchange,
         message: deadMessage
       });
     }
@@ -287,131 +297,137 @@ function Queue(name, options = {}, eventEmitter) {
     }
   }
 
-  function ackAll() {
-    getPendingMessages().forEach(msg => msg.ack(false));
+  ackAll() {
+    this._getPendingMessages().forEach(msg => msg.ack(false));
   }
 
-  function nackAll(requeue = true) {
-    getPendingMessages().forEach(msg => msg.nack(false, requeue));
+  nackAll(requeue = true) {
+    this._getPendingMessages().forEach(msg => msg.nack(false, requeue));
   }
 
-  function getPendingMessages(fromAndNotIncluding) {
-    if (!fromAndNotIncluding) return messages.filter(msg => msg.pending);
-    const msgIdx = messages.indexOf(fromAndNotIncluding);
+  _getPendingMessages(fromAndNotIncluding) {
+    if (!fromAndNotIncluding) return this.messages.filter(msg => msg.pending);
+    const msgIdx = this.messages.indexOf(fromAndNotIncluding);
     if (msgIdx === -1) return [];
-    return messages.slice(0, msgIdx).filter(msg => msg.pending);
+    return this.messages.slice(0, msgIdx).filter(msg => msg.pending);
   }
 
-  function requeueMessage(message) {
-    const msgIdx = messages.indexOf(message);
+  _requeueMessage(message) {
+    const msgIdx = this.messages.indexOf(message);
     if (msgIdx === -1) return;
-    pendingMessageCount++;
-    messages.splice(msgIdx, 1, (0, _Message.Message)({ ...message.fields,
+    this[prv].pendingMessageCount++;
+    this.messages.splice(msgIdx, 1, (0, _Message.Message)({ ...message.fields,
       redelivered: true
-    }, message.content, message.properties, onMessageConsumed));
+    }, message.content, message.properties, this[prv].onMessageConsumed));
   }
 
-  function peek(ignoreDelivered) {
-    const message = messages[0];
+  peek(ignoreDelivered) {
+    const message = this.messages[0];
     if (!message) return;
     if (!ignoreDelivered) return message;
     if (!message.pending) return message;
 
-    for (let idx = 1; idx < messages.length; idx++) {
-      if (!messages[idx].pending) {
-        return messages[idx];
+    for (let idx = 1; idx < this.messages.length; idx++) {
+      if (!this.messages[idx].pending) {
+        return this.messages[idx];
       }
     }
   }
 
-  function cancel(consumerTag) {
+  cancel(consumerTag) {
+    const consumers = this[prv].consumers;
     const idx = consumers.findIndex(c => c.consumerTag === consumerTag);
     if (idx === -1) return;
-    return unbindConsumer(consumers[idx]);
+    return this.unbindConsumer(consumers[idx]);
   }
 
-  function dismiss(onMessage) {
-    const consumer = consumers.find(c => c.onMessage === onMessage);
+  dismiss(onMessage) {
+    const consumer = this[prv].consumers.find(c => c.onMessage === onMessage);
     if (!consumer) return;
-    unbindConsumer(consumer);
+    this.unbindConsumer(consumer);
   }
 
-  function unbindConsumer(consumer) {
-    const idx = consumers.indexOf(consumer);
+  unbindConsumer(consumer) {
+    const idx = this[prv].consumers.indexOf(consumer);
     if (idx === -1) return;
-    consumers.splice(idx, 1);
+    this[prv].consumers.splice(idx, 1);
 
-    if (exclusivelyConsumed) {
-      exclusivelyConsumed = false;
+    if (this[prv].exclusivelyConsumed) {
+      this[prv].exclusivelyConsumed = false;
     }
 
     consumer.stop();
-    if (options.autoDelete && !consumers.length) return deleteQueue();
+
+    if (this.options.autoDelete && !this[prv].consumers.length) {
+      return this.delete();
+    }
+
     consumer.nackAll(true);
   }
 
-  function emit(eventName, content) {
-    if (!eventEmitter || !eventEmitter.emit) return;
+  _emit(eventName, content) {
+    if (!this[prv].eventEmitter || !this[prv].eventEmitter.emit) return;
     const routingKey = `queue.${eventName}`;
-    eventEmitter.emit(routingKey, content);
+    this[prv].eventEmitter.emit(routingKey, content);
   }
 
-  function on(eventName, handler) {
-    if (!eventEmitter || !eventEmitter.on) return;
+  on(eventName, handler) {
+    if (!this[prv].eventEmitter || !this[prv].eventEmitter.on) return;
     const pattern = `queue.${eventName}`;
-    return eventEmitter.on(pattern, handler);
+    return this[prv].eventEmitter.on(pattern, handler);
   }
 
-  function off(eventName, handler) {
-    if (!eventEmitter || !eventEmitter.off) return;
+  off(eventName, handler) {
+    if (!this[prv].eventEmitter || !this[prv].eventEmitter.off) return;
     const pattern = `queue.${eventName}`;
-    return eventEmitter.off(pattern, handler);
+    return this[prv].eventEmitter.off(pattern, handler);
   }
 
-  function purge() {
-    const toDelete = messages.filter(({
+  purge() {
+    const toDelete = this.messages.filter(({
       pending
     }) => !pending);
-    pendingMessageCount = 0;
-    toDelete.forEach(dequeue);
-    if (!messages.length) emit('depleted', queue);
+    this[prv].pendingMessageCount = 0;
+    toDelete.forEach(message => this._dequeue(message));
+    if (!this.messages.length) this._emit('depleted', this);
     return toDelete.length;
   }
 
-  function dequeueMessage(message) {
-    if (message.pending) return nack(message, false, false);
+  dequeueMessage(message) {
+    if (message.pending) return this.nack(message, false, false);
     message.consume({});
-    nack(message, false, false);
+    this.nack(message, false, false);
   }
 
-  function dequeue(message) {
-    const msgIdx = messages.indexOf(message);
+  _dequeue(message) {
+    const msgIdx = this.messages.indexOf(message);
     if (msgIdx === -1) return;
-    messages.splice(msgIdx, 1);
+    this.messages.splice(msgIdx, 1);
     return true;
   }
 
-  function getState() {
+  getState() {
     return {
-      name,
-      options: { ...options
+      name: this.name,
+      options: { ...this.options
       },
-      ...(messages.length ? {
-        messages: JSON.parse(JSON.stringify(messages))
+      ...(this.messages.length ? {
+        messages: JSON.parse(JSON.stringify(this.messages))
       } : undefined)
     };
   }
 
-  function recover(state) {
-    stopped = false;
+  recover(state) {
+    this[prv].stopped = false;
+    const consumers = this[prv].consumers;
 
     if (!state) {
       consumers.slice().forEach(c => c.recover());
-      return consumeNext();
+      return this._consumeNext();
     }
 
-    name = queue.name = state.name;
-    messages.splice(0);
+    this.name = state.name;
+    this.messages.splice(0);
     let continueConsume;
 
     if (consumers.length) {
@@ -419,7 +435,7 @@ function Queue(name, options = {}, eventEmitter) {
       continueConsume = true;
     }
 
-    if (!state.messages) return queue;
+    if (!state.messages) return this;
     state.messages.forEach(({
       fields,
       content,
@@ -428,203 +444,227 @@ function Queue(name, options = {}, eventEmitter) {
       if (properties.persistent === false) return;
       const msg = (0, _Message.Message)({ ...fields,
         redelivered: true
-      }, content, properties, onMessageConsumed);
-      messages.push(msg);
+      }, content, properties, this[prv].onMessageConsumed);
+      this.messages.push(msg);
     });
-    pendingMessageCount = messages.length;
+    this[prv].pendingMessageCount = this.messages.length;
     consumers.forEach(c => c.recover());
 
     if (continueConsume) {
-      consumeNext();
+      this._consumeNext();
     }
 
-    return queue;
+    return this;
   }
 
-  function deleteQueue({
+  delete({
     ifUnused,
     ifEmpty
   } = {}) {
+    const consumers = this[prv].consumers;
     if (ifUnused && consumers.length) return;
-    if (ifEmpty && messages.length) return;
-    const messageCount = messages.length;
-    queue.stop();
+    if (ifEmpty && this.messages.length) return;
+    const messageCount = this.messages.length;
+    this.stop();
     const deleteConsumers = consumers.splice(0);
     deleteConsumers.forEach(consumer => {
       consumer.cancel();
     });
-    messages.splice(0);
-    emit('delete', queue);
+    this.messages.splice(0);
+
+    this._emit('delete', this);
+
     return {
       messageCount
     };
   }
 
-  function close() {
-    consumers.splice(0).forEach(consumer => consumer.cancel());
-    exclusivelyConsumed = false;
+  close() {
+    this[prv].consumers.splice(0).forEach(consumer => consumer.cancel());
+    this[prv].exclusivelyConsumed = false;
   }
 
-  function stop() {
-    stopped = true;
-    consumers.slice().forEach(consumer => consumer.stop());
+  stop() {
+    this[prv].stopped = true;
+    this.consumers.forEach(consumer => consumer.stop());
   }
 
-  function getCapacity() {
-    return maxLength - messages.length;
+  getCapacity() {
+    return this.options.maxLength - this.messages.length;
   }
+
 }
 
-function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
-  if (typeof onMessage !== 'function') throw new Error('message callback is required and must be a function');
-  options = {
-    prefetch: 1,
-    priority: 0,
-    noAck: false,
-    ...options
-  };
-  if (!options.consumerTag) options.consumerTag = `smq.ctag-${(0, _shared.generateId)()}`;
-  let ready = true,
-      stopped = false,
-      consuming;
-  const internalQueue = Queue(`${options.consumerTag}-q`, {
-    maxLength: options.prefetch
-  }, {
-    emit: onInternalQueueEvent
-  });
-  const consumer = {
-    queue,
+function Queue(name, options = {}, eventEmitter) {
+  return new _Queue(name, options, eventEmitter);
+}
 
-    get consumerTag() {
-      return options.consumerTag;
-    },
+const consumerPublicMethods = ['on', 'ackAll', 'cancel', 'nackAll', 'prefetch', 'push', 'recover', 'stop'];
 
-    get messageCount() {
-      return internalQueue.messageCount;
-    },
+class _Consumer {
+  constructor(queue, onMessage, options = {}, owner, eventEmitter) {
+    this.options = {
+      prefetch: 1,
+      priority: 0,
+      noAck: false,
+      ...options
+    };
 
-    get capacity() {
-      return internalQueue.capacity;
-    },
+    if (!this.options.consumerTag) {
+      this.options.consumerTag = `smq.ctag-${(0, _shared.generateId)()}`;
+    }
 
-    get queueName() {
-      return queue.name;
-    },
+    const internalQueue = Queue(`${this.options.consumerTag}-q`, {
+      maxLength: this.options.prefetch
+    }, {
+      emit: _Consumer.prototype._onInternalQueueEvent.bind(this)
+    });
+    this[prv] = {
+      eventEmitter,
+      owner,
+      internalQueue,
+      ready: true,
+      stopped: false,
+      consuming: undefined,
+      onInternalMessageQueued: _Consumer.prototype._onInternalMessageQueued.bind(this)
+    };
+    this.queue = queue;
+    this.onMessage = onMessage;
+    consumerPublicMethods.forEach(fn => {
+      this[fn] = _Consumer.prototype[fn].bind(this);
+    });
+  }
 
-    get ready() {
-      return ready && !stopped;
-    },
+  get consumerTag() {
+    return this.options.consumerTag;
+  }
 
-    get stopped() {
-      return stopped;
-    },
+  get messageCount() {
+    return this[prv].internalQueue.messageCount;
+  }
 
-    options,
-    on,
-    onMessage,
-    ackAll,
-    cancel,
-    nackAll,
-    prefetch,
-    push,
-    recover,
-    stop
-  };
-  return consumer;
+  get capacity() {
+    return this[prv].internalQueue.capacity;
+  }
 
-  function push(messages) {
+  get queueName() {
+    return this.queue.name;
+  }
+
+  get ready() {
+    return this[prv].ready && !this[prv].stopped;
+  }
+
+  get stopped() {
+    return this[prv].stopped;
+  }
+
+  on(eventName, handler) {
+    const pattern = `consumer.${eventName}`;
+    return this[prv].eventEmitter.on(pattern, handler);
+  }
+
+  ackAll() {
+    this[prv].internalQueue.messages.slice().forEach(msg => {
+      msg.content.ack(false);
+    });
+  }
+
+  cancel(requeue = true) {
+    this._emit('cancel', this);
+
+    this.nackAll(requeue);
+  }
+
+  nackAll(requeue) {
+    this[prv].internalQueue.messages.slice().forEach(msg => {
+      msg.content.nack(false, requeue);
+    });
+  }
+
+  prefetch(value) {
+    this.options.prefetch = this[prv].internalQueue.maxLength = value;
+  }
+
+  push(messages) {
+    const {
+      internalQueue,
+      onInternalMessageQueued
+    } = this[prv];
     messages.forEach(message => {
       internalQueue.queueMessage(message.fields, message, message.properties, onInternalMessageQueued);
     });
 
-    if (!consuming) {
-      consume();
+    if (!this[prv].consuming) {
+      this._consume();
     }
   }
 
-  function onInternalMessageQueued(msg) {
-    const message = msg.content;
-    message.consume(options, onConsumed);
-
-    function onConsumed() {
-      internalQueue.dequeueMessage(msg);
-    }
+  recover() {
+    this[prv].stopped = false;
   }
 
-  function consume() {
-    if (stopped) return;
-    consuming = true;
-    const msg = internalQueue.get();
+  stop() {
+    this[prv].stopped = true;
+  }
+  /* private methods */
+
+
+  _emit(eventName, content) {
+    const routingKey = `consumer.${eventName}`;
+    this[prv].eventEmitter.emit(routingKey, content);
+  }
+
+  _consume() {
+    if (this[prv].stopped) return;
+    this[prv].consuming = true;
+    const msg = this[prv].internalQueue.get();
 
     if (!msg) {
-      consuming = false;
+      this[prv].consuming = false;
       return;
     }
 
-    msg.consume(options);
+    msg.consume(this.options);
     const message = msg.content;
-    message.consume(options, onConsumed);
-    if (options.noAck) msg.content.ack();
-    onMessage(msg.fields.routingKey, msg.content, owner);
-    consuming = false;
-    return consume();
+    message.consume(this.options, onConsumed);
+    if (this.options.noAck) msg.content.ack();
+    this.onMessage(msg.fields.routingKey, msg.content, this[prv].owner);
+    this[prv].consuming = false;
+    return this._consume();
 
     function onConsumed() {
       msg.nack(false, false);
     }
   }
 
-  function onInternalQueueEvent(eventName) {
+  _onInternalMessageQueued(msg) {
+    const message = msg.content;
+    const internalQueue = this[prv].internalQueue;
+    message.consume(this.options, () => internalQueue.dequeueMessage(msg));
+  }
+
+  _onInternalQueueEvent(eventName) {
     switch (eventName) {
       case 'queue.saturated':
         {
-          ready = false;
+          this[prv].ready = false;
           break;
         }
 
       case 'queue.depleted':
       case 'queue.ready':
-        ready = true;
+        this[prv].ready = true;
         break;
     }
   }
 
-  function nackAll(requeue) {
-    internalQueue.messages.slice().forEach(msg => {
-      msg.content.nack(false, requeue);
-    });
+}
+
+function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
+  if (typeof onMessage !== 'function') {
+    throw new Error('message callback is required and must be a function');
   }
 
-  function ackAll() {
-    internalQueue.messages.slice().forEach(msg => {
-      msg.content.ack(false);
-    });
-  }
-
-  function cancel(requeue = true) {
-    emit('cancel', consumer);
-    nackAll(requeue);
-  }
-
-  function prefetch(value) {
-    options.prefetch = internalQueue.maxLength = value;
-  }
-
-  function emit(eventName, content) {
-    const routingKey = `consumer.${eventName}`;
-    eventEmitter.emit(routingKey, content);
-  }
-
-  function on(eventName, handler) {
-    const pattern = `consumer.${eventName}`;
-    return eventEmitter.on(pattern, handler);
-  }
-
-  function recover() {
-    stopped = false;
-  }
-
-  function stop() {
-    stopped = true;
-  }
+  return new _Consumer(queue, onMessage, options, owner, eventEmitter);
 }

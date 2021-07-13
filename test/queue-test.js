@@ -777,7 +777,7 @@ describe('Broker queue', () => {
 
       expect(queue.getState()).to.deep.equal({
         name: 'test-q',
-        options: { autoDelete: true, durable: true },
+        options: { autoDelete: true, durable: true, maxLength: Infinity },
       });
     });
 

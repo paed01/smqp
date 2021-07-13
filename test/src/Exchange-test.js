@@ -27,6 +27,33 @@ describe('Exchange', () => {
         Exchange('event', {});
       }).to.throw();
     });
+
+    it('should export only enumerable properties', () => {
+      const enumerableProperties = [
+        'name',
+        'type',
+        'options',
+        // XXX non enumerable getters
+        // 'bindingCount',
+        // 'bindings',
+        // 'stopped',
+        'bind',
+        'close',
+        'emit',
+        'getBinding',
+        'getState',
+        'on',
+        'off',
+        'publish',
+        'recover',
+        'stop',
+        'unbind',
+        'unbindQueueByName',
+      ];
+      const exchange = Exchange('test');
+      const keys = Object.keys(exchange);
+      expect(keys).deep.to.equal(enumerableProperties);
+    });
   });
 
   describe('direct exchange', () => {

@@ -1,6 +1,7 @@
 import {Broker} from '../index';
 import {Message} from '../src/Message';
 import ck from 'chronokinesis';
+import { expect } from 'chai';
 
 describe('message', () => {
   after(ck.reset);
@@ -97,5 +98,13 @@ describe('message', () => {
     const msg = Message();
     msg.consume();
     expect(msg).to.have.property('consumerTag', undefined);
+  });
+
+  it('should export only enumerable properties', () => {
+    const enumerableProperties = ['fields', 'content', 'properties', 'consume', 'ack', 'nack', 'reject'];
+    const msg = Message();
+    const keys = Object.keys(msg);
+
+    expect(keys).deep.to.equal(enumerableProperties);
   });
 });
