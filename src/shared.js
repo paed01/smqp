@@ -1,5 +1,9 @@
 export {generateId, getRoutingKeyPattern, sortByPriority};
 
+const allDots = /\./g;
+const allAstx = /\*/g;
+const allHashs = /#/g;
+
 function generateId() {
   const min = 110000;
   const max = 9999999;
@@ -21,9 +25,9 @@ function getRoutingKeyPattern(pattern) {
   }
 
   const rpattern = pattern
-    .replace('.', '\\.')
-    .replace('*', '[^.]+?')
-    .replace('#', '.+?');
+    .replace(allDots, '\\.')
+    .replace(allAstx, '[^.]+?')
+    .replace(allHashs, '.+?');
 
   return new RegExp(`^${rpattern}$`);
 

@@ -54,6 +54,14 @@ describe('shared', () => {
       expect(pattern.test('abc')).to.be.false;
     });
 
+    it('prefix.*.inter.* matches both middle and end', () => {
+      const pattern = getRoutingKeyPattern('prefix.*.inter.*');
+      expect(pattern.test('prefix.a.inter.b')).to.be.true;
+      expect(pattern.test('prefix.a.inter.*')).to.be.true;
+
+      expect(pattern.test('prefix.a.inter.b.c')).to.be.false;
+    });
+
     it('prefix.*.inter.# matches one that start with prefix then any word chars and then inter and ends with anything', () => {
       const pattern = getRoutingKeyPattern('prefix.*.inter.#');
       expect(pattern.test('prefix.a.inter.b')).to.be.true;
@@ -74,6 +82,7 @@ describe('shared', () => {
       expect(pattern.test('prefix.a-oy.c.d.inter.e')).to.be.true;
 
       expect(pattern.test('prefix.a.inter.')).to.be.false;
+      expect(pattern.test('prefix.a.interbc')).to.be.false;
       expect(pattern.test('prefix.a.inter.b.c.d')).to.be.false;
       expect(pattern.test('prefix.a.inter')).to.be.false;
       expect(pattern.test('prefix.a')).to.be.false;

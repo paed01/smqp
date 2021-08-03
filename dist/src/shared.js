@@ -6,6 +6,9 @@ Object.defineProperty(exports, "__esModule", {
 exports.generateId = generateId;
 exports.getRoutingKeyPattern = getRoutingKeyPattern;
 exports.sortByPriority = sortByPriority;
+const allDots = /\./g;
+const allAstx = /\*/g;
+const allHashs = /#/g;
 
 function generateId() {
   const min = 110000;
@@ -27,7 +30,7 @@ function getRoutingKeyPattern(pattern) {
     return endMatch();
   }
 
-  const rpattern = pattern.replace('.', '\\.').replace('*', '[^.]+?').replace('#', '.+?');
+  const rpattern = pattern.replace(allDots, '\\.').replace(allAstx, '[^.]+?').replace(allHashs, '.+?');
   return new RegExp(`^${rpattern}$`);
 
   function directMatch() {
