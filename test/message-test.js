@@ -83,19 +83,19 @@ describe('message', () => {
   });
 
   it('new message without args sets fields consumer tag to undefined', () => {
-    expect(Message()).to.have.property('fields').that.deep.equal({consumerTag: undefined});
+    expect(new Message()).to.have.property('fields').that.deep.equal({consumerTag: undefined});
   });
 
   it('new message without args sets properties message id and timestamp', () => {
-    const msg = Message();
+    const msg = new Message();
     expect(msg).to.have.property('properties').that.is.an('object');
     expect(msg.properties).to.have.property('messageId').that.is.a('string');
     expect(msg.properties).to.have.property('timestamp').that.is.a('number');
   });
 
   it('consume(undefined) defaults consumer argument to empty object', () => {
-    const msg = Message();
+    const msg = new Message();
     msg.consume();
-    expect(msg).to.have.property('consumerTag', undefined);
+    expect(msg.fields).to.have.property('consumerTag', undefined);
   });
 });

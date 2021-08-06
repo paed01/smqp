@@ -609,7 +609,7 @@ describe('Queue', () => {
       queue.nack(msg);
 
       const msg2 = queue.get();
-      expect(msg.messageId).to.equal(msg2.messageId);
+      expect(msg.properties.messageId).to.be.ok.and.to.equal(msg2.properties.messageId);
       expect(queue.messageCount).to.equal(3);
     });
 
@@ -622,11 +622,11 @@ describe('Queue', () => {
       queue.consume(() => {}, {consumerTag: 'my-consumer'});
 
       const msg = queue.peek();
-      expect(msg.consumerTag).to.equal('my-consumer');
+      expect(msg.fields.consumerTag).to.equal('my-consumer');
       queue.nack(msg);
 
       const msg2 = queue.get();
-      expect(msg.messageId).to.equal(msg2.messageId);
+      expect(msg.properties.messageId).to.be.ok.and.equal(msg2.properties.messageId);
       expect(msg2.consumerTag).to.be.undefined;
     });
   });

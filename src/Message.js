@@ -2,7 +2,6 @@ import { generateId } from './shared';
 
 export { Message };
 
-const messageIdSymbol = Symbol.for('messageId');
 const ttlSymbol = Symbol.for('ttl');
 const pendingSymbol = Symbol.for('pending');
 const consumedCallbackSymbol = Symbol.for('consumedCallback');
@@ -12,15 +11,13 @@ const onConsumedSymbol = Symbol.for('onConsumed');
 const publicMethods = ['consume', 'ack', 'nack', 'reject'];
 
 function Message(fields = {}, content, properties = {}, onConsumed) {
-  if (!(this instanceof Message)) {
-    return new Message(fields, content, properties, onConsumed);
-  }
-
   this[onConsumedSymbol] = onConsumed;
   this[pendingSymbol] = false;
-  this[messageIdSymbol] = properties.messageId || `smq.mid-${generateId()}`;
 
-  const messageProperties = { ...properties, messageId: this[messageIdSymbol] };
+  const messageProperties = {
+    ...properties,
+    messageId: properties.messageId || `smq.mid-${generateId()}`
+  };
   const timestamp = (messageProperties.timestamp = properties.timestamp || Date.now());
   if (properties.expiration) {
     this[ttlSymbol] = messageProperties.ttl = timestamp + parseInt(properties.expiration);
@@ -35,22 +32,9 @@ function Message(fields = {}, content, properties = {}, onConsumed) {
   }
 }
 
-// These assignations are called only once
-Object.defineProperty(Message.prototype, 'messageId', {
-  get() {
-    return this[messageIdSymbol];
-  },
-});
-
 Object.defineProperty(Message.prototype, 'ttl', {
   get() {
     return this[ttlSymbol];
-  },
-});
-
-Object.defineProperty(Message.prototype, 'consumerTag', {
-  get() {
-    return this.fields.consumerTag;
   },
 });
 
@@ -64,10 +48,6 @@ Message.prototype.consume = function({ consumerTag } = {}, consumedCb) {
   this[pendingSymbol] = true;
   this.fields.consumerTag = consumerTag;
   this[consumedCallbackSymbol] = consumedCb;
-};
-
-Message.prototype.reset = function() {
-  this[pendingSymbol] = false;
 };
 
 Message.prototype.ack = function(allUpTo) {
@@ -88,8 +68,8 @@ Message.prototype[consumedSymbol] = function(operation, allUpTo, requeue) {
   [
     this[consumedCallbackSymbol],
     this[onConsumedSymbol],
-    this.reset.bind(this),
   ].forEach((fn) => {
     if (fn) fn(this, operation, allUpTo, requeue);
   });
+  this[pendingSymbol] = false;
 };
