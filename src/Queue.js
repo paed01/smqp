@@ -66,7 +66,7 @@ Object.defineProperty(Queue.prototype, 'stopped', {
   },
 });
 
-Queue.prototype.queueMessage = function queueMessage(fields, content, properties, onMessageQueued) {
+Queue.prototype.queueMessage = function queueMessage(fields, content, properties) {
   if (this[stoppedSymbol]) return;
 
   const messageProperties = {...properties};
@@ -86,7 +86,6 @@ Queue.prototype.queueMessage = function queueMessage(fields, content, properties
       this.emit('saturated', this);
   }
 
-  if (onMessageQueued) onMessageQueued(message);
   this.emit('message', message);
 
   return discarded ? 0 : this.consumeNext();
@@ -245,16 +244,22 @@ Queue.prototype[onMessageConsumedSymbol] = function onMessageConsumed(message, o
   }
 
   if (pending && pending.length) {
-    pending.forEach((msg) => msg[operation](false, requeue));
+    for (const msg of pending) {
+      msg[operation](false, requeue);
+    }
   }
 };
 
 Queue.prototype.ackAll = function ackAll() {
-  this.getPendingMessages().forEach((msg) => msg.ack(false));
+  for (const msg of this.getPendingMessages()) {
+    msg.ack(false);
+  }
 };
 
 Queue.prototype.nackAll = function nackAll(requeue = true) {
-  this.getPendingMessages().forEach((msg) => msg.nack(false, requeue));
+  for (const msg of this.getPendingMessages()) {
+    msg.nack(false, requeue);
+  }
 };
 
 Queue.prototype.getPendingMessages = function getPendingMessages(fromAndNotIncluding) {
@@ -420,10 +425,9 @@ Queue.prototype.delete = function deleteQueue({ifUnused, ifEmpty} = {}) {
   const messageCount = this.messages.length;
   this.stop();
 
-  const deleteConsumers = consumers.splice(0);
-  deleteConsumers.forEach((consumer) => {
+  for (const consumer of consumers.splice(0)) {
     consumer.cancel();
-  });
+  }
 
   this.messages.splice(0);
 
@@ -432,13 +436,17 @@ Queue.prototype.delete = function deleteQueue({ifUnused, ifEmpty} = {}) {
 };
 
 Queue.prototype.close = function close() {
-  this[consumersSymbol].splice(0).forEach((consumer) => consumer.cancel());
+  for (const consumer of this[consumersSymbol].splice(0)) {
+    consumer.cancel();
+  }
   this[exclusiveSymbol] = false;
 };
 
 Queue.prototype.stop = function stop() {
   this[stoppedSymbol] = true;
-  this[consumersSymbol].slice().forEach((consumer) => consumer.stop());
+  for (const consumer of this[consumersSymbol].slice()) {
+    consumer.stop();
+  }
 };
 
 Queue.prototype.getCapacity = function getCapacity() {
@@ -465,12 +473,17 @@ function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
   this[eventEmitterSymbol] = eventEmitter;
 
   const self = this;
-  self[internalQueueSymbol] = new Queue(self.options.consumerTag + '-q', {
+  const internalQueue = self[internalQueueSymbol] = new Queue(self.options.consumerTag + '-q', {
     autoDelete: false,
     maxLength: self.options.prefetch,
   }, {
-    emit(eventName) {
+    emit(eventName, arg) {
       switch (eventName) {
+        case 'queue.message': {
+          const message = arg.content;
+          message.consume(options, onConsumed);
+          break;
+        }
         case 'queue.saturated': {
           self[isReadySymbol] = false;
           break;
@@ -482,6 +495,10 @@ function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
       }
     },
   });
+
+  function onConsumed(msg) {
+    internalQueue.dequeueMessage(msg);
+  }
 }
 
 Object.defineProperty(Consumer.prototype, 'consumerTag', {
@@ -524,21 +541,13 @@ Object.defineProperty(Consumer.prototype, 'queueName', {
 
 Consumer.prototype.push = function push(messages) {
   const internalQueue = this[internalQueueSymbol];
-  const options = this.options;
-  messages.forEach((message) => {
-    internalQueue.queueMessage(message.fields, message, message.properties, onMessageQueued);
-  });
-  if (!this[consumingSymbol]) {
-    this.consume();
+
+  for (const message of messages) {
+    internalQueue.queueMessage(message.fields, message, message.properties);
   }
 
-  function onMessageQueued(msg) {
-    const message = msg.content;
-    message.consume(options, onConsumed);
-
-    function onConsumed() {
-      internalQueue.dequeueMessage(msg);
-    }
+  if (!this[consumingSymbol]) {
+    this.consume();
   }
 };
 
@@ -570,15 +579,15 @@ Consumer.prototype.consume = function consume() {
 };
 
 Consumer.prototype.nackAll = function nackAll(requeue) {
-  this[internalQueueSymbol].messages.slice().forEach((msg) => {
+  for (const msg of this[internalQueueSymbol].messages.slice()) {
     msg.content.nack(false, requeue);
-  });
+  }
 };
 
 Consumer.prototype.ackAll = function ackAll() {
-  this[internalQueueSymbol].messages.slice().forEach((msg) => {
+  for (const msg of this[internalQueueSymbol].messages.slice()) {
     msg.content.ack(false);
-  });
+  }
 };
 
 Consumer.prototype.cancel = function cancel(requeue = true) {
