@@ -27,7 +27,7 @@ function getRoutingKeyPattern(pattern) {
   const rpattern = pattern
     .replace(allDots, '\\.')
     .replace(allAstx, '[^.]+?')
-    .replace(allHashs, '.+?');
+    .replace(allHashs, '.*?');
 
   return new RegExp(`^${rpattern}$`);
 

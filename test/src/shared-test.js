@@ -28,6 +28,19 @@ describe('shared', () => {
       expect(pattern.test('abc')).to.be.false;
     });
 
+    it('prefix# matches starts with prefix', () => {
+      const pattern = getRoutingKeyPattern('prefix#');
+      expect(pattern.test('prefix')).to.be.true;
+      expect(pattern.test('prefixed')).to.be.true;
+      expect(pattern.test('prefix.a.inter.suffix')).to.be.true;
+      expect(pattern.test('prefix.a-oy.c.d.inter.suffix')).to.be.true;
+      expect(pattern.test('prefix.a.inter.')).to.be.true;
+
+      expect(pattern.test('prefiks.a')).to.be.false;
+      expect(pattern.test('a.prefix.b')).to.be.false;
+      expect(pattern.test('abc')).to.be.false;
+    });
+
     it('prefix.* matches one that start with prefix', () => {
       const pattern = getRoutingKeyPattern('prefix.*');
       expect(pattern.test('prefix.a')).to.be.true;

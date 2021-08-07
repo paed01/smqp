@@ -30,7 +30,7 @@ function getRoutingKeyPattern(pattern) {
     return endMatch();
   }
 
-  const rpattern = pattern.replace(allDots, '\\.').replace(allAstx, '[^.]+?').replace(allHashs, '.+?');
+  const rpattern = pattern.replace(allDots, '\\.').replace(allAstx, '[^.]+?').replace(allHashs, '.*?');
   return new RegExp(`^${rpattern}$`);
 
   function directMatch() {
