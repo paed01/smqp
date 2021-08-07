@@ -12,7 +12,6 @@ var _Message = require("./Message");
 
 const consumersSymbol = Symbol.for('consumers');
 const consumingSymbol = Symbol.for('consuming');
-const eventEmitterSymbol = Symbol.for('eventEmitter');
 const exclusiveSymbol = Symbol.for('exclusive');
 const internalQueueSymbol = Symbol.for('internalQueue');
 const isReadySymbol = Symbol.for('isReady');
@@ -21,11 +20,7 @@ const onMessageConsumedSymbol = Symbol.for('onMessageConsumed');
 const pendingMessageCountSymbol = Symbol.for('pendingMessageCount');
 const stoppedSymbol = Symbol.for('stopped');
 
-function Queue(name, options = {}, eventEmitter) {
-  if (!(this instanceof Queue)) {
-    return new Queue(name, options, eventEmitter);
-  }
-
+function Queue(name, options, eventEmitter) {
   if (!name) name = `smq.qname-${(0, _shared.generateId)()}`;
   this.name = name;
   this.options = {
@@ -33,11 +28,11 @@ function Queue(name, options = {}, eventEmitter) {
     ...options
   };
   this.messages = [];
+  this.events = eventEmitter;
   this[consumersSymbol] = [];
   this[stoppedSymbol] = false;
   this[pendingMessageCountSymbol] = 0;
   this[exclusiveSymbol] = false;
-  this[eventEmitterSymbol] = eventEmitter;
   this[onConsumedSymbol] = this[onMessageConsumedSymbol].bind(this);
 }
 
@@ -78,7 +73,7 @@ Object.defineProperty(Queue.prototype, 'stopped', {
 
 });
 
-Queue.prototype.queueMessage = function queueMessage(fields, content, properties, onMessageQueued) {
+Queue.prototype.queueMessage = function queueMessage(fields, content, properties) {
   if (this[stoppedSymbol]) return;
   const messageProperties = { ...properties
   };
@@ -93,12 +88,13 @@ Queue.prototype.queueMessage = function queueMessage(fields, content, properties
   switch (capacity) {
     case 0:
       discarded = this.evictFirst(message);
+      break;
 
     case 1:
       this.emit('saturated', this);
+      break;
   }
 
-  if (onMessageQueued) onMessageQueued(message);
   this.emit('message', message);
   return discarded ? 0 : this.consumeNext();
 };
@@ -114,12 +110,11 @@ Queue.prototype.consumeNext = function consumeNext() {
   if (this[stoppedSymbol]) return;
   if (!this[pendingMessageCountSymbol]) return;
   const consumers = this[consumersSymbol];
-  if (!consumers.length) return;
-  const readyConsumers = consumers.filter(consumer => consumer.ready);
-  if (!readyConsumers.length) return 0;
   let consumed = 0;
+  if (!consumers.length) return consumed;
 
-  for (const consumer of readyConsumers) {
+  for (const consumer of consumers) {
+    if (!consumer.ready) continue;
     const msgs = this.consumeMessages(consumer.capacity, consumer.options);
     if (!msgs.length) return consumed;
     consumer.push(msgs);
@@ -131,13 +126,19 @@ Queue.prototype.consumeNext = function consumeNext() {
 
 Queue.prototype.consume = function consume(onMessage, consumeOptions = {}, owner) {
   const consumers = this[consumersSymbol];
-  if (this[exclusiveSymbol] && consumers.length) throw new Error(`Queue ${this.name} is exclusively consumed by ${consumers[0].consumerTag}`);else if (consumeOptions.exclusive && consumers.length) throw new Error(`Queue ${this.name} already has consumers and cannot be exclusively consumed`);
+  const noOfConsumers = consumers.length;
+
+  if (noOfConsumers) {
+    if (this[exclusiveSymbol]) throw new Error(`Queue ${this.name} is exclusively consumed by ${consumers[0].consumerTag}`);
+    if (consumeOptions.exclusive) throw new Error(`Queue ${this.name} already has consumers and cannot be exclusively consumed`);
+  }
+
   const consumer = new Consumer(this, onMessage, consumeOptions, owner, new ConsumerEmitter(this));
   consumers.push(consumer);
   consumers.sort(_shared.sortByPriority);
 
   if (consumer.options.exclusive) {
-    this[exclusiveSymbol] = consumer.options.exclusive;
+    this[exclusiveSymbol] = true;
   }
 
   this.emit('consume', consumer);
@@ -180,6 +181,7 @@ Queue.prototype.get = function getMessage({
 
 Queue.prototype.consumeMessages = function consumeMessages(n, consumeOptions) {
   if (this[stoppedSymbol] || !this[pendingMessageCountSymbol] || !n) return [];
+  if (!this.messages.length) return [];
   const now = Date.now();
   const msgs = [];
   const evict = [];
@@ -187,7 +189,7 @@ Queue.prototype.consumeMessages = function consumeMessages(n, consumeOptions) {
   for (const message of this.messages) {
     if (message.pending) continue;
 
-    if (message.ttl && message.ttl < now) {
+    if (message.properties.expiration && message.properties.ttl < now) {
       evict.push(message);
       continue;
     }
@@ -198,7 +200,9 @@ Queue.prototype.consumeMessages = function consumeMessages(n, consumeOptions) {
     if (! --n) break;
   }
 
-  for (const expired of evict) this.nack(expired, false, false);
+  if (evict.length) {
+    for (const expired of evict) this.nack(expired, false, false);
+  }
 
   return msgs;
 };
@@ -346,24 +350,21 @@ Queue.prototype.unbindConsumer = function unbindConsumer(consumer) {
 };
 
 Queue.prototype.emit = function emit(eventName, content) {
-  const eventEmitter = this[eventEmitterSymbol];
-  if (!eventEmitter || !eventEmitter.emit) return;
-  const routingKey = `queue.${eventName}`;
-  eventEmitter.emit(routingKey, content);
+  const eventEmitter = this.events;
+  if (!eventEmitter) return;
+  eventEmitter.emit(`queue.${eventName}`, content);
 };
 
 Queue.prototype.on = function on(eventName, handler) {
-  const eventEmitter = this[eventEmitterSymbol];
-  if (!eventEmitter || !eventEmitter.on) return;
-  const pattern = `queue.${eventName}`;
-  return eventEmitter.on(pattern, handler);
+  const eventEmitter = this.events;
+  if (!eventEmitter) return;
+  return eventEmitter.on(`queue.${eventName}`, handler);
 };
 
 Queue.prototype.off = function off(eventName, handler) {
-  const eventEmitter = this[eventEmitterSymbol];
-  if (!eventEmitter || !eventEmitter.off) return;
-  const pattern = `queue.${eventName}`;
-  return eventEmitter.off(pattern, handler);
+  const eventEmitter = this.events;
+  if (!eventEmitter) return;
+  return eventEmitter.off(`queue.${eventName}`, handler);
 };
 
 Queue.prototype.purge = function purge() {
@@ -378,12 +379,6 @@ Queue.prototype.purge = function purge() {
 
   if (!this.messages.length) this.emit('depleted', this);
   return toDelete.length;
-};
-
-Queue.prototype.dequeueMessage = function dequeueMessage(message) {
-  if (message.pending) return this.nack(message, false, false);
-  message.consume({});
-  this.nack(message, false, false);
 };
 
 Queue.prototype.dequeue = function dequeue(message) {
@@ -482,17 +477,15 @@ Queue.prototype.stop = function stop() {
 };
 
 Queue.prototype.getCapacity = function getCapacity() {
-  const maxLength = 'maxLength' in this.options ? this.options.maxLength : Infinity;
-  return maxLength - this.messages.length;
-};
-
-function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
-  if (typeof onMessage !== 'function') throw new Error('message callback is required and must be a function');
-
-  if (!(this instanceof Consumer)) {
-    return new Consumer(queue, onMessage, options, owner, eventEmitter);
+  if ('maxLength' in this.options) {
+    return this.options.maxLength - this.messages.length;
   }
 
+  return Infinity;
+};
+
+function Consumer(queue, onMessage, options, owner, eventEmitter) {
+  if (typeof onMessage !== 'function') throw new Error('message callback is required and must be a function');
   this.options = {
     prefetch: 1,
     priority: 0,
@@ -500,45 +493,17 @@ function Consumer(queue, onMessage, options = {}, owner, eventEmitter) {
     ...options
   };
   if (!this.options.consumerTag) this.options.consumerTag = 'smq.ctag-' + (0, _shared.generateId)();
-  this[isReadySymbol] = true;
-  this[stoppedSymbol] = false;
-  this[consumingSymbol] = false;
   this.queue = queue;
   this.onMessage = onMessage;
   this.owner = owner;
-  this[eventEmitterSymbol] = eventEmitter;
-  const self = this;
-  const internalQueue = self[internalQueueSymbol] = new Queue(self.options.consumerTag + '-q', {
+  this.events = eventEmitter;
+  this[isReadySymbol] = true;
+  this[stoppedSymbol] = false;
+  this[consumingSymbol] = false;
+  this[internalQueueSymbol] = new Queue(this.options.consumerTag + '-q', {
     autoDelete: false,
-    maxLength: self.options.prefetch
-  }, {
-    emit(eventName, arg) {
-      switch (eventName) {
-        case 'queue.message':
-          {
-            const message = arg.content;
-            message.consume(options, onConsumed);
-            break;
-          }
-
-        case 'queue.saturated':
-          {
-            self[isReadySymbol] = false;
-            break;
-          }
-
-        case 'queue.depleted':
-        case 'queue.ready':
-          self[isReadySymbol] = true;
-          break;
-      }
-    }
-
-  });
-
-  function onConsumed(msg) {
-    internalQueue.dequeueMessage(msg);
-  }
+    maxLength: this.options.prefetch
+  }, new ConsumerQueueEvents(this));
 }
 
 Object.defineProperty(Consumer.prototype, 'consumerTag', {
@@ -613,7 +578,7 @@ Consumer.prototype.consume = function consume() {
   return this.consume();
 
   function onConsumed() {
-    msg.nack(false, false);
+    msg.ack(false);
   }
 };
 
@@ -640,12 +605,12 @@ Consumer.prototype.prefetch = function prefetch(value) {
 
 Consumer.prototype.emit = function emit(eventName, content) {
   const routingKey = `consumer.${eventName}`;
-  this[eventEmitterSymbol].emit(routingKey, content);
+  this.events.emit(routingKey, content);
 };
 
 Consumer.prototype.on = function on(eventName, handler) {
   const pattern = `consumer.${eventName}`;
-  return this[eventEmitterSymbol].on(pattern, handler);
+  return this.events.on(pattern, handler);
 };
 
 Consumer.prototype.recover = function recover() {
@@ -670,4 +635,23 @@ ConsumerEmitter.prototype.emit = function emit(eventName, content) {
   }
 
   this.queue.emit(eventName, content);
+};
+
+function ConsumerQueueEvents(consumer) {
+  this.consumer = consumer;
+}
+
+ConsumerQueueEvents.prototype.emit = function queueHandler(eventName) {
+  switch (eventName) {
+    case 'queue.saturated':
+      {
+        this.consumer[isReadySymbol] = false;
+        break;
+      }
+
+    case 'queue.depleted':
+    case 'queue.ready':
+      this.consumer[isReadySymbol] = true;
+      break;
+  }
 };

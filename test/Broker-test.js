@@ -303,7 +303,6 @@ describe('Broker', () => {
       expect(onceConsumer).to.be.ok;
       expect(onceConsumer.options).to.have.property('noAck', true);
 
-
       const onceQueue = broker.getQueue(onceConsumer.queueName);
       expect(onceQueue).to.be.ok;
       expect(onceQueue.options).to.have.property('durable', false);
@@ -1796,9 +1795,9 @@ describe('Broker', () => {
   });
 
   describe('events', () => {
-    it('emits "return" with message if published mandatory message is not routed to any queue', () => {
+    it('topic exchange emits "return" with message if published mandatory message is not routed to any queue', () => {
       const broker = Broker();
-      broker.assertExchange('event');
+      broker.assertExchange('event', 'topic');
 
       let message;
       broker.on('return', (msg) => {
@@ -1812,6 +1811,46 @@ describe('Broker', () => {
       expect(message).to.have.property('fields').that.include({
         exchange: 'event',
         routingKey: 'test.1'
+      });
+      expect(message).to.have.property('content', 'important');
+
+      broker.subscribeTmp('event', 'event.#', () => {});
+
+      broker.publish('event', 'test.2', 'important', {mandatory: true});
+
+      expect(message).to.have.property('fields').that.include({
+        exchange: 'event',
+        routingKey: 'test.2'
+      });
+      expect(message).to.have.property('content', 'important');
+    });
+
+    it('direct exchange emits "return" with message if published mandatory message is not routed to any queue', () => {
+      const broker = Broker();
+      broker.assertExchange('balanced', 'direct');
+
+      let message;
+      broker.on('return', (msg) => {
+        message = msg;
+      });
+
+      broker.publish('balanced', 'test.1', 'important', {mandatory: true});
+
+      expect(message).to.be.ok;
+
+      expect(message).to.have.property('fields').that.include({
+        exchange: 'balanced',
+        routingKey: 'test.1'
+      });
+      expect(message).to.have.property('content', 'important');
+
+      broker.subscribeTmp('balanced', 'event.#', () => {});
+
+      broker.publish('balanced', 'test.2', 'important', {mandatory: true});
+
+      expect(message).to.have.property('fields').that.include({
+        exchange: 'balanced',
+        routingKey: 'test.2'
       });
       expect(message).to.have.property('content', 'important');
     });
@@ -1908,6 +1947,15 @@ describe('Broker', () => {
       function onBrokerReturn(msg) {
         messages.push(msg);
       }
+    });
+
+    it('off(eventName, handler) with non regisered listener is ok', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+      broker.on('return', onBrokerReturn);
+      broker.off('returns', () => {});
+
+      function onBrokerReturn() {}
     });
   });
 

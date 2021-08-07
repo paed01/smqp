@@ -1,5 +1,5 @@
 <!-- version -->
-# 4.0.1 API Reference
+# 5.0.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -68,7 +68,6 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`close()`](#close)
     - [`consume(onMessage[, consumeOptions, owner])`](#consumeonmessage-consumeoptions-owner)
     - [`delete([deleteOptions])`](#deletedeleteoptions)
-    - [`dequeueMessage(message)`](#dequeuemessagemessage)
     - [`dismiss(onMessage)`](#dismissonmessage)
     - [`get([consumeOptions])`](#getconsumeoptions)
     - [`getState()`](#getstate)
@@ -78,7 +77,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`on(eventName, handler)`](#oneventname-handler)
     - [`peek([ignoreDelivered])`](#peekignoredelivered)
     - [`purge()`](#purge)
-    - [`queueMessage(fields[, content, properties, onMessageQueued])`](#queuemessagefields-content-properties-onmessagequeued)
+    - [`queueMessage(fields[, content, properties])`](#queuemessagefields-content-properties)
     - [`recover([state])`](#recoverstate)
     - [`reject(message[, requeue = true])`](#rejectmessage-requeue--true)
     - [`stop()`](#stop)
@@ -87,10 +86,11 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`consumer.ackAll()`](#consumerackall)
     - [`consumer.nackAll([requeue])`](#consumernackallrequeue)
     - [`consumer.cancel()`](#consumercancel)
+    - [`consumer.prefetch(numberOfMessages)`](#consumerprefetchnumberofmessages)
   - [Message](#message)
-    - [`ack([allUpTo])`](#ackallupto)
-    - [`nack([allUpTo, requeue])`](#nackallupto-requeue)
-    - [`reject([requeue])`](#rejectrequeue)
+    - [`message.ack([allUpTo])`](#messageackallupto)
+    - [`message.nack([allUpTo, requeue])`](#messagenackallupto-requeue)
+    - [`message.reject([requeue])`](#messagerejectrequeue)
   - [`getRoutingKeyPattern(pattern)`](#getroutingkeypatternpattern)
   - [Message eviction](#message-eviction)
 
@@ -486,9 +486,6 @@ Delete queue.
   - `ifUnused`: boolean, delete if unused
   - `ifEmpty`: boolean, delete if empty
 
-### `dequeueMessage(message)`
-Remove message from queue without redelivery.
-
 ### `dismiss(onMessage)`
 
 Dismiss first consumer with `onMessage` handler.
@@ -521,7 +518,7 @@ Peek into queue.
 ### `purge()`
 Removes all non consumed messages from queue.
 
-### `queueMessage(fields[, content, properties, onMessageQueued])`
+### `queueMessage(fields[, content, properties])`
 Queue message.
 
 - `fields`: object with fields, proposal:
@@ -530,7 +527,6 @@ Queue message.
 - `content`: message content
 - `properties`: message properties, basic properties are:
   - `persistent`: boolean indicating if message is persistent, defaults to undef (true). Value `false` ignores the message when queue is recovered from state
-- `onMessageQueued`: optional function mainly used for interal purposes. Called when message was queued
 
 ### `recover([state])`
 ### `reject(message[, requeue = true])`
@@ -541,16 +537,20 @@ Queue message.
 Queue consumer
 
 **Properties**:
-- `consumerTag`: random tag
-- `noAck`: getter, returns value of option with the same name
-- `onMessage`: message callback
 - `options`: returns passed options
-- `priority`: priority option value
+- `capacity`: consumer message capacity
+- `consumerTag`: consumer tag
+- `messageCount`: current amount of messages handled by consumer
+- `onMessage`: message callback
 - `queueName`: consuming queue with name
+- `ready`: boolean indicating if the consumer is ready for messages
+- `stopped`: is the consumer stopped
 
 ### `consumer.ackAll()`
 ### `consumer.nackAll([requeue])`
 ### `consumer.cancel()`
+### `consumer.prefetch(numberOfMessages)`
+
 Cancel consumption and unsubscribe from queue
 
 ## Message
@@ -569,12 +569,12 @@ What it is all about - convey messages.
   - `timestamp`: `Date.now()`
   - `expiration`: Expire message after milliseconds
 
-### `ack([allUpTo])`
+### `message.ack([allUpTo])`
 Acknowledge message
 
 - `allUpTo`: boolean, consider all messages above this one to be acknowledged as well
 
-### `nack([allUpTo, requeue])`
+### `message.nack([allUpTo, requeue])`
 Reject message.
 
 NB! Beware of `requeue` argument since the message will immmediately be returned to queue and consumed, ergo an infinit loop and maximum call stack size exceeded error unless some precautions are made.
@@ -582,7 +582,7 @@ NB! Beware of `requeue` argument since the message will immmediately be returned
 - `allUpTo`: boolean, consider all messages above this one to be rejected as well
 - `requeue`: boolean, requeue messages
 
-### `reject([requeue])`
+### `message.reject([requeue])`
 Same as `nack(false, true)`
 
 

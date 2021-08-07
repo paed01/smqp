@@ -23,11 +23,17 @@ function Broker(owner) {
   }
 
   this.owner = owner;
-  this[exchangesSymbol] = [];
-  this[queuesSymbol] = [];
-  this[consumersSymbol] = [];
-  this[shovelsSymbol] = [];
-  this[eventHandlerSymbol] = new _Exchange.EventExchange();
+  this.events = new _Exchange.EventExchange('broker__events');
+  const exchanges = this[exchangesSymbol] = [];
+  const queues = this[queuesSymbol] = [];
+  const consumers = this[consumersSymbol] = [];
+  const shovels = this[shovelsSymbol] = [];
+  this[eventHandlerSymbol] = new EventHandler(this, {
+    exchanges,
+    queues,
+    consumers,
+    shovels
+  });
 }
 
 Object.defineProperty(Broker.prototype, 'exchangeCount', {
@@ -60,13 +66,13 @@ Broker.prototype.subscribe = function subscribe(exchangeName, pattern, queueName
 }) {
   if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and message callback are required');
   if (options && options.consumerTag) this.validateConsumerTag(options.consumerTag);
-  this.assertExchange(exchangeName);
+  const exchange = this.assertExchange(exchangeName);
   const queue = this.assertQueue(queueName, options);
-  this.bindQueue(queue.name, exchangeName, pattern, options);
+  exchange.bind(queue, pattern, options);
   return queue.assertConsumer(onMessage, options, this.owner);
 };
 
-Broker.prototype.subscribeTmp = function subscribeTmp(exchangeName, pattern, onMessage, options = {}) {
+Broker.prototype.subscribeTmp = function subscribeTmp(exchangeName, pattern, onMessage, options) {
   return this.subscribe(exchangeName, pattern, null, onMessage, { ...options,
     durable: false
   });
@@ -75,15 +81,14 @@ Broker.prototype.subscribeTmp = function subscribeTmp(exchangeName, pattern, onM
 Broker.prototype.subscribeOnce = function subscribeOnce(exchangeName, pattern, onMessage, options = {}) {
   if (typeof onMessage !== 'function') throw new Error('message callback is required');
   if (options && options.consumerTag) this.validateConsumerTag(options.consumerTag);
-  this.assertExchange(exchangeName);
+  const exchange = this.assertExchange(exchangeName);
   const onceOptions = {
     autoDelete: true,
     durable: false,
     priority: options.priority || 0
   };
   const onceQueue = this.createQueue(null, onceOptions);
-  this.bindQueue(onceQueue.name, exchangeName, pattern, { ...onceOptions
-  });
+  exchange.bind(onceQueue, pattern, onceOptions);
   return this.consume(onceQueue.name, wrappedOnMessage, {
     noAck: true,
     consumerTag: options.consumerTag
@@ -106,24 +111,12 @@ Broker.prototype.assertExchange = function assertExchange(exchangeName, type, op
 
   if (exchange) {
     if (type && exchange.type !== type) throw new Error('Type doesn\'t match');
-  } else {
-    const exchanges = this[exchangesSymbol];
-    const events = this[eventHandlerSymbol];
-    exchange = new _Exchange.Exchange(exchangeName, type || 'topic', options);
-    exchange.on('delete', () => {
-      const idx = exchanges.indexOf(exchange);
-      if (idx === -1) return;
-      exchanges.splice(idx, 1);
-    });
-    exchange.on('return', (_, msg) => {
-      events.publish('return', msg.content);
-    });
-    exchange.on('message.undelivered', (_, msg) => {
-      events.publish('message.undelivered', msg.content);
-    });
-    exchanges.push(exchange);
+    return exchange;
   }
 
+  exchange = new _Exchange.Exchange(exchangeName, type || 'topic', options);
+  this[eventHandlerSymbol].listen(exchange.events);
+  this[exchangesSymbol].push(exchange);
   return exchange;
 };
 
@@ -335,40 +328,11 @@ Broker.prototype.getExchangeState = function getExchangeState() {
 Broker.prototype.createQueue = function createQueue(queueName, options) {
   const self = this;
   if (self.getQueue(queueName)) throw new Error(`Queue named ${queueName} already exists`);
-  const queues = self[queuesSymbol];
-  const consumers = self[consumersSymbol];
-  const events = self[eventHandlerSymbol];
-  const queue = new _Queue.Queue(queueName, options, (0, _Exchange.EventExchange)(queueName + '-events'));
-  queue.on('delete', onDelete);
-  queue.on('dead-letter', onDeadLetter);
-  queue.on('consume', (_, event) => consumers.push(event.content));
-  queue.on('consumer.cancel', (_, event) => {
-    const idx = consumers.indexOf(event.content);
-    if (idx !== -1) consumers.splice(idx, 1);
-  });
-  queue.on('message.consumed.#', (_, msg) => {
-    const {
-      operation,
-      message
-    } = msg.content;
-    events.publish('message.' + operation, message);
-  });
-  queues.push(queue);
+  const queueEmitter = (0, _Exchange.EventExchange)(queueName + '__events');
+  this[eventHandlerSymbol].listen(queueEmitter);
+  const queue = new _Queue.Queue(queueName, options, queueEmitter);
+  self[queuesSymbol].push(queue);
   return queue;
-
-  function onDelete() {
-    const idx = queues.indexOf(queue);
-    if (idx === -1) return;
-    queues.splice(idx, 1);
-  }
-
-  function onDeadLetter(_, {
-    content
-  }) {
-    const exchange = self.getExchange(content.deadLetterExchange);
-    if (!exchange) return;
-    exchange.publish(content.message.fields.routingKey, content.message.content, content.message.properties);
-  }
 };
 
 Broker.prototype.getQueue = function getQueue(queueName) {
@@ -443,14 +407,9 @@ Broker.prototype.createShovel = function createShovel(name, source, destination,
   const shovel = new _Shovel.Shovel(name, { ...source,
     broker: this
   }, destination, options);
+  this[eventHandlerSymbol].listen(shovel.events);
   shovels.push(shovel);
-  shovel.on('close', onClose);
   return shovel;
-
-  function onClose() {
-    const idx = shovels.indexOf(shovel);
-    if (idx > -1) shovels.splice(idx, 1);
-  }
 };
 
 Broker.prototype.closeShovel = function closeShovel(name) {
@@ -469,7 +428,7 @@ Broker.prototype.getShovel = function getShovel(name) {
 };
 
 Broker.prototype.on = function on(eventName, callback, options) {
-  return this[eventHandlerSymbol].on(eventName, getEventCallback(), { ...options,
+  return this.events.on(eventName, getEventCallback(), { ...options,
     origin: callback
   });
 
@@ -488,7 +447,7 @@ Broker.prototype.off = function off(eventName, callbackOrObject) {
     consumerTag
   } = callbackOrObject;
 
-  for (const binding of this[eventHandlerSymbol].bindings) {
+  for (const binding of this.events.bindings) {
     if (binding.pattern === eventName) {
       if (consumerTag) {
         binding.queue.cancel(consumerTag);
@@ -505,3 +464,84 @@ Broker.prototype.off = function off(eventName, callbackOrObject) {
 };
 
 Broker.prototype.prefetch = function prefetch() {};
+
+function EventHandler(broker, lists) {
+  this.broker = broker;
+  this.lists = lists;
+  this.handler = this.handler.bind(this);
+}
+
+EventHandler.prototype.listen = function listen(emitter) {
+  emitter.on('#', this.handler);
+};
+
+EventHandler.prototype.handler = function eventHandler(eventName, msg) {
+  switch (eventName) {
+    case 'exchange.delete':
+      {
+        const idx = this.lists.exchanges.indexOf(msg.content);
+        if (idx === -1) return;
+        this.lists.exchanges.splice(idx, 1);
+        break;
+      }
+
+    case 'exchange.return':
+      {
+        this.broker.events.publish('return', msg.content);
+        break;
+      }
+
+    case 'exchange.message.undelivered':
+      {
+        this.broker.events.publish('message.undelivered', msg.content);
+        break;
+      }
+
+    case 'queue.delete':
+      {
+        const idx = this.lists.queues.indexOf(msg.content);
+        if (idx === -1) return;
+        this.lists.queues.splice(idx, 1);
+        break;
+      }
+
+    case 'queue.dead-letter':
+      {
+        const exchange = this.broker.getExchange(msg.content.deadLetterExchange);
+        if (!exchange) return;
+        exchange.publish(msg.content.message.fields.routingKey, msg.content.message.content, msg.content.message.properties);
+        break;
+      }
+
+    case 'queue.consume':
+      {
+        this.lists.consumers.push(msg.content);
+        break;
+      }
+
+    case 'queue.consumer.cancel':
+      {
+        const idx = this.lists.consumers.indexOf(msg.content);
+        if (idx !== -1) this.lists.consumers.splice(idx, 1);
+        break;
+      }
+
+    case 'queue.message.consumed.ack':
+    case 'queue.message.consumed.nack':
+      {
+        const {
+          operation,
+          message
+        } = msg.content;
+        this.broker.events.publish('message.' + operation, message);
+        break;
+      }
+
+    case 'shovel.close':
+      {
+        const idx = this.lists.shovels.indexOf(msg.content);
+        if (idx > -1) this.lists.shovels.splice(idx, 1);
+        break;
+      }
+  }
+};

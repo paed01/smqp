@@ -3,22 +3,22 @@ import {Queue} from '../../src/Queue';
 describe('Queue', () => {
   describe('ctor', () => {
     it('takes name', () => {
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       expect(queue).to.have.property('name', 'test-q');
     });
 
     it('receives random name if not passed', () => {
-      const queue = Queue();
+      const queue = new Queue();
       expect(queue).to.have.property('name').that.is.ok;
     });
 
     it('takes options', () => {
-      const queue = Queue(null, {autoDelete: false, durable: true});
+      const queue = new Queue(null, {autoDelete: false, durable: true});
       expect(queue).to.have.property('options').that.eql({autoDelete: false, durable: true});
     });
 
     it('defaults to option autoDelete if not passed', () => {
-      const queue = Queue();
+      const queue = new Queue();
       expect(queue).to.have.property('options').that.eql({autoDelete: true});
     });
   });
@@ -26,7 +26,7 @@ describe('Queue', () => {
   describe('queue options', () => {
     describe('maxLength', () => {
       it('maxLength evicts old messages', () => {
-        const queue = Queue(null, {maxLength: 2});
+        const queue = new Queue(null, {maxLength: 2});
 
         expect(queue.options.maxLength).to.equal(2);
 
@@ -39,7 +39,7 @@ describe('Queue', () => {
       });
 
       it('maxLength property can be set', () => {
-        const queue = Queue();
+        const queue = new Queue();
 
         queue.options.maxLength = 2;
 
@@ -52,7 +52,7 @@ describe('Queue', () => {
       });
 
       it('maxLength property can be changed', () => {
-        const queue = Queue(null, {maxLength: 2});
+        const queue = new Queue(null, {maxLength: 2});
 
         queue.queueMessage({routingKey: 'test.1'});
         queue.queueMessage({routingKey: 'test.2'});
@@ -71,7 +71,7 @@ describe('Queue', () => {
 
       it('emits saturated when maxLength is reached', () => {
         let triggered;
-        const queue = Queue(null, {maxLength: 2}, {emit});
+        const queue = new Queue(null, {maxLength: 2}, {emit});
 
         queue.queueMessage({routingKey: 'test.1'});
         queue.queueMessage({routingKey: 'test.2'});
@@ -85,7 +85,7 @@ describe('Queue', () => {
       });
 
       it('maxLength = 1 evicts old messages', () => {
-        const queue = Queue(null, {maxLength: 1});
+        const queue = new Queue(null, {maxLength: 1});
         queue.queueMessage({routingKey: 'test.1'});
         queue.queueMessage({routingKey: 'test.2'});
         queue.queueMessage({routingKey: 'test.3'});
@@ -96,7 +96,7 @@ describe('Queue', () => {
 
       it('emits saturated when maxLength = 1 is reached', () => {
         let triggered;
-        const queue = Queue(null, {maxLength: 1}, {emit});
+        const queue = new Queue(null, {maxLength: 1}, {emit});
 
         queue.queueMessage({routingKey: 'test.1'});
 
@@ -109,7 +109,7 @@ describe('Queue', () => {
       });
 
       it('maxLength evicts old non-pending messages', () => {
-        const queue = Queue(null, {maxLength: 2});
+        const queue = new Queue(null, {maxLength: 2});
         queue.queueMessage({routingKey: 'test.1'});
 
         queue.get();
@@ -122,7 +122,7 @@ describe('Queue', () => {
       });
 
       it('if maxLength is reached and all messages are pending then new message is discarded', () => {
-        const queue = Queue(null, {maxLength: 1});
+        const queue = new Queue(null, {maxLength: 1});
         queue.queueMessage({routingKey: 'test.1'});
 
         queue.get();
@@ -137,7 +137,7 @@ describe('Queue', () => {
     describe('deadLetterExchange', () => {
       it('deadLetterExchange emits event with message when message is nacked', () => {
         let triggered;
-        const queue = Queue(null, {deadLetterExchange: 'evict'}, {emit});
+        const queue = new Queue(null, {deadLetterExchange: 'evict'}, {emit});
         queue.queueMessage({routingKey: 'test.1'});
 
         queue.get().nack(false, false);
@@ -153,7 +153,7 @@ describe('Queue', () => {
 
       it('deadLetterExchange with deadLetterRoutingKey emits event with message with deadLetterRoutingKey when message is nacked', () => {
         let triggered;
-        const queue = Queue(null, {deadLetterExchange: 'evict', deadLetterRoutingKey: 'evicted.message'}, {emit});
+        const queue = new Queue(null, {deadLetterExchange: 'evict', deadLetterRoutingKey: 'evicted.message'}, {emit});
         queue.queueMessage({routingKey: 'test.1'});
 
         queue.get().nack(false, false);
@@ -169,7 +169,7 @@ describe('Queue', () => {
 
       it('deadLetterExchange emits event with message when messages are evicted due to maxLength', () => {
         const triggered = [];
-        const queue = Queue(null, {maxLength: 1, deadLetterExchange: 'evict'}, {emit});
+        const queue = new Queue(null, {maxLength: 1, deadLetterExchange: 'evict'}, {emit});
         queue.queueMessage({routingKey: 'test.1'});
         queue.queueMessage({routingKey: 'test.2'});
         queue.queueMessage({routingKey: 'test.3'});
@@ -187,7 +187,7 @@ describe('Queue', () => {
 
       it('no deadLetterExchange emits no dead letter event', () => {
         let triggered;
-        const queue = Queue(null, {maxLength: 1}, {emit});
+        const queue = new Queue(null, {maxLength: 1}, {emit});
         queue.queueMessage({routingKey: 'test.1'});
 
         queue.get().nack(false, true);
@@ -202,7 +202,7 @@ describe('Queue', () => {
 
     describe('exclusive', () => {
       it('consume exclusively consumed queue throws error', () => {
-        const queue = Queue();
+        const queue = new Queue();
         queue.consume(() => {}, {exclusive: true});
 
         expect(() => {
@@ -211,7 +211,7 @@ describe('Queue', () => {
       });
 
       it('exclusively consume on queue with consumer throws error', () => {
-        const queue = Queue();
+        const queue = new Queue();
         queue.consume(() => {});
 
         expect(() => {
@@ -220,7 +220,7 @@ describe('Queue', () => {
       });
 
       it('releases exclusive consumed queue when consumer is canceled', () => {
-        const queue = Queue(null, {autoDelete: false});
+        const queue = new Queue(null, {autoDelete: false});
         const consumer = queue.consume(() => {}, {exclusive: true});
         queue.cancel(consumer.consumerTag);
         queue.consume(() => {});
@@ -230,14 +230,14 @@ describe('Queue', () => {
 
   describe('queueMessage()', () => {
     it('queues message', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage();
 
       expect(queue.messageCount).to.equal(1);
     });
 
     it('queues second message', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage();
       queue.queueMessage();
 
@@ -247,26 +247,26 @@ describe('Queue', () => {
 
   describe('consume(onMessage[, options])', () => {
     it('returns consumer', () => {
-      const queue = Queue();
+      const queue = new Queue();
       const consumer = queue.consume(() => {});
       expect(consumer.options).to.have.property('consumerTag');
     });
 
     it('ups consumerCount', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.consume(() => {});
       expect(queue.consumerCount).to.equal(1);
     });
 
     it('passes options to consumer', () => {
-      const queue = Queue();
+      const queue = new Queue();
       const consumer = queue.consume(() => {}, {prefetch: 42});
       expect(consumer.options).to.have.property('prefetch', 42);
     });
 
     it('emits consume with consumer', () => {
       let triggered;
-      const queue = Queue(null, {}, {emit});
+      const queue = new Queue(null, {}, {emit});
       queue.consume(() => {});
 
       expect(triggered).to.be.true;
@@ -279,7 +279,7 @@ describe('Queue', () => {
     });
 
     it('calls onMessage callback with already queued message', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'}, {data: 1});
       const messages = [];
 
@@ -295,7 +295,7 @@ describe('Queue', () => {
     });
 
     it('calls onMessage callback with already queued messages', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       const messages = [];
@@ -312,7 +312,7 @@ describe('Queue', () => {
     });
 
     it('calls onMessage callback on new message', () => {
-      const queue = Queue();
+      const queue = new Queue();
       const messages = [];
 
       queue.consume(onMessage, {prefetch: 2});
@@ -328,7 +328,7 @@ describe('Queue', () => {
     });
 
     it('calls onMessage callback on new messages', () => {
-      const queue = Queue();
+      const queue = new Queue();
       const messages = [];
 
       queue.consume(onMessage, {prefetch: 2});
@@ -346,7 +346,7 @@ describe('Queue', () => {
     });
 
     it('new message queued in onMessage callback is handled in sequence', () => {
-      const queue = Queue();
+      const queue = new Queue();
       const messages = [];
 
       queue.consume(onMessage);
@@ -365,7 +365,7 @@ describe('Queue', () => {
     });
 
     it('new messages queued in onMessage callback are handled in sequence', () => {
-      const queue = Queue();
+      const queue = new Queue();
       const messages = [];
 
       queue.consume(onMessage, {prefetch: 2});
@@ -389,7 +389,7 @@ describe('Queue', () => {
     });
 
     it('new message queued in onMessage callback is queued', () => {
-      const queue = Queue();
+      const queue = new Queue();
       const messages = [];
 
       queue.consume(onMessage, {consumerTag: 'meme'});
@@ -408,7 +408,7 @@ describe('Queue', () => {
     });
 
     it('cancel consumer after ack in message callback stops consumption', () => {
-      const queue = Queue(null, {autoDelete: false});
+      const queue = new Queue(null, {autoDelete: false});
       const messages = [];
 
       queue.queueMessage({routingKey: 'test.1'});
@@ -431,26 +431,26 @@ describe('Queue', () => {
 
   describe('assertConsumer(onMessage[, options])', () => {
     it('returns consumer', () => {
-      const queue = Queue();
+      const queue = new Queue();
       const consumer = queue.assertConsumer(() => {});
       expect(consumer.options).to.have.property('consumerTag');
     });
 
     it('ups consumerCount', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.assertConsumer(() => {});
       expect(queue.consumerCount).to.equal(1);
     });
 
     it('returns the same consumer if message callback match', () => {
-      const queue = Queue();
+      const queue = new Queue();
       const consumer = queue.consume(onMessage);
       expect(queue.assertConsumer(onMessage) === consumer).to.be.true;
       function onMessage() {}
     });
 
     it('returns the same consumer if message callback and consumer tag match', () => {
-      const queue = Queue();
+      const queue = new Queue();
       const consumer = queue.consume(onMessage, {consumerTag: 'test-consumer'});
       expect(queue.assertConsumer(onMessage, {consumerTag: 'test-consumer-2'}) === consumer).to.be.false;
       expect(queue.assertConsumer(onMessage, {consumerTag: 'test-consumer'}) === consumer).to.be.true;
@@ -458,7 +458,7 @@ describe('Queue', () => {
     });
 
     it('returns the same consumer if message callback, consumer tag and exclusive match', () => {
-      const queue = Queue();
+      const queue = new Queue();
       const consumer = queue.consume(onMessage, {consumerTag: 'test-consumer', exclusive: true});
 
       expect(() => {
@@ -473,7 +473,7 @@ describe('Queue', () => {
 
   describe('dismiss(onMessage)', () => {
     it('downs consumerCount', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.consume(onMessage);
       queue.dismiss(onMessage);
 
@@ -483,10 +483,23 @@ describe('Queue', () => {
     });
 
     it('requeues non acknowledge message', () => {
-      const queue = Queue(null, {autoDelete: false});
+      const queue = new Queue(null, {autoDelete: false});
       queue.consume(onMessage);
       queue.queueMessage({routingKey: 'test.1'});
 
+      queue.dismiss(onMessage);
+
+      expect(queue.messageCount).to.equal(1);
+
+      function onMessage() {}
+    });
+
+    it('ignored if onMessage is not registered', () => {
+      const queue = new Queue(null, {autoDelete: false});
+      queue.consume(onMessage);
+      queue.queueMessage({routingKey: 'test.1'});
+
+      queue.dismiss(onMessage);
       queue.dismiss(onMessage);
 
       expect(queue.messageCount).to.equal(1);
@@ -497,7 +510,7 @@ describe('Queue', () => {
 
   describe('get()', () => {
     it('returns first pending message', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
       const msg = queue.get();
@@ -508,7 +521,7 @@ describe('Queue', () => {
 
   describe('ack()', () => {
     it('consumes message', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
       const msg = queue.get();
@@ -517,7 +530,7 @@ describe('Queue', () => {
     });
 
     it('with allUpTo consumes messages prior to current', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -530,7 +543,7 @@ describe('Queue', () => {
     });
 
     it('same message twice is ignored', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -544,7 +557,7 @@ describe('Queue', () => {
 
   describe('nack()', () => {
     it('requeues message by default', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
       const msg = queue.get();
@@ -553,7 +566,7 @@ describe('Queue', () => {
     });
 
     it('consumes message if requeue is false', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
       const msg = queue.get();
@@ -562,7 +575,7 @@ describe('Queue', () => {
     });
 
     it('with allUpTo requeues messages prior to current', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -575,7 +588,7 @@ describe('Queue', () => {
     });
 
     it('with allUpTo and requeue false discards messages prior to current', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -588,7 +601,7 @@ describe('Queue', () => {
     });
 
     it('same message twice with different arguments is ignored', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -600,7 +613,7 @@ describe('Queue', () => {
     });
 
     it('requeued message is put back in the same position but are not reference equals', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -614,7 +627,7 @@ describe('Queue', () => {
     });
 
     it('requeued message resets consumerTag', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -633,7 +646,7 @@ describe('Queue', () => {
 
   describe('reject()', () => {
     it('requeues message by default', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
       const msg = queue.get();
@@ -642,7 +655,7 @@ describe('Queue', () => {
     });
 
     it('discards message if requeue is false', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
       const msg = queue.get();
@@ -651,7 +664,7 @@ describe('Queue', () => {
     });
 
     it('same message twice is ignored', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -665,7 +678,7 @@ describe('Queue', () => {
 
   describe('purge()', () => {
     it('removes all messages', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -675,7 +688,7 @@ describe('Queue', () => {
     });
 
     it('removes all undelivered messages', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -689,7 +702,7 @@ describe('Queue', () => {
 
     it('emits depleted if no undelivered messages remain', () => {
       let triggered;
-      const queue = Queue(null, {}, {emit});
+      const queue = new Queue(null, {}, {emit});
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -711,7 +724,7 @@ describe('Queue', () => {
     it('consumes next message in queue after consumer nackAll and queue purge', () => {
       const messages = [];
 
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -734,7 +747,7 @@ describe('Queue', () => {
 
   describe('peek([ignoreDelivered])', () => {
     it('returns first message', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -744,7 +757,7 @@ describe('Queue', () => {
     });
 
     it('returns first message even if delivered', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -756,7 +769,7 @@ describe('Queue', () => {
     });
 
     it('with ignore delivered argument true returns first message when all are undelivered', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -766,7 +779,7 @@ describe('Queue', () => {
     });
 
     it('with ignore delivered argument returns first undelivered message', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -778,7 +791,7 @@ describe('Queue', () => {
     });
 
     it('with ignore delivered argument returns nothing if all are delivered', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -792,7 +805,7 @@ describe('Queue', () => {
   describe('queued message', () => {
     describe('message.ack()', () => {
       it('consumes message', () => {
-        const queue = Queue();
+        const queue = new Queue();
         queue.queueMessage({routingKey: 'test.1'});
 
         const msg = queue.get();
@@ -801,7 +814,7 @@ describe('Queue', () => {
       });
 
       it('with allUpTo consumes messages prior to current', () => {
-        const queue = Queue();
+        const queue = new Queue();
         queue.queueMessage({routingKey: 'test.1'});
         queue.queueMessage({routingKey: 'test.2'});
         queue.queueMessage({routingKey: 'test.3'});
@@ -814,7 +827,7 @@ describe('Queue', () => {
       });
 
       it('same message twice is ignored', () => {
-        const queue = Queue();
+        const queue = new Queue();
         queue.queueMessage({routingKey: 'test.1'});
         queue.queueMessage({routingKey: 'test.2'});
         queue.queueMessage({routingKey: 'test.3'});
@@ -828,7 +841,7 @@ describe('Queue', () => {
 
     describe('message.nack()', () => {
       it('requeues message by default', () => {
-        const queue = Queue();
+        const queue = new Queue();
         queue.queueMessage({routingKey: 'test.1'});
 
         const msg = queue.get();
@@ -837,7 +850,7 @@ describe('Queue', () => {
       });
 
       it('consumes message if requeue is false', () => {
-        const queue = Queue();
+        const queue = new Queue();
         queue.queueMessage({routingKey: 'test.1'});
 
         const msg = queue.get();
@@ -846,7 +859,7 @@ describe('Queue', () => {
       });
 
       it('with allUpTo requeues messages prior to current', () => {
-        const queue = Queue();
+        const queue = new Queue();
         queue.queueMessage({routingKey: 'test.1'});
         queue.queueMessage({routingKey: 'test.2'});
         queue.queueMessage({routingKey: 'test.3'});
@@ -859,7 +872,7 @@ describe('Queue', () => {
       });
 
       it('with allUpTo and requeue false consumes messages prior to current', () => {
-        const queue = Queue();
+        const queue = new Queue();
         queue.queueMessage({routingKey: 'test.1'});
         queue.queueMessage({routingKey: 'test.2'});
         queue.queueMessage({routingKey: 'test.3'});
@@ -872,7 +885,7 @@ describe('Queue', () => {
       });
 
       it('same message twice is ignored', () => {
-        const queue = Queue();
+        const queue = new Queue();
         queue.queueMessage({routingKey: 'test.1'});
         queue.queueMessage({routingKey: 'test.2'});
         queue.queueMessage({routingKey: 'test.3'});
@@ -886,7 +899,7 @@ describe('Queue', () => {
 
     describe('message.reject()', () => {
       it('requeues message by default', () => {
-        const queue = Queue();
+        const queue = new Queue();
         queue.queueMessage({routingKey: 'test.1'});
 
         const msg = queue.get();
@@ -895,7 +908,7 @@ describe('Queue', () => {
       });
 
       it('discards message if requeue is false', () => {
-        const queue = Queue();
+        const queue = new Queue();
         queue.queueMessage({routingKey: 'test.1'});
 
         const msg = queue.get();
@@ -904,7 +917,7 @@ describe('Queue', () => {
       });
 
       it('same message twice is ignored', () => {
-        const queue = Queue();
+        const queue = new Queue();
         queue.queueMessage({routingKey: 'test.1'});
         queue.queueMessage({routingKey: 'test.2'});
         queue.queueMessage({routingKey: 'test.3'});
@@ -919,7 +932,7 @@ describe('Queue', () => {
 
   describe('getState()', () => {
     it('returns state of queue with messages', () => {
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -935,7 +948,7 @@ describe('Queue', () => {
   describe('delete()', () => {
     it('emits delete', () => {
       let triggered;
-      const queue = Queue('test-q', {}, {emit});
+      const queue = new Queue('test-q', {}, {emit});
       queue.queueMessage({routingKey: 'test.1'});
       queue.consume(() => {});
 
@@ -951,7 +964,7 @@ describe('Queue', () => {
 
     it('emits delete for queue and all consumers', () => {
       const triggered = [];
-      const queue = Queue('test-q', {}, {emit});
+      const queue = new Queue('test-q', {}, {emit});
       queue.queueMessage({routingKey: 'test.1'});
       queue.consume(() => {});
       queue.consume(() => {});
@@ -975,7 +988,7 @@ describe('Queue', () => {
 
     it('ifUnused option only deletes queue if no consumers', () => {
       let triggered = false;
-      const queue = Queue('test-q', {}, {emit});
+      const queue = new Queue('test-q', {}, {emit});
       const consumer = queue.consume(() => {});
 
       queue.delete({ifUnused: true});
@@ -996,7 +1009,7 @@ describe('Queue', () => {
 
     it('ifEmpty option only deletes queue if no messages', () => {
       let triggered = false;
-      const queue = Queue('test-q', {}, {emit});
+      const queue = new Queue('test-q', {}, {emit});
       queue.queueMessage({routingKey: 'test.1'});
 
       queue.delete({ifEmpty: true});
@@ -1018,7 +1031,7 @@ describe('Queue', () => {
   describe('events', () => {
     it('emits message when message is queued', () => {
       let triggered;
-      const queue = Queue('test-q', {}, {emit});
+      const queue = new Queue('test-q', {}, {emit});
       queue.queueMessage({routingKey: 'test.1'});
 
       expect(triggered).to.be.true;
@@ -1030,7 +1043,7 @@ describe('Queue', () => {
 
     it('emits depleted when queue is emptied by message ack', () => {
       let triggered;
-      const queue = Queue('test-q', {}, {emit});
+      const queue = new Queue('test-q', {}, {emit});
       queue.queueMessage({routingKey: 'test.1'});
 
       queue.get().ack();
@@ -1044,7 +1057,7 @@ describe('Queue', () => {
 
     it('emits depleted when queue is emptied by message nack', () => {
       let triggered;
-      const queue = Queue('test-q', {}, {emit});
+      const queue = new Queue('test-q', {}, {emit});
       queue.queueMessage({routingKey: 'test.1'});
 
       queue.get().nack(false, false);
@@ -1058,7 +1071,7 @@ describe('Queue', () => {
 
     it('emits ready when queue maxLength was reached and then released one message', () => {
       let triggered;
-      const queue = Queue('test-q', {maxLength: 2}, {emit});
+      const queue = new Queue('test-q', {maxLength: 2}, {emit});
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1073,7 +1086,7 @@ describe('Queue', () => {
 
     it('forwards events from consumer', () => {
       let triggered;
-      const queue = Queue('test-q', {maxLength: 2}, {emit});
+      const queue = new Queue('test-q', {maxLength: 2}, {emit});
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1092,7 +1105,7 @@ describe('Queue', () => {
 
   describe('stop()', () => {
     it('stops new messages', () => {
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.queueMessage({routingKey: 'test.1'});
       queue.stop();
       queue.queueMessage({routingKey: 'test.2'});
@@ -1101,7 +1114,7 @@ describe('Queue', () => {
     });
 
     it('stops consumption', () => {
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1117,7 +1130,7 @@ describe('Queue', () => {
     });
 
     it('stopped ignores ack()', () => {
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1131,7 +1144,7 @@ describe('Queue', () => {
     });
 
     it('stopped ignores nack()', () => {
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1145,7 +1158,7 @@ describe('Queue', () => {
     });
 
     it('stopped ignores reject()', () => {
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1161,7 +1174,7 @@ describe('Queue', () => {
 
   describe('recover([state])', () => {
     it('recovers stopped without state', () => {
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1179,7 +1192,7 @@ describe('Queue', () => {
     });
 
     it('with state resets pending messages', () => {
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.queueMessage({routingKey: 'test.1', exchange: 'event'}, 'data', {contentType: 'text/plain'});
       queue.queueMessage({routingKey: 'test.2', exchange: 'event'}, {data: 1}, {contentType: 'application/json'});
 
@@ -1213,7 +1226,7 @@ describe('Queue', () => {
     });
 
     it('without state preserves pending messages', () => {
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1233,7 +1246,7 @@ describe('Queue', () => {
     });
 
     it('recovers stopped with state', () => {
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.queueMessage({routingKey: 'test.1', exchange: 'event'}, 'data', {contentType: 'text/plain'});
       queue.queueMessage({routingKey: 'test.2', exchange: 'event'}, {data: 1}, {contentType: 'application/json'});
 
@@ -1252,7 +1265,7 @@ describe('Queue', () => {
     });
 
     it('with state recovers messages', () => {
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.queueMessage({routingKey: 'test.1', exchange: 'event'}, 'data', {contentType: 'text/plain'});
       queue.queueMessage({routingKey: 'test.2', exchange: 'event'}, {data: 1}, {contentType: 'application/json'});
 
@@ -1283,13 +1296,13 @@ describe('Queue', () => {
     });
 
     it('with unstopped state recovers messages', () => {
-      const originalQueue = Queue('test-q');
+      const originalQueue = new Queue('test-q');
       originalQueue.queueMessage({routingKey: 'test.1', exchange: 'event'}, 'data', {contentType: 'text/plain'});
       originalQueue.queueMessage({routingKey: 'test.2', exchange: 'event'}, {data: 1}, {contentType: 'application/json'});
 
       const state = originalQueue.getState();
 
-      const queue = Queue('recover-q');
+      const queue = new Queue('recover-q');
 
       queue.recover(state);
 
@@ -1314,7 +1327,7 @@ describe('Queue', () => {
     });
 
     it('with unstopped and consumed unacked message recovers messages', () => {
-      const originalQueue = Queue('test-q');
+      const originalQueue = new Queue('test-q');
       originalQueue.queueMessage({routingKey: 'test.1', exchange: 'event'}, 'data', {contentType: 'text/plain'});
       originalQueue.queueMessage({routingKey: 'test.2', exchange: 'event'}, {data: 1}, {contentType: 'application/json'});
 
@@ -1322,7 +1335,7 @@ describe('Queue', () => {
 
       const state = originalQueue.getState();
 
-      const queue = Queue('recover-q');
+      const queue = new Queue('recover-q');
 
       queue.recover(state);
 
@@ -1347,7 +1360,7 @@ describe('Queue', () => {
     });
 
     it('with state resumes consumers', () => {
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1370,7 +1383,7 @@ describe('Queue', () => {
     it('without state resumes consumers', () => {
       const messages = [];
 
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1393,26 +1406,68 @@ describe('Queue', () => {
     });
   });
 
+  describe('evictFirst(compareMessage)', () => {
+    it('returns undefined if called without messages in queue', () => {
+      const queue = new Queue();
+      expect(queue.evictFirst()).to.be.undefined;
+    });
+  });
+
+  describe('consumeNext()', () => {
+    it('returns undefined if called when stopped ', () => {
+      const queue = new Queue();
+      queue.stop();
+      expect(queue.consumeNext()).to.be.undefined;
+    });
+  });
+
+  describe('getPendingMessages()', () => {
+    it('returns empty if called with acked message', () => {
+      const queue = new Queue();
+      queue.queueMessage({});
+      queue.queueMessage({});
+      queue.queueMessage({});
+
+
+      queue.get();
+      const message = queue.get();
+
+      expect(queue.getPendingMessages(message)).to.have.length(1);
+
+      message.ack();
+      expect(queue.getPendingMessages(message)).to.have.length(0);
+    });
+  });
+
   describe('persistent message', () => {
     it('ignores non-persistent message when recovered with state', () => {
-      const originalQueue = Queue('test-q');
+      const originalQueue = new Queue('test-q');
       originalQueue.queueMessage({routingKey: 'test.ethereal'}, 'data', {persistent: false});
       originalQueue.queueMessage({routingKey: 'test.persisted'}, 'data');
 
       originalQueue.stop();
 
-      const queue = Queue('test-q');
+      const queue = new Queue('test-q');
       queue.recover(originalQueue.getState());
 
       const msg = queue.get();
       expect(msg).to.have.property('fields').with.property('routingKey', 'test.persisted');
     });
   });
+
+  describe('eventEmitter', () => {
+    it('emitter functions works without eventEmitter', () => {
+      const queue = new Queue();
+      expect(() => queue.emit()).to.not.throw();
+      expect(() => queue.on()).to.not.throw();
+      expect(() => queue.off()).to.not.throw();
+    });
+  });
 });
 
 describe('Consumer', () => {
   describe('options', () => {
-    const queue = Queue();
+    const queue = new Queue();
 
     it('generates tag if not passed', () => {
       const consumer = queue.consume(() => {});
@@ -1440,7 +1495,7 @@ describe('Consumer', () => {
   });
 
   it('waits for ack before consuming next message', () => {
-    const queue = Queue('event-q');
+    const queue = new Queue('event-q');
     const messages = [];
     queue.queueMessage({routingKey: 'test.1'});
     queue.queueMessage({routingKey: 'test.2'});
@@ -1460,7 +1515,7 @@ describe('Consumer', () => {
   });
 
   it('indicates ready when available for new messages', () => {
-    const queue = Queue('event-q');
+    const queue = new Queue('event-q');
     const messages = [];
     queue.queueMessage({routingKey: 'test.1'});
 
@@ -1477,7 +1532,7 @@ describe('Consumer', () => {
   });
 
   it('ack queued pending message removes message from consumer', () => {
-    const queue = Queue();
+    const queue = new Queue();
     queue.queueMessage({routingKey: 'test.1'});
     queue.queueMessage({routingKey: 'test.2'});
 
@@ -1497,7 +1552,7 @@ describe('Consumer', () => {
   it('returns owner in message callback', () => {
     const messages = [];
 
-    const queue = Queue();
+    const queue = new Queue();
     queue.queueMessage({routingKey: 'test.1'});
 
     const owner = {};
@@ -1515,7 +1570,7 @@ describe('Consumer', () => {
     it('prefetch 2 consumes 2 messages', () => {
       const messages = [];
 
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1531,7 +1586,7 @@ describe('Consumer', () => {
     it('prefetch 10 is available for new messages when one is acked', () => {
       const messages = [];
 
-      const queue = Queue('max-q');
+      const queue = new Queue('max-q');
       Array(11).fill().map((_, idx) => queue.queueMessage({routingKey: `test.${idx}`}));
 
       queue.consume(onMessage, {prefetch: 10});
@@ -1550,7 +1605,7 @@ describe('Consumer', () => {
     it('prefetch 2 consumes no more than 2 messages at a time', () => {
       const messages = [];
 
-      const queue = Queue();
+      const queue = new Queue();
       const consumer = queue.consume(onMessage, {prefetch: 2});
 
       queue.queueMessage({routingKey: 'test.1'});
@@ -1571,7 +1626,7 @@ describe('Consumer', () => {
     it('consumes new messages when messages are acked', () => {
       const messages = [];
 
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -1592,7 +1647,7 @@ describe('Consumer', () => {
     });
 
     it('allUpTo = true acks all outstanding messages', () => {
-      const queue = Queue('event-q');
+      const queue = new Queue('event-q');
       const messages = [];
 
       queue.queueMessage({routingKey: 'test1'});
@@ -1613,7 +1668,7 @@ describe('Consumer', () => {
     });
 
     it('allUpTo = true only acks messages above message', () => {
-      const queue = Queue('event-q');
+      const queue = new Queue('event-q');
       const messages1 = [], messages2 = [];
 
       queue.queueMessage({routingKey: 'test1'});
@@ -1639,7 +1694,7 @@ describe('Consumer', () => {
     });
 
     it('allUpTo = true only acks messages above message', () => {
-      const queue = Queue('event-q');
+      const queue = new Queue('event-q');
       const messages1 = [], messages2 = [];
 
       queue.queueMessage({routingKey: 'test.1'});
@@ -1674,7 +1729,7 @@ describe('Consumer', () => {
 
   describe('noAck', () => {
     it('defaults to false', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
       const consumer = queue.consume(() => {});
@@ -1684,7 +1739,7 @@ describe('Consumer', () => {
     it('consumes pending message in queue', () => {
       const messages = [];
 
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
       queue.consume(onMessage, {noAck: true});
@@ -1702,7 +1757,7 @@ describe('Consumer', () => {
     it('consumes queued messages in queue', () => {
       const messages = [];
 
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
       queue.consume(onMessage, {noAck: true});
@@ -1727,7 +1782,7 @@ describe('Consumer', () => {
     it('cancel consumer in message callback stops consuming messages', () => {
       const messages = [];
 
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -1748,7 +1803,7 @@ describe('Consumer', () => {
     it('prefetch is pretty pointless', () => {
       const messages = [];
 
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
       queue.queueMessage({routingKey: 'test.3'});
@@ -1769,7 +1824,7 @@ describe('Consumer', () => {
 
   describe('ackAll()', () => {
     it('acks all consumed messages', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1788,7 +1843,7 @@ describe('Consumer', () => {
 
   describe('nackAll()', () => {
     it('requeues all consumed messages', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1804,7 +1859,7 @@ describe('Consumer', () => {
     });
 
     it('removes all consumed messages if called with falsey requeue', () => {
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1822,7 +1877,7 @@ describe('Consumer', () => {
     it('consumes next message in queue after nackAll with falsey requeue', () => {
       const messages = [];
 
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
       queue.queueMessage({routingKey: 'test.2'});
 
@@ -1846,7 +1901,7 @@ describe('Consumer', () => {
     it('stops consuming messages from queue', () => {
       const messages = [];
 
-      const queue = Queue();
+      const queue = new Queue();
       queue.queueMessage({routingKey: 'test.1'});
 
       const consumer = queue.consume(onMessage);
@@ -1866,7 +1921,7 @@ describe('Consumer', () => {
     it('returns message to queue', () => {
       const messages = [];
 
-      const queue = Queue(null, {autoDelete: false});
+      const queue = new Queue(null, {autoDelete: false});
       queue.queueMessage({routingKey: 'test.1'});
 
       const consumer = queue.consume(onMessage, {consumerTag: 'test-consumer'});
@@ -1883,7 +1938,7 @@ describe('Consumer', () => {
     });
 
     it('resets message consumerTag', () => {
-      const queue = Queue(null, {autoDelete: false});
+      const queue = new Queue(null, {autoDelete: false});
       queue.queueMessage({routingKey: 'test.1'});
 
       const consumer = queue.consume(onMessage, {consumerTag: 'test-consumer'});

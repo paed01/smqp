@@ -5,7 +5,6 @@ const cloneMessageSymbol = Symbol.for('cloneMessage');
 const closedSymbol = Symbol.for('closed');
 const consumerTagSymbol = Symbol.for('consumerTag');
 const destinationExchangeSymbol = Symbol.for('destinationExchange');
-const eventExchangeSymbol = Symbol.for('eventExchange');
 const eventHandlersSymbol = Symbol.for('eventHandlers');
 const messageHandlerSymbol = Symbol.for('messageHandler');
 const onShovelMessageSymbol = Symbol.for('onShovelMessage');
@@ -37,6 +36,7 @@ export function Shovel(name, source, destination, options = {}) {
   this.name = name;
   this.source = {...source, pattern: routingKeyPattern};
   this.destination = {...destination};
+  this.events = new EventExchange('shovel__events');
 
   this[consumerTagSymbol] = consumerTag;
   this[closedSymbol] = false;
@@ -44,7 +44,6 @@ export function Shovel(name, source, destination, options = {}) {
   this[sourceExchangeSymbol] = sourceExchange;
   this[destinationExchangeSymbol] = destinationExchange;
   this[cloneMessageSymbol] = options.cloneMessage;
-  this[eventExchangeSymbol] = new EventExchange();
 
   const boundClose = this.close.bind(this);
 
@@ -79,16 +78,24 @@ Object.defineProperty(Shovel.prototype, 'consumerTag', {
   }
 });
 
-Shovel.prototype.on = function on(...args) {
-  return this[eventExchangeSymbol].on(...args);
+Shovel.prototype.emit = function emit(eventName, content) {
+  this.events.emit(`shovel.${eventName}`, content);
+};
+
+Shovel.prototype.on = function on(eventName, handler) {
+  return this.events.on(`shovel.${eventName}`, handler);
+};
+
+Shovel.prototype.off = function off(eventName, handler) {
+  return this.events.off(`shovel.${eventName}`, handler);
 };
 
 Shovel.prototype.close = function closeShovel() {
   if (this[closedSymbol]) return;
   this[closedSymbol] = true;
   this[eventHandlersSymbol].splice(0).forEach((e) => e.cancel());
-  const events = this[eventExchangeSymbol];
-  events.emit('close', this);
+  const events = this.events;
+  this.emit('close', this);
   events.close();
   this[sourceBrokerSymbol].cancel(this[consumerTagSymbol]);
 };

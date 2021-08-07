@@ -52,7 +52,7 @@ describe('message', () => {
     expect(msg1).to.have.property('properties').with.property('messageId').that.is.ok;
     expect(msg1.properties).to.have.property('timestamp', now);
     expect(msg1.properties).to.have.property('expiration', 10000);
-    expect(msg1).to.have.property('ttl', now + 10000);
+    expect(msg1.properties).to.have.property('ttl', now + 10000);
 
     const state = original.getState();
 
@@ -72,7 +72,7 @@ describe('message', () => {
     expect(msg2).to.have.property('properties').with.property('messageId').that.is.ok;
     expect(msg2.properties).to.have.property('timestamp', now);
     expect(msg2.properties).to.have.property('expiration', 10000);
-    expect(msg2).to.have.property('ttl', now + 10000);
+    expect(msg2.properties).to.have.property('ttl', now + 10000);
 
     function onMessage1(_, message) {
       msg1 = message;

@@ -2,41 +2,32 @@ import { generateId } from './shared';
 
 export { Message };
 
-const ttlSymbol = Symbol.for('ttl');
 const pendingSymbol = Symbol.for('pending');
-const consumedCallbackSymbol = Symbol.for('consumedCallback');
-const consumedSymbol = Symbol.for('consumed');
 const onConsumedSymbol = Symbol.for('onConsumed');
 
-const publicMethods = ['consume', 'ack', 'nack', 'reject'];
+const publicMethods = ['ack', 'nack', 'reject'];
 
-function Message(fields = {}, content, properties = {}, onConsumed) {
-  this[onConsumedSymbol] = onConsumed;
+function Message(fields, content, properties, onConsumed) {
+  this[onConsumedSymbol] = [null, onConsumed];
   this[pendingSymbol] = false;
 
-  const messageProperties = {
+  const mproperties = {
     ...properties,
-    messageId: properties.messageId || `smq.mid-${generateId()}`
+    messageId: properties && properties.messageId || `smq.mid-${generateId()}`
   };
-  const timestamp = (messageProperties.timestamp = properties.timestamp || Date.now());
-  if (properties.expiration) {
-    this[ttlSymbol] = messageProperties.ttl = timestamp + parseInt(properties.expiration);
+  const timestamp = (mproperties.timestamp = mproperties.timestamp || Date.now());
+  if (mproperties.expiration) {
+    mproperties.ttl = timestamp + parseInt(mproperties.expiration);
   }
 
-  this.fields = { ...fields, consumerTag: undefined };
+  this.fields = {...fields, consumerTag: undefined};
   this.content = content;
-  this.properties = messageProperties;
+  this.properties = mproperties;
   for (let i = 0; i < publicMethods.length; i++) {
     const fn = publicMethods[i];
     this[fn] = Message.prototype[fn].bind(this);
   }
 }
-
-Object.defineProperty(Message.prototype, 'ttl', {
-  get() {
-    return this[ttlSymbol];
-  },
-});
 
 Object.defineProperty(Message.prototype, 'pending', {
   get() {
@@ -47,29 +38,25 @@ Object.defineProperty(Message.prototype, 'pending', {
 Message.prototype.consume = function({ consumerTag } = {}, consumedCb) {
   this[pendingSymbol] = true;
   this.fields.consumerTag = consumerTag;
-  this[consumedCallbackSymbol] = consumedCb;
+  this[onConsumedSymbol][0] = consumedCb;
 };
 
 Message.prototype.ack = function(allUpTo) {
   if (!this[pendingSymbol]) return;
-  this[consumedSymbol]('ack', allUpTo);
+  this[onConsumedSymbol].forEach((fn) => {
+    if (fn) fn(this, 'ack', allUpTo);
+  });
+  this[pendingSymbol] = false;
 };
 
 Message.prototype.nack = function(allUpTo, requeue = true) {
   if (!this[pendingSymbol]) return;
-  this[consumedSymbol]('nack', allUpTo, requeue);
+  this[onConsumedSymbol].forEach((fn) => {
+    if (fn) fn(this, 'nack', allUpTo, requeue);
+  });
+  this[pendingSymbol] = false;
 };
 
 Message.prototype.reject = function(requeue = true) {
   this.nack(false, requeue);
-};
-
-Message.prototype[consumedSymbol] = function(operation, allUpTo, requeue) {
-  [
-    this[consumedCallbackSymbol],
-    this[onConsumedSymbol],
-  ].forEach((fn) => {
-    if (fn) fn(this, operation, allUpTo, requeue);
-  });
-  this[pendingSymbol] = false;
 };

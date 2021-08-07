@@ -1,7 +1,24 @@
 Changelog
 =========
 
-# 4.0.0/1
+# 5.0.0
+
+Attempt to tweak performance by removing stuff. Consequently some things broke.
+
+## Breaking
+
+- Remove support for node 10 (mochas fault)
+- Message property `consumerTag` is removed, can be found by `message.fields.consumerTag`
+- Message property `messageId` is removed, can be found by `message.properties.messageId`
+- Remove `onMessageQueued` argument from `queue.queueMessage` function
+- Remove `queue.dequeueMessage(message)` function
+- Change routing key pattern hash (#) handling to `/.*?/` from `/.+?/`
+
+## Fixes
+
+- Fix pattern matching bug if more than one wildcard
+
+# 4.0.0
 
 For performance reasons the Broker has been prototyped. Thank you @roberto-naharro and co for discovering and resolving this (#5). This means that functions cannot be deconstructed and called without binding or using call/apply.
 

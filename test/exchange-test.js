@@ -295,5 +295,21 @@ describe('exchange', () => {
 
       expect(broker.exchangeCount).to.equal(0);
     });
+
+    it('ignored if queue not in bound to exchange', () => {
+      const broker = Broker();
+      const exchange = broker.assertExchange('event', 'topic', {autoDelete: true});
+
+      broker.assertQueue('event-q');
+      broker.subscribe('event', 'event-q', 'event.#', () => {});
+
+      expect(exchange.bindingCount).to.equal(1);
+
+      exchange.unbindQueueByName('other-q');
+
+      expect(exchange.bindingCount).to.equal(1);
+
+      expect(broker.exchangeCount).to.equal(1);
+    });
   });
 });
