@@ -665,6 +665,29 @@ describe('Broker', () => {
       expect(state).to.have.property('exchanges').with.length(1);
       expect(state.exchanges[0]).to.have.property('bindings').with.length(1);
     });
+
+    it('onlyWithContent flag only returns queue with messages', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event', 'topic', {durable: true, autoDelete: false});
+      broker.assertExchange('exch', 'topic', {durable: true, autoDelete: false});
+      broker.assertQueue('durable-q', {durable: true});
+      broker.assertQueue('non-durable-q', {durable: false});
+      broker.bindQueue('durable-q', 'event', '#');
+      broker.bindQueue('non-durable-q', 'event', '#');
+
+      broker.publish('event', 'test.1', {});
+
+      const slimState = broker.getState(true);
+
+      expect(slimState).to.have.property('queues').with.length(1);
+      expect(slimState.queues[0]).to.have.property('name', 'durable-q');
+      expect(slimState.exchanges, 'exchanges').to.not.be.ok;
+
+      broker.get('durable-q', {noAck: true});
+
+      expect(broker.getState(true)).to.be.undefined;
+    });
   });
 
   describe('stop()', () => {

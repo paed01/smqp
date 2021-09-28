@@ -76,6 +76,12 @@ Object.defineProperty(ExchangeBase.prototype, 'stopped', {
   }
 
 });
+Object.defineProperty(ExchangeBase.prototype, 'undeliveredCount', {
+  get() {
+    return this[deliveryQueueSymbol].messageCount;
+  }
+
+});
 
 ExchangeBase.prototype.publish = function publish(routingKey, content, properties) {
   if (this[stoppedSymbol]) return;

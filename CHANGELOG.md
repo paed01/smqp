@@ -1,6 +1,12 @@
 Changelog
 =========
 
+# 5.1.0
+
+Slimmer state
+
+- Add argument to `getState` that tells the broker to only return stuff that actually has content, i.e. messages and undelivered exchange messages
+
 # 5.0.0
 
 Attempt to tweak performance by removing stuff. Consequently some things broke.

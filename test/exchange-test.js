@@ -1,4 +1,7 @@
 import {Broker} from '../index';
+import {Message} from '../src/Message';
+
+const deliveryQueueSymbol = Symbol.for('deliveryQueue');
 
 describe('exchange', () => {
   describe('delete()', () => {
@@ -277,6 +280,23 @@ describe('exchange', () => {
       const broker2 = Broker().recover(broker1.getState());
 
       expect(broker2.getExchange('test')).to.not.be.ok;
+    });
+  });
+
+  describe('getState()', () => {
+    it('onlyWithContentFlag only returns exchange with undelivered messages', () => {
+      const broker = Broker();
+      const exchange = broker.assertExchange('test', 'topic', {durable: true});
+      broker.assertQueue('test-q', {durable: true});
+      broker.sendToQueue('test-q', {});
+
+      expect(broker.getState().exchanges).to.have.length(1);
+      expect(broker.getState(true).exchanges).to.be.undefined;
+
+      exchange[deliveryQueueSymbol].messages.push((new Message({}, {})));
+
+      expect(broker.getState().exchanges).to.have.length(1);
+      expect(broker.getState(true).exchanges).to.have.length(1);
     });
   });
 

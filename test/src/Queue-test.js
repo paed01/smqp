@@ -128,6 +128,7 @@ describe('Queue', () => {
         queue.get();
 
         queue.queueMessage({routingKey: 'test.2'});
+        queue.queueMessage({routingKey: 'test.3'});
 
         expect(queue.messageCount).to.equal(1);
         expect(queue.peek().fields.routingKey).to.equal('test.1');

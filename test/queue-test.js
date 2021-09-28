@@ -788,5 +788,19 @@ describe('Broker queue', () => {
 
       expect(queue.getState()).to.have.property('messages').with.length(1);
     });
+
+    it('onlyWithContent flag only returns queue with messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q', {durable: true});
+      queue.queueMessage({routingKey: 'test.1'});
+
+      expect(broker.getState().queues).to.be.ok;
+      expect(broker.getState(true).queues).to.be.ok;
+
+      queue.get().ack();
+
+      expect(queue.getState()).to.be.ok;
+      expect(queue.getState(true).queues).to.be.undefined;
+    });
   });
 });

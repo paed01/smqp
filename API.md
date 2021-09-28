@@ -1,5 +1,5 @@
 <!-- version -->
-# 5.0.0 API Reference
+# 5.1.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -29,7 +29,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.getQueue(queueName)`](#brokergetqueuequeuename)
     - [`broker.getConsumers()`](#brokergetconsumers)
     - [`broker.getConsumer(consumerTag)`](#brokergetconsumerconsumertag)
-    - [`broker.getState()`](#brokergetstate)
+    - [`broker.getState([onlyWithContent])`](#brokergetstateonlywithcontent)
     - [`broker.recover([state])`](#brokerrecoverstate)
     - [`broker.purgeQueue(queueName)`](#brokerpurgequeuequeuename)
     - [`broker.sendToQueue(queueName, content[, options])`](#brokersendtoqueuequeuename-content-options)
@@ -52,11 +52,11 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`close()`](#close)
     - [`emit(eventName[, content])`](#emiteventname-content)
     - [`getBinding(queueName, pattern)`](#getbindingqueuename-pattern)
-    - [`getState()`](#getstate)
+    - [`exchange.getState()`](#exchangegetstate)
     - [`on(pattern, handler[, consumeOptions])`](#onpattern-handler-consumeoptions)
     - [`off(pattern, handlerOrObject)`](#offpattern-handlerorobject)
     - [`publish(routingKey[, content, properties])`](#publishroutingkey-content-properties)
-    - [`recover(state, getQueue)`](#recoverstate-getqueue)
+    - [`echange.recover(state, getQueue)`](#echangerecoverstate-getqueue)
     - [`stop()`](#stop)
     - [`unbind(queue, pattern)`](#unbindqueue-pattern)
     - [`unbindQueueByName(queueName)`](#unbindqueuebynamequeuename)
@@ -70,7 +70,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`delete([deleteOptions])`](#deletedeleteoptions)
     - [`dismiss(onMessage)`](#dismissonmessage)
     - [`get([consumeOptions])`](#getconsumeoptions)
-    - [`getState()`](#getstate)
+    - [`queue.getState()`](#queuegetstate)
     - [`nack(message[, allUpTo, requeue = true])`](#nackmessage-allupto-requeue--true)
     - [`nackAll([requeue = true])`](#nackallrequeue--true)
     - [`off(eventName, handler)`](#offeventname-handler)
@@ -78,7 +78,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`peek([ignoreDelivered])`](#peekignoredelivered)
     - [`purge()`](#purge)
     - [`queueMessage(fields[, content, properties])`](#queuemessagefields-content-properties)
-    - [`recover([state])`](#recoverstate)
+    - [`queue.recover([state])`](#queuerecoverstate)
     - [`reject(message[, requeue = true])`](#rejectmessage-requeue--true)
     - [`stop()`](#stop)
     - [`unbindConsumer()`](#unbindconsumer)
@@ -273,8 +273,11 @@ Returns a list of consumer properties, i.e. queue name, consumer tag, and option
 ### `broker.getConsumer(consumerTag)`
 Get [consumer](#consumer) by consumer tag. Returns existing consumer or nothing
 
-### `broker.getState()`
+### `broker.getState([onlyWithContent])`
+
 Return serializable object containing durable exchanges, bindings, and durable queues with messages.
+
+- `onlyWithContent`: boolean indicating that only exchanges and queues with undelivered or queued messages will be returned
 
 ### `broker.recover([state])`
 Recovers exchanges, bindings, and queues with messages. A state can be passed, preferably from [`getState()`](#brokergetstate).
@@ -418,7 +421,7 @@ Close exchange and all bindings.
 ### `getBinding(queueName, pattern)`
 Get binding to queue by name and with pattern.
 
-### `getState()`
+### `exchange.getState()`
 Get recoverable exchange state.
 
 ### `on(pattern, handler[, consumeOptions])`
@@ -442,7 +445,7 @@ Stop consuming events from exchange.
 ### `publish(routingKey[, content, properties])`
 Publish message on exchange.
 
-### `recover(state, getQueue)`
+### `echange.recover(state, getQueue)`
 ### `stop()`
 ### `unbind(queue, pattern)`
 Unbind queue from exchange.
@@ -491,7 +494,7 @@ Delete queue.
 Dismiss first consumer with `onMessage` handler.
 
 ### `get([consumeOptions])`
-### `getState()`
+### `queue.getState()`
 ### `nack(message[, allUpTo, requeue = true])`
 ### `nackAll([requeue = true])`
 ### `off(eventName, handler)`
@@ -528,7 +531,7 @@ Queue message.
 - `properties`: message properties, basic properties are:
   - `persistent`: boolean indicating if message is persistent, defaults to undef (true). Value `false` ignores the message when queue is recovered from state
 
-### `recover([state])`
+### `queue.recover([state])`
 ### `reject(message[, requeue = true])`
 ### `stop()`
 ### `unbindConsumer()`

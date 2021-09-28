@@ -209,10 +209,13 @@ Broker.prototype.reset = function reset() {
   this[shovelsSymbol].splice(0);
 };
 
-Broker.prototype.getState = function getState() {
+Broker.prototype.getState = function getState(onlyWithContent) {
+  const exchanges = this.getExchangeState(onlyWithContent);
+  const queues = this.getQueuesState(onlyWithContent);
+  if (onlyWithContent && !exchanges && !queues) return;
   return {
-    exchanges: this.getExchangeState(),
-    queues: this.getQueuesState()
+    exchanges,
+    queues
   };
 };
 
@@ -307,18 +310,20 @@ Broker.prototype.sendToQueue = function sendToQueue(queueName, content, options 
   return queue.queueMessage(null, content, options);
 };
 
-Broker.prototype.getQueuesState = function getQueuesState() {
+Broker.prototype.getQueuesState = function getQueuesState(onlyWithContent) {
   return this[queuesSymbol].reduce((result, queue) => {
     if (!queue.options.durable) return result;
+    if (onlyWithContent && !queue.messageCount) return result;
     if (!result) result = [];
     result.push(queue.getState());
     return result;
   }, undefined);
 };
 
-Broker.prototype.getExchangeState = function getExchangeState() {
+Broker.prototype.getExchangeState = function getExchangeState(onlyWithContent) {
   return this[exchangesSymbol].reduce((result, exchange) => {
     if (!exchange.options.durable) return result;
+    if (onlyWithContent && !exchange.undeliveredCount) return result;
     if (!result) result = [];
     result.push(exchange.getState());
     return result;
