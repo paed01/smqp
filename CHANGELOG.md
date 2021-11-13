@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 5.1.1
+
+- no side effects
+
 # 5.1.0
 
 Slimmer state

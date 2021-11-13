@@ -3,8 +3,8 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.Queue = Queue;
 exports.Consumer = Consumer;
+exports.Queue = Queue;
 
 var _shared = require("./shared");
 

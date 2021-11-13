@@ -15,13 +15,13 @@ Object.defineProperty(exports, "Shovel", {
     return _Shovel.Shovel;
   }
 });
+exports.default = void 0;
 Object.defineProperty(exports, "getRoutingKeyPattern", {
   enumerable: true,
   get: function () {
     return _shared.getRoutingKeyPattern;
   }
 });
-exports.default = void 0;
 
 var _Broker = require("./src/Broker");
 

@@ -194,4 +194,53 @@ describe('consumer', () => {
       }
     });
   });
+
+  describe('ackAll()', () => {
+    it('removes non-acked messages from queue', () => {
+      const broker = new Broker();
+      const queue = broker.assertQueue('event-q');
+
+      broker.sendToQueue('event-q', {});
+      broker.sendToQueue('event-q', {});
+      broker.sendToQueue('event-q', {});
+      broker.sendToQueue('event-q', {});
+
+      const consumer = queue.consume(() => {}, {consumerTag: 'test-tag', prefetch: 2});
+      consumer.ackAll();
+
+      expect(queue.messageCount).to.equal(2);
+    });
+  });
+
+  describe('nackAll([requeue])', () => {
+    it('with falsy requeue removes non-acked messages from queue', () => {
+      const broker = new Broker();
+      const queue = broker.assertQueue('event-q');
+
+      broker.sendToQueue('event-q', {});
+      broker.sendToQueue('event-q', {});
+      broker.sendToQueue('event-q', {});
+      broker.sendToQueue('event-q', {});
+
+      const consumer = queue.consume(() => {}, {consumerTag: 'test-tag', prefetch: 2});
+      consumer.nackAll(false);
+
+      expect(queue.messageCount).to.equal(2);
+    });
+
+    it('with truthy requeue removes non-acked messages from queue', () => {
+      const broker = new Broker();
+      const queue = broker.assertQueue('event-q');
+
+      broker.sendToQueue('event-q', {});
+      broker.sendToQueue('event-q', {});
+      broker.sendToQueue('event-q', {});
+      broker.sendToQueue('event-q', {});
+
+      const consumer = queue.consume(() => {}, {consumerTag: 'test-tag', prefetch: 2});
+      consumer.nackAll(true);
+
+      expect(queue.messageCount).to.equal(4);
+    });
+  });
 });

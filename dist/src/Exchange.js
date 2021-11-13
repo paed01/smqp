@@ -3,8 +3,8 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.Exchange = Exchange;
 exports.EventExchange = EventExchange;
+exports.Exchange = Exchange;
 
 var _Message = require("./Message");
 
