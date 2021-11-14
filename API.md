@@ -1,5 +1,5 @@
 <!-- version -->
-# 5.1.1 API Reference
+# 5.1.2 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -48,40 +48,40 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.prefetch(count)`](#brokerprefetchcount)
     - [`broker.reset()`](#brokerreset)
   - [Exchange](#exchange)
-    - [`bind(queue, pattern[, bindOptions])`](#bindqueue-pattern-bindoptions)
-    - [`close()`](#close)
-    - [`emit(eventName[, content])`](#emiteventname-content)
-    - [`getBinding(queueName, pattern)`](#getbindingqueuename-pattern)
+    - [`exchange.bind(queue, pattern[, bindOptions])`](#exchangebindqueue-pattern-bindoptions)
+    - [`exchange.close()`](#exchangeclose)
+    - [`exchange.emit(eventName[, content])`](#exchangeemiteventname-content)
+    - [`exchange.getBinding(queueName, pattern)`](#exchangegetbindingqueuename-pattern)
     - [`exchange.getState()`](#exchangegetstate)
-    - [`on(pattern, handler[, consumeOptions])`](#onpattern-handler-consumeoptions)
-    - [`off(pattern, handlerOrObject)`](#offpattern-handlerorobject)
-    - [`publish(routingKey[, content, properties])`](#publishroutingkey-content-properties)
-    - [`echange.recover(state, getQueue)`](#echangerecoverstate-getqueue)
-    - [`stop()`](#stop)
-    - [`unbind(queue, pattern)`](#unbindqueue-pattern)
-    - [`unbindQueueByName(queueName)`](#unbindqueuebynamequeuename)
+    - [`exchange.on(pattern, handler[, consumeOptions])`](#exchangeonpattern-handler-consumeoptions)
+    - [`exchange.off(pattern, handlerOrObject)`](#exchangeoffpattern-handlerorobject)
+    - [`exchange.publish(routingKey[, content, properties])`](#exchangepublishroutingkey-content-properties)
+    - [`exchange.recover(state, getQueue)`](#exchangerecoverstate-getqueue)
+    - [`exchange.stop()`](#exchangestop)
+    - [`exchange.unbind(queue, pattern)`](#exchangeunbindqueue-pattern)
+    - [`exchange.unbindQueueByName(queueName)`](#exchangeunbindqueuebynamequeuename)
   - [Queue](#queue)
-    - [`ack(message)`](#ackmessage)
-    - [`ackAll()`](#ackall)
-    - [`assertConsumer(onMessage[, consumeOptions, owner])`](#assertconsumeronmessage-consumeoptions-owner)
-    - [`cancel(consumerTag)`](#cancelconsumertag)
-    - [`close()`](#close)
-    - [`consume(onMessage[, consumeOptions, owner])`](#consumeonmessage-consumeoptions-owner)
-    - [`delete([deleteOptions])`](#deletedeleteoptions)
-    - [`dismiss(onMessage)`](#dismissonmessage)
-    - [`get([consumeOptions])`](#getconsumeoptions)
+    - [`queue.ack(message)`](#queueackmessage)
+    - [`queue.ackAll()`](#queueackall)
+    - [`queue.assertConsumer(onMessage[, consumeOptions, owner])`](#queueassertconsumeronmessage-consumeoptions-owner)
+    - [`queue.cancel(consumerTag)`](#queuecancelconsumertag)
+    - [`queue.close()`](#queueclose)
+    - [`queue.consume(onMessage[, consumeOptions, owner])`](#queueconsumeonmessage-consumeoptions-owner)
+    - [`queue.delete([deleteOptions])`](#queuedeletedeleteoptions)
+    - [`queue.dismiss(onMessage)`](#queuedismissonmessage)
+    - [`queue.get([consumeOptions])`](#queuegetconsumeoptions)
     - [`queue.getState()`](#queuegetstate)
-    - [`nack(message[, allUpTo, requeue = true])`](#nackmessage-allupto-requeue--true)
-    - [`nackAll([requeue = true])`](#nackallrequeue--true)
-    - [`off(eventName, handler)`](#offeventname-handler)
-    - [`on(eventName, handler)`](#oneventname-handler)
-    - [`peek([ignoreDelivered])`](#peekignoredelivered)
-    - [`purge()`](#purge)
-    - [`queueMessage(fields[, content, properties])`](#queuemessagefields-content-properties)
+    - [`queue.nack(message[, allUpTo, requeue = true])`](#queuenackmessage-allupto-requeue--true)
+    - [`queue.nackAll([requeue = true])`](#queuenackallrequeue--true)
+    - [`queue.off(eventName, handler)`](#queueoffeventname-handler)
+    - [`queue.on(eventName, handler)`](#queueoneventname-handler)
+    - [`queue.peek([ignoreDelivered])`](#queuepeekignoredelivered)
+    - [`queue.purge()`](#queuepurge)
+    - [`queue.queueMessage(fields[, content, properties])`](#queuequeuemessagefields-content-properties)
     - [`queue.recover([state])`](#queuerecoverstate)
-    - [`reject(message[, requeue = true])`](#rejectmessage-requeue--true)
-    - [`stop()`](#stop)
-    - [`unbindConsumer()`](#unbindconsumer)
+    - [`queue.reject(message[, requeue = true])`](#queuerejectmessage-requeue--true)
+    - [`queue.stop()`](#queuestop)
+    - [`queue.unbindConsumer()`](#queueunbindconsumer)
   - [Consumer](#consumer)
     - [`consumer.ackAll()`](#consumerackall)
     - [`consumer.nackAll([requeue])`](#consumernackallrequeue)
@@ -351,7 +351,7 @@ Arguments:
 - `options`: optional consume options
   - `consumerTag`: optional event consumer tag
 
-Returns consumer - that can be canceled.
+Returns [consumer](#consumer) - that can be canceled.
 
 Callback is called with the event and the name of the event, in the same object.
 
@@ -405,7 +405,7 @@ Properties:
 - `bindings`: getter for list of bindings
 - `stopped`: boolean for if the exchange is stopped
 
-### `bind(queue, pattern[, bindOptions])`
+### `exchange.bind(queue, pattern[, bindOptions])`
 Bind queue to exchange.
 
 Arguments:
@@ -414,17 +414,17 @@ Arguments:
 - `bindOptions`: optional binding options
   - `priority`: defaults to 0
 
-### `close()`
+### `exchange.close()`
 Close exchange and all bindings.
 
-### `emit(eventName[, content])`
-### `getBinding(queueName, pattern)`
+### `exchange.emit(eventName[, content])`
+### `exchange.getBinding(queueName, pattern)`
 Get binding to queue by name and with pattern.
 
 ### `exchange.getState()`
 Get recoverable exchange state.
 
-### `on(pattern, handler[, consumeOptions])`
+### `exchange.on(pattern, handler[, consumeOptions])`
 
 Listen for exchange events.
 
@@ -434,7 +434,7 @@ Arguments:
 - `consumeOptions`: optional consume options
   - `consumerTag`: optional event consumer tag
 
-### `off(pattern, handlerOrObject)`
+### `exchange.off(pattern, handlerOrObject)`
 
 Stop consuming events from exchange.
 
@@ -442,19 +442,19 @@ Stop consuming events from exchange.
 - `handlerOrObject`: handler function to off or object with basically one property:
   - `consumerTag`: optional event consumer tag to off
 
-### `publish(routingKey[, content, properties])`
+### `exchange.publish(routingKey[, content, properties])`
 Publish message on exchange.
 
-### `echange.recover(state, getQueue)`
-### `stop()`
-### `unbind(queue, pattern)`
+### `exchange.recover(state, getQueue)`
+### `exchange.stop()`
+### `exchange.unbind(queue, pattern)`
 Unbind queue from exchange.
 
 Arguments:
 - `queue`: queue instance
 - `pattern`: binding pattern
 
-### `unbindQueueByName(queueName)`
+### `exchange.unbindQueueByName(queueName)`
 Remove all bindings to queue by queue name.
 
 ## Queue
@@ -472,35 +472,44 @@ Properties:
 - `capacity`: `maxLength - messageCount`
 - `messageTtl`: expire messages after milliseconds, [see Message Eviction](#message-eviction)
 
-### `ack(message)`
-### `ackAll()`
-### `assertConsumer(onMessage[, consumeOptions, owner])`
-### `cancel(consumerTag)`
+### `queue.ack(message)`
+### `queue.ackAll()`
+### `queue.assertConsumer(onMessage[, consumeOptions, owner])`
+### `queue.cancel(consumerTag)`
 
 Cancel consumer with tag
 
-### `close()`
-### `consume(onMessage[, consumeOptions, owner])`
-### `delete([deleteOptions])`
+### `queue.close()`
+### `queue.consume(onMessage[, consumeOptions, owner])`
+### `queue.delete([deleteOptions])`
 
 Delete queue.
 
+Arguments:
 - `deleteOptions`: Object with options
   - `ifUnused`: boolean, delete if unused
   - `ifEmpty`: boolean, delete if empty
 
-### `dismiss(onMessage)`
+Returns:
+- `messageCount`: number of messages deleted
+
+### `queue.dismiss(onMessage)`
 
 Dismiss first consumer with `onMessage` handler.
 
-### `get([consumeOptions])`
+### `queue.get([consumeOptions])`
 ### `queue.getState()`
-### `nack(message[, allUpTo, requeue = true])`
-### `nackAll([requeue = true])`
-### `off(eventName, handler)`
+
+Get queue state.
+
+Will throw a TypeError of messages contains circular JSON. The error will be decorated with code `EQUEUE_STATE` and the name of the queue as `queue`.
+
+### `queue.nack(message[, allUpTo, requeue = true])`
+### `queue.nackAll([requeue = true])`
+### `queue.off(eventName, handler)`
 Stop listening for events from queue.
 
-### `on(eventName, handler)`
+### `queue.on(eventName, handler)`
 Listen for events from queue.
 
 Events:
@@ -513,15 +522,15 @@ Events:
 - `ready`: queue is ready to ready to receive new messages
 - `saturated`: queue is saturated, i.e. max capacity was reached
 
-### `peek([ignoreDelivered])`
+### `queue.peek([ignoreDelivered])`
 Peek into queue.
 
 - `ignoreDelivered`: ignore if message was delivered or not
 
-### `purge()`
+### `queue.purge()`
 Removes all non consumed messages from queue.
 
-### `queueMessage(fields[, content, properties])`
+### `queue.queueMessage(fields[, content, properties])`
 Queue message.
 
 - `fields`: object with fields, proposal:
@@ -532,9 +541,9 @@ Queue message.
   - `persistent`: boolean indicating if message is persistent, defaults to undef (true). Value `false` ignores the message when queue is recovered from state
 
 ### `queue.recover([state])`
-### `reject(message[, requeue = true])`
-### `stop()`
-### `unbindConsumer()`
+### `queue.reject(message[, requeue = true])`
+### `queue.stop()`
+### `queue.unbindConsumer()`
 
 ## Consumer
 Queue consumer
@@ -552,9 +561,10 @@ Queue consumer
 ### `consumer.ackAll()`
 ### `consumer.nackAll([requeue])`
 ### `consumer.cancel()`
-### `consumer.prefetch(numberOfMessages)`
 
 Cancel consumption and unsubscribe from queue
+
+### `consumer.prefetch(numberOfMessages)`
 
 ## Message
 What it is all about - convey messages.

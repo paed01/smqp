@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 5.1.2
+
+- give a hint of which Queue throws circular JSON when getting state
+
 # 5.1.1
 
 - no side effects

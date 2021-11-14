@@ -389,14 +389,28 @@ Queue.prototype.dequeue = function dequeue(message) {
 };
 
 Queue.prototype.getState = function getState() {
+  const messages = this.cloneMessages();
   return {
     name: this.name,
     options: { ...this.options
     },
-    ...(this.messages.length ? {
-      messages: JSON.parse(JSON.stringify(this.messages))
+    ...(messages.length ? {
+      messages
     } : undefined)
   };
+};
+
+Queue.prototype.cloneMessages = function cloneMessages() {
+  if (!this.messages.length) return [];
+
+  try {
+    const messages = JSON.stringify(this.messages);
+    return JSON.parse(messages);
+  } catch (err) {
+    err.code = 'EQUEUE_STATE';
+    err.queue = this.name;
+    throw err;
+  }
 };
 
 Queue.prototype.recover = function recover(state) {

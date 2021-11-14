@@ -944,6 +944,27 @@ describe('Queue', () => {
       });
       expect(state).to.have.property('messages').have.length(2);
     });
+
+    it('returns state of without messages if empty', () => {
+      const queue = new Queue('test-q');
+      const state = queue.getState();
+      expect(state).to.not.have.property('messages');
+    });
+
+    it('throws if circular json', () => {
+      const queue = new Queue('test-q');
+      queue.queueMessage({routingKey: 'test.1', queue});
+
+      try {
+        queue.getState();
+      } catch (e) {
+        var err = e; // eslint-disable-line no-var
+      }
+      expect(err).to.be.instanceof(TypeError);
+
+      expect(err.code).to.equal('EQUEUE_STATE');
+      expect(err.queue).to.equal('test-q');
+    });
   });
 
   describe('delete()', () => {
