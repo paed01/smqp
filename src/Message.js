@@ -5,8 +5,6 @@ export { Message };
 const pendingSymbol = Symbol.for('pending');
 const onConsumedSymbol = Symbol.for('onConsumed');
 
-const publicMethods = ['ack', 'nack', 'reject'];
-
 function Message(fields, content, properties, onConsumed) {
   this[onConsumedSymbol] = [null, onConsumed];
   this[pendingSymbol] = false;
@@ -23,10 +21,10 @@ function Message(fields, content, properties, onConsumed) {
   this.fields = {...fields, consumerTag: undefined};
   this.content = content;
   this.properties = mproperties;
-  for (let i = 0; i < publicMethods.length; i++) {
-    const fn = publicMethods[i];
-    this[fn] = Message.prototype[fn].bind(this);
-  }
+
+  this.ack = this.ack.bind(this);
+  this.nack = this.nack.bind(this);
+  this.reject = this.reject.bind(this);
 }
 
 Object.defineProperty(Message.prototype, 'pending', {

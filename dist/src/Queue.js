@@ -313,10 +313,8 @@ Queue.prototype.peek = function peek(ignoreDelivered) {
   if (!ignoreDelivered) return message;
   if (!message.pending) return message;
 
-  for (let idx = 1; idx < this.messages.length; idx++) {
-    if (!this.messages[idx].pending) {
-      return this.messages[idx];
-    }
+  for (const msg of this.messages) {
+    if (!msg.pending) return msg;
   }
 };
 

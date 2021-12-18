@@ -1827,7 +1827,7 @@ describe('Broker', () => {
         message = msg;
       });
 
-      broker.publish('event', 'test.1', 'important', {mandatory: true});
+      broker.publish('event', 'test.1', 'important1', {mandatory: true});
 
       expect(message).to.be.ok;
 
@@ -1835,17 +1835,27 @@ describe('Broker', () => {
         exchange: 'event',
         routingKey: 'test.1'
       });
-      expect(message).to.have.property('content', 'important');
+      expect(message).to.have.property('content', 'important1');
 
-      broker.subscribeTmp('event', 'event.#', () => {});
+      broker.publish('event', 'test.2', 'important2', {mandatory: true});
 
-      broker.publish('event', 'test.2', 'important', {mandatory: true});
+      expect(message).to.be.ok;
 
       expect(message).to.have.property('fields').that.include({
         exchange: 'event',
         routingKey: 'test.2'
       });
-      expect(message).to.have.property('content', 'important');
+      expect(message).to.have.property('content', 'important2');
+
+      broker.subscribeTmp('event', 'event.#', () => {});
+
+      broker.publish('event', 'test.3', 'important3', {mandatory: true});
+
+      expect(message).to.have.property('fields').that.include({
+        exchange: 'event',
+        routingKey: 'test.3'
+      });
+      expect(message).to.have.property('content', 'important3');
     });
 
     it('direct exchange emits "return" with message if published mandatory message is not routed to any queue', () => {
@@ -1876,6 +1886,21 @@ describe('Broker', () => {
         routingKey: 'test.2'
       });
       expect(message).to.have.property('content', 'important');
+    });
+
+    it('continues listening if return listener throws', () => {
+      const broker = Broker();
+      broker.assertExchange('event', 'topic');
+
+      const messages = [];
+      broker.on('return', (msg) => {
+        if (!messages.length) broker.publish('event', 'error.1', 'Error', {mandatory: true});
+        messages.push(msg);
+      });
+
+      broker.publish('event', 'test.1', 'important1', {mandatory: true});
+
+      expect(messages).to.have.length(2);
     });
 
     it('listen for unknown event is ok and doesn´t throw', () => {
