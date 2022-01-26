@@ -90,6 +90,16 @@ describe('Broker queue', () => {
 
       expect(queue.messageCount).to.equal(1);
     });
+
+    it('allUpTo = true with no more messages has no effect', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+
+      broker.ack(broker.get('test-q'), true);
+
+      expect(queue.messageCount).to.equal(0);
+    });
   });
 
   describe('broker.ackAll()', () => {
@@ -409,6 +419,26 @@ describe('Broker queue', () => {
       expect(broker.getQueue('test-q')).to.be.ok;
 
       expect(broker.queueCount).to.equal(1);
+    });
+  });
+
+  describe('queue.delete()', () => {
+    it('deletes queue once from broker', () => {
+      const broker = Broker();
+
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', {msg: 2});
+      broker.consume('test-q', () => {});
+
+      queue.delete();
+
+      expect(broker.queueCount).to.equal(0);
+      expect(broker.consumerCount).to.equal(0);
+
+      queue.delete();
+
+      expect(broker.queueCount).to.equal(0);
     });
   });
 
@@ -767,6 +797,169 @@ describe('Broker queue', () => {
       queue.cancel('b-tag');
 
       expect(queue.consumerCount).to.equal(1);
+    });
+
+    it('consumer cancelled by queue is done once', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('event-q');
+
+      queue.consume(() => {}, {consumerTag: '_keep_tag'});
+      const consumer = queue.consume(() => {}, {consumerTag: '_test_tag'});
+
+      expect(broker.consumerCount).to.equal(2);
+
+      queue.cancel('_test_tag');
+
+      expect(broker.consumerCount).to.equal(1);
+
+      queue.emit('queue.consumer.cancel', consumer);
+      expect(broker.consumerCount).to.equal(1);
+    });
+
+    it('consumer cancelled by self is done once', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('event-q');
+
+      queue.consume(() => {}, {consumerTag: '_keep_tag'});
+      const consumer = queue.consume(() => {}, {consumerTag: '_test_tag'});
+
+      expect(broker.consumerCount).to.equal(2);
+
+      consumer.cancel();
+
+      expect(queue.consumerCount).to.equal(1);
+      expect(broker.consumerCount).to.equal(1);
+
+      consumer.cancel();
+
+      expect(queue.consumerCount).to.equal(1);
+      expect(broker.consumerCount).to.equal(1);
+    });
+
+    it('cancel consumer requeues messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('event-q', {autoDelete: false});
+
+      const consumer = queue.consume(() => {}, {consumerTag: '_test_tag', prefetch: 2});
+
+      queue.queueMessage({}, 'MSG 1');
+      queue.queueMessage({}, 'MSG 2');
+
+      expect(consumer.messageCount).to.equal(2);
+      expect(queue.messageCount).to.equal(2);
+
+      expect(queue.get()).to.be.false;
+
+      queue.cancel('_test_tag');
+
+      expect(queue.messageCount).to.equal(2);
+      expect(queue.get()).to.have.property('content', 'MSG 1');
+    });
+
+    it('consumer cancelled by self with falsy requeue evicts consumed messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('event-q', {autoDelete: false});
+
+      const consumer = queue.consume(() => {}, {consumerTag: '_test_tag', prefetch: 2});
+
+      queue.queueMessage({}, 'MSG 1');
+      queue.queueMessage({}, 'MSG 2');
+      queue.queueMessage({}, 'MSG 3');
+
+      expect(queue.messageCount).to.equal(3);
+
+      let msg = queue.get();
+      expect(msg).to.have.property('content', 'MSG 3');
+      msg.nack(false, true);
+
+      consumer.cancel(false);
+
+      expect(queue.messageCount).to.equal(1);
+
+      msg = queue.get();
+      expect(msg).to.have.property('content', 'MSG 3');
+    });
+
+    it('consumer cancelled by self requeues messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('event-q', {autoDelete: false});
+
+      const consumer = queue.consume(() => {}, {consumerTag: '_test_tag', prefetch: 2});
+
+      queue.queueMessage({}, 'MSG 1');
+      queue.queueMessage({}, 'MSG 2');
+
+      expect(consumer.messageCount).to.equal(2);
+      expect(queue.messageCount).to.equal(2);
+
+      expect(queue.get()).to.be.false;
+
+      consumer.cancel();
+
+      expect(queue.messageCount).to.equal(2);
+      expect(queue.get()).to.have.property('content', 'MSG 1');
+    });
+
+    it('consumer cancelled by self with falsy requeue evicts consumed messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('event-q', {autoDelete: false});
+
+      const consumer = queue.consume(() => {}, {consumerTag: '_test_tag', prefetch: 2});
+
+      queue.queueMessage({}, 'MSG 1');
+      queue.queueMessage({}, 'MSG 2');
+      queue.queueMessage({}, 'MSG 3');
+
+      expect(queue.messageCount).to.equal(3);
+
+      let msg = queue.get();
+      expect(msg).to.have.property('content', 'MSG 3');
+      msg.nack(false, true);
+
+      consumer.cancel(false);
+
+      expect(queue.messageCount).to.equal(1);
+
+      msg = queue.get();
+      expect(msg).to.have.property('content', 'MSG 3');
+    });
+  });
+
+  describe('close', () => {
+    it('closes all consumers', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('event-q');
+
+      queue.consume(() => {}, {consumerTag: '_keep_tag'});
+      queue.consume(() => {}, {consumerTag: '_test_tag'});
+
+      expect(broker.consumerCount).to.equal(2);
+
+      queue.close();
+
+      expect(queue.consumerCount).to.equal(0);
+      expect(broker.consumerCount).to.equal(0);
+    });
+  });
+
+  describe('stop', () => {
+    it('stops consumers and keeps messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('event-q');
+
+      queue.queueMessage({}, 'MSG 1');
+      queue.queueMessage({}, 'MSG 2');
+
+      queue.consume(() => {}, {consumerTag: '_keep_tag'});
+      queue.consume(() => {}, {consumerTag: '_test_tag'});
+
+      expect(broker.consumerCount).to.equal(2);
+      expect(queue.messageCount).to.equal(2);
+
+      queue.stop();
+
+      expect(queue.consumerCount).to.equal(2);
+      expect(queue.messageCount).to.equal(2);
     });
   });
 

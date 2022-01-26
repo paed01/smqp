@@ -6,8 +6,6 @@ const closedSymbol = Symbol.for('closed');
 const consumerTagSymbol = Symbol.for('consumerTag');
 const destinationExchangeSymbol = Symbol.for('destinationExchange');
 const eventHandlersSymbol = Symbol.for('eventHandlers');
-const messageHandlerSymbol = Symbol.for('messageHandler');
-const onShovelMessageSymbol = Symbol.for('onShovelMessage');
 const sourceBrokerSymbol = Symbol.for('sourceBroker');
 const sourceExchangeSymbol = Symbol.for('sourceExchange');
 
@@ -30,7 +28,6 @@ export function Shovel(name, source, destination, options = {}) {
   }
 
   this[brokerInternalSymbol] = sourceBroker === destinationBroker;
-  const consumerTag = source.consumerTag || `smq.shoveltag-${name}`;
   const routingKeyPattern = pattern || '#';
 
   this.name = name;
@@ -38,7 +35,7 @@ export function Shovel(name, source, destination, options = {}) {
   this.destination = {...destination};
   this.events = new EventExchange('shovel__events');
 
-  this[consumerTagSymbol] = consumerTag;
+  const consumerTag = this[consumerTagSymbol] = source.consumerTag || `smq.shoveltag-${name}`;
   this[closedSymbol] = false;
   this[sourceBrokerSymbol] = sourceBroker;
   this[sourceExchangeSymbol] = sourceExchange;
@@ -47,14 +44,13 @@ export function Shovel(name, source, destination, options = {}) {
 
   const boundClose = this.close.bind(this);
 
-  const eventHandlers = [
+  const eventHandlers = this[eventHandlersSymbol] = [
     sourceExchange.on('delete', boundClose),
     destinationExchange.on('delete', boundClose),
   ];
-  this[eventHandlersSymbol] = eventHandlers;
 
   let consumer;
-  const shovelHandler = this[onShovelMessageSymbol].bind(this);
+  const shovelHandler = this._onShovelMessage.bind(this);
   if (queue) {
     consumer = sourceBroker.subscribe(sourceExchangeName, routingKeyPattern, queue, shovelHandler, {consumerTag, priority});
   } else {
@@ -100,7 +96,7 @@ Shovel.prototype.close = function closeShovel() {
   this[sourceBrokerSymbol].cancel(this[consumerTagSymbol]);
 };
 
-Shovel.prototype[messageHandlerSymbol] = function messageHandler(message) {
+Shovel.prototype._messageHandler = function messageHandler(message) {
   const cloneMessage = this[cloneMessageSymbol];
   if (!cloneMessage) return message;
 
@@ -118,8 +114,8 @@ Shovel.prototype[messageHandlerSymbol] = function messageHandler(message) {
   };
 };
 
-Shovel.prototype[onShovelMessageSymbol] = function onShovelMessage(routingKey, message) {
-  const {content, properties} = this[messageHandlerSymbol](message);
+Shovel.prototype._onShovelMessage = function onShovelMessage(routingKey, message) {
+  const {content, properties} = this._messageHandler(message);
   const props = {...properties, ...this.destination.publishProperties, 'source-exchange': this[sourceExchangeSymbol].name};
   if (!this[brokerInternalSymbol]) props['shovel-name'] = this.name;
   this[destinationExchangeSymbol].publish(this.destination.exchangeKey || routingKey, content, props);

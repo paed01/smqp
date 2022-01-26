@@ -51,7 +51,7 @@ describe('consumer', () => {
   });
 
   describe('events', () => {
-    it('emits cancel when canceled', (done) => {
+    it('emits cancel when canceled by self', (done) => {
       const broker = Broker();
 
       const queue = broker.assertQueue('event-q');
@@ -65,6 +65,46 @@ describe('consumer', () => {
       });
 
       consumer.cancel();
+
+      function onMessage() {
+        expect(queue.messageCount).to.equal(0);
+      }
+    });
+
+    it('emits cancel when canceled by queue', (done) => {
+      const broker = Broker();
+
+      const queue = broker.assertQueue('event-q');
+      const consumer = broker.consume(queue.name, onMessage, {noAck: true, consumerTag: '_test-tag'});
+
+      queue.queueMessage('test');
+
+      consumer.on('cancel', () => {
+        expect(queue.messageCount).to.equal(0);
+        done();
+      });
+
+      queue.cancel('_test-tag');
+
+      function onMessage() {
+        expect(queue.messageCount).to.equal(0);
+      }
+    });
+
+    it('emits cancel when unbound by queue', (done) => {
+      const broker = Broker();
+
+      const queue = broker.assertQueue('event-q');
+      const consumer = broker.consume(queue.name, onMessage, {noAck: true, consumerTag: '_test-tag'});
+
+      queue.queueMessage('test');
+
+      consumer.on('cancel', () => {
+        expect(queue.messageCount).to.equal(0);
+        done();
+      });
+
+      queue.unbindConsumer(consumer);
 
       function onMessage() {
         expect(queue.messageCount).to.equal(0);

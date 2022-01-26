@@ -836,7 +836,10 @@ describe('Shovel', () => {
       const shovel = broker.createShovel('events-shovel', {
         exchange: 'events',
         queue: queue.name,
-      }, {broker: destinationBroker, exchange: 'dest-events'});
+      }, {
+        broker: destinationBroker,
+        exchange: 'dest-events',
+      });
       broker.publish('events', 'test.1');
 
       expect(messages).to.have.length(1);
@@ -888,6 +891,33 @@ describe('Shovel', () => {
       expect(() => {
         broker.createShovel('events-shovel', {exchange: 'events', pattern: 'test.*'}, {broker: destinationBroker, exchange: 'dest-events'});
       }).to.throw(/events-shovel is occupied/);
+    });
+
+    it('shovel.close() closes shovel once', () => {
+      const broker = Broker();
+      broker.assertExchange('events', 'topic', {autoDelete: false});
+      const queue = broker.assertQueue('events-q', {autoDelete: false});
+
+      const destinationBroker = Broker();
+      destinationBroker.assertExchange('dest-events', 'topic');
+
+      const shovel = broker.createShovel('events-shovel', {
+        exchange: 'events',
+        queue: queue.name,
+      }, {
+        broker: destinationBroker,
+        exchange: 'dest-events'
+      });
+
+      broker.publish('events', 'test.1');
+
+      shovel.close();
+
+      expect(broker.getShovels()).to.have.length(0);
+
+      shovel.close();
+
+      expect(broker.getShovels()).to.have.length(0);
     });
   });
 });

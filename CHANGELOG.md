@@ -1,6 +1,23 @@
 Changelog
 =========
 
+# 6.0.0
+
+## Breaking
+
+- Message functions `ack`, `nack`, and `reject`, if deconstructed, must be called with call or apply since they are no longer bound to instance. Sacrificed in the name of performance, sorry about that
+- Internal Message function `consume` is renamed to `_consume`
+- Internal and/or undocumented functions are renamed and decorated with underscore, some where even - highly unnecessary - Symbols
+- `exchange.bind` renamed to `exchange.bindQueue` to mitigate JavaScript confusion
+- consequentely the `exchange.unbind` function is renamed to `exchange.unbindQueue`
+- `broker.cancel(consumerTag)` signature changed to `broker.cancel(consumerTag[, requeue = true])`. This breaks current behaviour for ack consumers, i.e. messages waiting for ack will be requeued by default if the consumer is cancelled. For some reason they were requeued in the previous version, even though nackAll was called? For no-ack consumers this won't have an affect at all
+
+## Additions
+- `*.get()` returns `false` if no message was retrieved
+
+## Fixes
+- Fix inconsistent cancel consumer behaviour between broker, queue, and consumer
+
 # 5.1.3
 
 - minor, probably futile, tweaks

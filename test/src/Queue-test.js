@@ -541,6 +541,8 @@ describe('Queue', () => {
       expect(msg).to.have.property('fields').with.property('routingKey', 'test.2');
       queue.ack(msg, true);
       expect(queue.messageCount).to.equal(1);
+
+      expect(queue.get()).to.have.property('fields').with.property('routingKey', 'test.3');
     });
 
     it('same message twice is ignored', () => {
@@ -1144,7 +1146,7 @@ describe('Queue', () => {
 
       queue.queueMessage({routingKey: 'test.3'});
 
-      expect(queue.get()).to.be.undefined;
+      expect(queue.get()).to.be.false;
       const consumer = queue.consume(() => {});
 
       expect(queue.messageCount).to.equal(2);
@@ -1435,35 +1437,17 @@ describe('Queue', () => {
     });
   });
 
-  describe('consumeNext()', () => {
+  describe('_consumeNext()', () => {
     it('returns undefined if called when stopped ', () => {
       const queue = new Queue();
       queue.stop();
-      expect(queue.consumeNext()).to.be.undefined;
-    });
-  });
-
-  describe('getPendingMessages()', () => {
-    it('returns empty if called with acked message', () => {
-      const queue = new Queue();
-      queue.queueMessage({});
-      queue.queueMessage({});
-      queue.queueMessage({});
-
-
-      queue.get();
-      const message = queue.get();
-
-      expect(queue.getPendingMessages(message)).to.have.length(1);
-
-      message.ack();
-      expect(queue.getPendingMessages(message)).to.have.length(0);
+      expect(queue._consumeNext()).to.be.undefined;
     });
   });
 
   describe('persistent message', () => {
     it('ignores non-persistent message when recovered with state', () => {
-      const originalQueue = new Queue('test-q');
+      const originalQueue = new Queue('test-q', {durable: true});
       originalQueue.queueMessage({routingKey: 'test.ethereal'}, 'data', {persistent: false});
       originalQueue.queueMessage({routingKey: 'test.persisted'}, 'data');
 
@@ -1474,6 +1458,35 @@ describe('Queue', () => {
 
       const msg = queue.get();
       expect(msg).to.have.property('fields').with.property('routingKey', 'test.persisted');
+    });
+
+    it('ignores redelivered non-persistent message when stopped and recovered without state', () => {
+      const queue = new Queue('test-q', {durable: true});
+      queue.queueMessage({routingKey: 'test.ethereal'}, 'data', {persistent: false});
+      queue.queueMessage({routingKey: 'test.persisted'}, 'data');
+
+      queue.consume(() => {});
+      queue.stop();
+      queue.recover();
+
+      const msg = queue.get();
+      expect(msg).to.have.property('fields').with.property('routingKey', 'test.persisted');
+    });
+
+    it('returns redelivered non-persistent message if requeued', () => {
+      const queue = new Queue('test-q', {durable: true});
+      queue.queueMessage({routingKey: 'test.ethereal'}, 'data', {persistent: false});
+      queue.queueMessage({routingKey: 'test.persisted'}, 'data');
+
+      const consumer = queue.consume(() => {});
+
+      const msg = queue.get();
+      expect(msg).to.have.property('fields').with.property('routingKey', 'test.persisted');
+
+      queue.cancel(consumer.consumerTag);
+
+      const etherealMsg = queue.get();
+      expect(etherealMsg).to.have.property('fields').with.property('routingKey', 'test.ethereal');
     });
   });
 

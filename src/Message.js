@@ -21,10 +21,6 @@ function Message(fields, content, properties, onConsumed) {
   this.fields = {...fields, consumerTag: undefined};
   this.content = content;
   this.properties = mproperties;
-
-  this.ack = this.ack.bind(this);
-  this.nack = this.nack.bind(this);
-  this.reject = this.reject.bind(this);
 }
 
 Object.defineProperty(Message.prototype, 'pending', {
@@ -33,28 +29,28 @@ Object.defineProperty(Message.prototype, 'pending', {
   },
 });
 
-Message.prototype.consume = function({ consumerTag } = {}, consumedCb) {
+Message.prototype._consume = function consume({consumerTag}, consumedCb) {
   this[pendingSymbol] = true;
   this.fields.consumerTag = consumerTag;
   this[onConsumedSymbol][0] = consumedCb;
 };
 
-Message.prototype.ack = function(allUpTo) {
+Message.prototype.ack = function ack(allUpTo) {
   if (!this[pendingSymbol]) return;
-  this[onConsumedSymbol].forEach((fn) => {
+  for (const fn of this[onConsumedSymbol]) {
     if (fn) fn(this, 'ack', allUpTo);
-  });
+  }
   this[pendingSymbol] = false;
 };
 
-Message.prototype.nack = function(allUpTo, requeue = true) {
+Message.prototype.nack = function nack(allUpTo, requeue = true) {
   if (!this[pendingSymbol]) return;
-  this[onConsumedSymbol].forEach((fn) => {
+  for (const fn of this[onConsumedSymbol]) {
     if (fn) fn(this, 'nack', allUpTo, requeue);
-  });
+  }
   this[pendingSymbol] = false;
 };
 
-Message.prototype.reject = function(requeue = true) {
+Message.prototype.reject = function reject(requeue = true) {
   this.nack(false, requeue);
 };

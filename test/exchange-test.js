@@ -43,10 +43,10 @@ describe('exchange', () => {
         'test.4',
       ]);
 
-      function onMessage(routingKey, {ack}) {
+      function onMessage(routingKey, msg) {
         messages.push(routingKey);
         if (routingKey === 'test.1') broker.publish('test', 'test.4');
-        ack();
+        msg.ack();
       }
     });
 
@@ -116,10 +116,10 @@ describe('exchange', () => {
         'test.4',
       ]);
 
-      function onMessage(routingKey, {ack}) {
+      function onMessage(routingKey, msg) {
         messages.push(routingKey);
         if (routingKey === 'test.1') broker.publish('test', 'test.4');
-        ack();
+        msg.ack();
       }
     });
 

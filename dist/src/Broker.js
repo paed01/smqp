@@ -11,10 +11,7 @@ var _Queue = require("./Queue");
 
 var _Shovel = require("./Shovel");
 
-const exchangesSymbol = Symbol.for('exchanges');
-const queuesSymbol = Symbol.for('queues');
-const consumersSymbol = Symbol.for('consumers');
-const shovelsSymbol = Symbol.for('shovels');
+const entitiesSymbol = Symbol.for('entities');
 const eventHandlerSymbol = Symbol.for('eventHandler');
 
 function Broker(owner) {
@@ -24,23 +21,20 @@ function Broker(owner) {
 
   this.owner = owner;
   this.events = new _Exchange.EventExchange('broker__events');
-  const exchanges = this[exchangesSymbol] = [];
-  const queues = this[queuesSymbol] = [];
-  const consumers = this[consumersSymbol] = [];
-  const shovels = this[shovelsSymbol] = [];
-  this[eventHandlerSymbol] = new EventHandler(this, {
-    exchanges,
-    queues,
-    consumers,
-    shovels
-  });
+  const entities = this[entitiesSymbol] = {
+    exchanges: [],
+    queues: [],
+    consumers: [],
+    shovels: []
+  };
+  this[eventHandlerSymbol] = new EventHandler(this, entities);
 }
 
 Object.defineProperty(Broker.prototype, 'exchangeCount', {
   enumerable: true,
 
   get() {
-    return this[exchangesSymbol].length;
+    return this[entitiesSymbol].exchanges.length;
   }
 
 });
@@ -48,7 +42,7 @@ Object.defineProperty(Broker.prototype, 'queueCount', {
   enumerable: true,
 
   get() {
-    return this[queuesSymbol].length;
+    return this[entitiesSymbol].queues.length;
   }
 
 });
@@ -56,7 +50,7 @@ Object.defineProperty(Broker.prototype, 'consumerCount', {
   enumerable: true,
 
   get() {
-    return this[consumersSymbol].length;
+    return this[entitiesSymbol].consumers.length;
   }
 
 });
@@ -68,7 +62,7 @@ Broker.prototype.subscribe = function subscribe(exchangeName, pattern, queueName
   if (options && options.consumerTag) this.validateConsumerTag(options.consumerTag);
   const exchange = this.assertExchange(exchangeName);
   const queue = this.assertQueue(queueName, options);
-  exchange.bind(queue, pattern, options);
+  exchange.bindQueue(queue, pattern, options);
   return queue.assertConsumer(onMessage, options, this.owner);
 };
 
@@ -88,7 +82,7 @@ Broker.prototype.subscribeOnce = function subscribeOnce(exchangeName, pattern, o
     priority: options.priority || 0
   };
   const onceQueue = this.createQueue(null, onceOptions);
-  exchange.bind(onceQueue, pattern, onceOptions);
+  exchange.bindQueue(onceQueue, pattern, onceOptions);
   return this.consume(onceQueue.name, wrappedOnMessage, {
     noAck: true,
     consumerTag: options.consumerTag
@@ -107,7 +101,7 @@ Broker.prototype.unsubscribe = function unsubscribe(queueName, onMessage) {
 };
 
 Broker.prototype.assertExchange = function assertExchange(exchangeName, type, options) {
-  let exchange = this.getExchangeByName(exchangeName);
+  let exchange = this.getExchange(exchangeName);
 
   if (exchange) {
     if (type && exchange.type !== type) throw new Error('Type doesn\'t match');
@@ -116,18 +110,14 @@ Broker.prototype.assertExchange = function assertExchange(exchangeName, type, op
 
   exchange = new _Exchange.Exchange(exchangeName, type || 'topic', options);
   this[eventHandlerSymbol].listen(exchange.events);
-  this[exchangesSymbol].push(exchange);
+  this[entitiesSymbol].exchanges.push(exchange);
   return exchange;
-};
-
-Broker.prototype.getExchangeByName = function getExchangeByName(exchangeName) {
-  return this[exchangesSymbol].find(exchange => exchange.name === exchangeName);
 };
 
 Broker.prototype.bindQueue = function bindQueue(queueName, exchangeName, pattern, bindOptions) {
   const exchange = this.getExchange(exchangeName);
   const queue = this.getQueue(queueName);
-  exchange.bind(queue, pattern, bindOptions);
+  return exchange.bindQueue(queue, pattern, bindOptions);
 };
 
 Broker.prototype.unbindQueue = function unbindQueue(queueName, exchangeName, pattern) {
@@ -135,7 +125,7 @@ Broker.prototype.unbindQueue = function unbindQueue(queueName, exchangeName, pat
   if (!exchange) return;
   const queue = this.getQueue(queueName);
   if (!queue) return;
-  exchange.unbind(queue, pattern);
+  exchange.unbindQueue(queue, pattern);
 };
 
 Broker.prototype.consume = function consume(queueName, onMessage, options) {
@@ -145,15 +135,15 @@ Broker.prototype.consume = function consume(queueName, onMessage, options) {
   return queue.consume(onMessage, options, this.owner);
 };
 
-Broker.prototype.cancel = function cancel(consumerTag) {
+Broker.prototype.cancel = function cancel(consumerTag, requeue = true) {
   const consumer = this.getConsumer(consumerTag);
   if (!consumer) return false;
-  consumer.cancel(false);
+  consumer.cancel(requeue);
   return true;
 };
 
 Broker.prototype.getConsumers = function getConsumers() {
-  return this[consumersSymbol].map(consumer => {
+  return this[entitiesSymbol].consumers.map(consumer => {
     return {
       queue: consumer.queue.name,
       consumerTag: consumer.options.consumerTag,
@@ -164,11 +154,11 @@ Broker.prototype.getConsumers = function getConsumers() {
 };
 
 Broker.prototype.getConsumer = function getConsumer(consumerTag) {
-  return this[consumersSymbol].find(c => c.consumerTag === consumerTag);
+  return this[entitiesSymbol].consumers.find(c => c.consumerTag === consumerTag);
 };
 
 Broker.prototype.getExchange = function getExchange(exchangeName) {
-  return this[exchangesSymbol].find(({
+  return this[entitiesSymbol].exchanges.find(({
     name
   }) => name === exchangeName);
 };
@@ -176,7 +166,7 @@ Broker.prototype.getExchange = function getExchange(exchangeName) {
 Broker.prototype.deleteExchange = function deleteExchange(exchangeName, {
   ifUnused
 } = {}) {
-  const exchanges = this[exchangesSymbol];
+  const exchanges = this[entitiesSymbol].exchanges;
   const idx = exchanges.findIndex(exchange => exchange.name === exchangeName);
   if (idx === -1) return false;
   const exchange = exchanges[idx];
@@ -187,31 +177,44 @@ Broker.prototype.deleteExchange = function deleteExchange(exchangeName, {
 };
 
 Broker.prototype.stop = function stop() {
-  for (const exchange of this[exchangesSymbol]) exchange.stop();
+  const {
+    exchanges,
+    queues
+  } = this[entitiesSymbol];
 
-  for (const queue of this[queuesSymbol]) queue.stop();
+  for (const exchange of exchanges) exchange.stop();
+
+  for (const queue of queues) queue.stop();
 };
 
 Broker.prototype.close = function close() {
-  for (const shovel of this[shovelsSymbol]) shovel.close();
+  const {
+    shovels,
+    exchanges,
+    queues
+  } = this[entitiesSymbol];
 
-  for (const exchange of this[exchangesSymbol]) exchange.close();
+  for (const shovel of shovels) shovel.close();
 
-  for (const queue of this[queuesSymbol]) queue.close();
+  for (const exchange of exchanges) exchange.close();
+
+  for (const queue of queues) queue.close();
 };
 
 Broker.prototype.reset = function reset() {
   this.stop();
   this.close();
-  this[exchangesSymbol].splice(0);
-  this[queuesSymbol].splice(0);
-  this[consumersSymbol].splice(0);
-  this[shovelsSymbol].splice(0);
+  this[entitiesSymbol].exchanges.splice(0);
+  this[entitiesSymbol].queues.splice(0);
+  this[entitiesSymbol].consumers.splice(0);
+  this[entitiesSymbol].shovels.splice(0);
 };
 
 Broker.prototype.getState = function getState(onlyWithContent) {
-  const exchanges = this.getExchangeState(onlyWithContent);
-  const queues = this.getQueuesState(onlyWithContent);
+  const exchanges = this._getExchangeState(onlyWithContent);
+
+  const queues = this._getQueuesState(onlyWithContent);
+
   if (onlyWithContent && !exchanges && !queues) return;
   return {
     exchanges,
@@ -227,11 +230,16 @@ Broker.prototype.recover = function recover(state) {
     if (state.queues) for (const qState of state.queues) recoverQueue(qState);
     if (state.exchanges) for (const eState of state.exchanges) recoverExchange(eState);
   } else {
-    for (const queue of self[queuesSymbol]) {
+    const {
+      queues,
+      exchanges
+    } = self[entitiesSymbol];
+
+    for (const queue of queues) {
       if (queue.stopped) queue.recover();
     }
 
-    for (const exchange of self[exchangesSymbol]) {
+    for (const exchange of exchanges) {
       if (exchange.stopped) exchange.recover(null, boundGetQueue);
     }
   }
@@ -293,7 +301,7 @@ Broker.prototype.unbindExchange = function unbindExchange(source, destination, p
 };
 
 Broker.prototype.publish = function publish(exchangeName, routingKey, content, options) {
-  const exchange = this.getExchangeByName(exchangeName);
+  const exchange = this.getExchange(exchangeName);
   if (!exchange) return;
   return exchange.publish(routingKey, content, options);
 };
@@ -310,8 +318,8 @@ Broker.prototype.sendToQueue = function sendToQueue(queueName, content, options 
   return queue.queueMessage(null, content, options);
 };
 
-Broker.prototype.getQueuesState = function getQueuesState(onlyWithContent) {
-  return this[queuesSymbol].reduce((result, queue) => {
+Broker.prototype._getQueuesState = function getQueuesState(onlyWithContent) {
+  return this[entitiesSymbol].queues.reduce((result, queue) => {
     if (!queue.options.durable) return result;
     if (onlyWithContent && !queue.messageCount) return result;
     if (!result) result = [];
@@ -320,8 +328,8 @@ Broker.prototype.getQueuesState = function getQueuesState(onlyWithContent) {
   }, undefined);
 };
 
-Broker.prototype.getExchangeState = function getExchangeState(onlyWithContent) {
-  return this[exchangesSymbol].reduce((result, exchange) => {
+Broker.prototype._getExchangeState = function getExchangeState(onlyWithContent) {
+  return this[entitiesSymbol].exchanges.reduce((result, exchange) => {
     if (!exchange.options.durable) return result;
     if (onlyWithContent && !exchange.undeliveredCount) return result;
     if (!result) result = [];
@@ -336,13 +344,13 @@ Broker.prototype.createQueue = function createQueue(queueName, options) {
   const queueEmitter = (0, _Exchange.EventExchange)(queueName + '__events');
   this[eventHandlerSymbol].listen(queueEmitter);
   const queue = new _Queue.Queue(queueName, options, queueEmitter);
-  self[queuesSymbol].push(queue);
+  self[entitiesSymbol].queues.push(queue);
   return queue;
 };
 
 Broker.prototype.getQueue = function getQueue(queueName) {
   if (!queueName) return;
-  const queues = this[queuesSymbol];
+  const queues = this[entitiesSymbol].queues;
   const idx = queues.findIndex(queue => queue.name === queueName);
   if (idx > -1) return queues[idx];
 };
@@ -381,7 +389,7 @@ Broker.prototype.ack = function ack(message, allUpTo) {
 };
 
 Broker.prototype.ackAll = function ackAll() {
-  for (const queue of this[queuesSymbol]) queue.ackAll();
+  for (const queue of this[entitiesSymbol].queues) queue.ackAll();
 };
 
 Broker.prototype.nack = function nack(message, allUpTo, requeue) {
@@ -389,7 +397,7 @@ Broker.prototype.nack = function nack(message, allUpTo, requeue) {
 };
 
 Broker.prototype.nackAll = function nackAll(requeue) {
-  for (const queue of this[queuesSymbol]) queue.nackAll(requeue);
+  for (const queue of this[entitiesSymbol].queues) queue.nackAll(requeue);
 };
 
 Broker.prototype.reject = function reject(message, requeue) {
@@ -407,7 +415,7 @@ Broker.prototype.validateConsumerTag = function validateConsumerTag(consumerTag)
 };
 
 Broker.prototype.createShovel = function createShovel(name, source, destination, options) {
-  const shovels = this[shovelsSymbol];
+  const shovels = this[entitiesSymbol].shovels;
   if (this.getShovel(name)) throw new Error(`Shovel name must be unique, ${name} is occupied`);
   const shovel = new _Shovel.Shovel(name, { ...source,
     broker: this
@@ -429,7 +437,11 @@ Broker.prototype.closeShovel = function closeShovel(name) {
 };
 
 Broker.prototype.getShovel = function getShovel(name) {
-  return this[shovelsSymbol].find(s => s.name === name);
+  return this[entitiesSymbol].shovels.find(s => s.name === name);
+};
+
+Broker.prototype.getShovels = function getShovels() {
+  return this[entitiesSymbol].shovels.slice();
 };
 
 Broker.prototype.on = function on(eventName, callback, options) {
@@ -470,9 +482,9 @@ Broker.prototype.off = function off(eventName, callbackOrObject) {
 
 Broker.prototype.prefetch = function prefetch() {};
 
-function EventHandler(broker, lists) {
+function EventHandler(broker, entities) {
   this.broker = broker;
-  this.lists = lists;
+  this.entities = entities;
   this.handler = this.handler.bind(this);
 }
 
@@ -484,9 +496,10 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
   switch (eventName) {
     case 'exchange.delete':
       {
-        const idx = this.lists.exchanges.indexOf(msg.content);
+        const exchanges = this.entities.exchanges;
+        const idx = exchanges.indexOf(msg.content);
         if (idx === -1) return;
-        this.lists.exchanges.splice(idx, 1);
+        exchanges.splice(idx, 1);
         break;
       }
 
@@ -504,9 +517,10 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
 
     case 'queue.delete':
       {
-        const idx = this.lists.queues.indexOf(msg.content);
+        const queues = this.entities.queues;
+        const idx = queues.indexOf(msg.content);
         if (idx === -1) return;
-        this.lists.queues.splice(idx, 1);
+        queues.splice(idx, 1);
         break;
       }
 
@@ -514,20 +528,26 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
       {
         const exchange = this.broker.getExchange(msg.content.deadLetterExchange);
         if (!exchange) return;
-        exchange.publish(msg.content.message.fields.routingKey, msg.content.message.content, msg.content.message.properties);
+        const {
+          fields,
+          content,
+          properties
+        } = msg.content.message;
+        exchange.publish(fields.routingKey, content, properties);
         break;
       }
 
     case 'queue.consume':
       {
-        this.lists.consumers.push(msg.content);
+        this.entities.consumers.push(msg.content);
         break;
       }
 
     case 'queue.consumer.cancel':
       {
-        const idx = this.lists.consumers.indexOf(msg.content);
-        if (idx !== -1) this.lists.consumers.splice(idx, 1);
+        const consumers = this.entities.consumers;
+        const idx = consumers.indexOf(msg.content);
+        if (idx !== -1) consumers.splice(idx, 1);
         break;
       }
 
@@ -544,8 +564,9 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
 
     case 'shovel.close':
       {
-        const idx = this.lists.shovels.indexOf(msg.content);
-        if (idx > -1) this.lists.shovels.splice(idx, 1);
+        const shovels = this.entities.shovels;
+        const idx = shovels.indexOf(msg.content);
+        if (idx > -1) shovels.splice(idx, 1);
         break;
       }
   }

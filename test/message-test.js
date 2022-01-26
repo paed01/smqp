@@ -93,9 +93,9 @@ describe('message', () => {
     expect(msg.properties).to.have.property('timestamp').that.is.a('number');
   });
 
-  it('consume(undefined) defaults consumer argument to empty object', () => {
-    const msg = new Message();
-    msg.consume();
-    expect(msg.fields).to.have.property('consumerTag', undefined);
-  });
+  // it('consume(undefined) defaults consumer argument to empty object', () => {
+  //   const msg = new Message();
+  //   msg.consume();
+  //   expect(msg.fields).to.have.property('consumerTag', undefined);
+  // });
 });

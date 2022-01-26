@@ -1,5 +1,5 @@
 <!-- version -->
-# 5.1.3 API Reference
+# 6.0.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -22,8 +22,8 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.bindQueue(queueName, exchangeName, pattern[, options])`](#brokerbindqueuequeuename-exchangename-pattern-options)
     - [`broker.unbindQueue(queueName, exchangeName, pattern)`](#brokerunbindqueuequeuename-exchangename-pattern)
     - [`broker.consume(queueName, onMessage[, options])`](#brokerconsumequeuename-onmessage-options)
-    - [`broker.cancel(consumerTag)`](#brokercancelconsumertag)
-    - [`broker.createQueue()`](#brokercreatequeue)
+    - [`broker.cancel(consumerTag[, requeue = true])`](#brokercancelconsumertag-requeue--true)
+    - [`broker.createQueue(queueName[, options])`](#brokercreatequeuequeuename-options)
     - [`broker.deleteQueue(queueName[, {ifUnused, ifEmpty}])`](#brokerdeletequeuequeuename-ifunused-ifempty)
     - [`broker.getExchange(exchangeName)`](#brokergetexchangeexchangename)
     - [`broker.getQueue(queueName)`](#brokergetqueuequeuename)
@@ -48,7 +48,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.prefetch(count)`](#brokerprefetchcount)
     - [`broker.reset()`](#brokerreset)
   - [Exchange](#exchange)
-    - [`exchange.bind(queue, pattern[, bindOptions])`](#exchangebindqueue-pattern-bindoptions)
+    - [`exchange.bindQueue(queue, pattern[, bindOptions])`](#exchangebindqueuequeue-pattern-bindoptions)
     - [`exchange.close()`](#exchangeclose)
     - [`exchange.emit(eventName[, content])`](#exchangeemiteventname-content)
     - [`exchange.getBinding(queueName, pattern)`](#exchangegetbindingqueuename-pattern)
@@ -56,10 +56,13 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`exchange.on(pattern, handler[, consumeOptions])`](#exchangeonpattern-handler-consumeoptions)
     - [`exchange.off(pattern, handlerOrObject)`](#exchangeoffpattern-handlerorobject)
     - [`exchange.publish(routingKey[, content, properties])`](#exchangepublishroutingkey-content-properties)
-    - [`exchange.recover(state, getQueue)`](#exchangerecoverstate-getqueue)
+    - [`exchange.recover([state, getQueue])`](#exchangerecoverstate-getqueue)
     - [`exchange.stop()`](#exchangestop)
-    - [`exchange.unbind(queue, pattern)`](#exchangeunbindqueue-pattern)
+    - [`exchange.unbindQueue(queue, pattern)`](#exchangeunbindqueuequeue-pattern)
     - [`exchange.unbindQueueByName(queueName)`](#exchangeunbindqueuebynamequeuename)
+  - [Binding](#binding)
+    - [`binding.testPattern(routingKey)`](#bindingtestpatternroutingkey)
+    - [`binding.close()`](#bindingclose)
   - [Queue](#queue)
     - [`queue.ack(message)`](#queueackmessage)
     - [`queue.ackAll()`](#queueackall)
@@ -81,7 +84,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`queue.recover([state])`](#queuerecoverstate)
     - [`queue.reject(message[, requeue = true])`](#queuerejectmessage-requeue--true)
     - [`queue.stop()`](#queuestop)
-    - [`queue.unbindConsumer()`](#queueunbindconsumer)
+    - [`queue.unbindConsumer(consumer)`](#queueunbindconsumerconsumer)
   - [Consumer](#consumer)
     - [`consumer.ackAll()`](#consumerackall)
     - [`consumer.nackAll([requeue])`](#consumernackallrequeue)
@@ -172,6 +175,7 @@ Remove consumer with message callback from queue.
 ### `broker.publish(exchangeName, routingKey[, content, options])`
 Publish message to exchange.
 
+Arguments:
 - `exchangeName`: exchange name
 - `routingKey`: routing key
 - `content`: message content
@@ -195,6 +199,8 @@ Creates exchange with name.
 Returns [Exchange](#exchange).
 
 ### `broker.deleteExchange(exchangeName[, ifUnused])`
+
+Delete exchange by name
 
 ### `broker.bindExchange(source, destination[, pattern, args])`
 
@@ -237,7 +243,24 @@ Assert a queue into existence.
   - `messageTtl`: integer, expire message after milliseconds, [see Message Eviction](#message-eviction)
 
 ### `broker.bindQueue(queueName, exchangeName, pattern[, options])`
+
+Bind queue to exchange with routing key pattern.
+
+- `queueName`: queue name
+- `exchangeName`: exchange name
+- `pattern`: queue binding pattern
+- `options`: binding options
+  - `priority`: integer, defaults to `0`, higher value gets messages first
+
+Returns [Binding](#binding)
+
 ### `broker.unbindQueue(queueName, exchangeName, pattern)`
+
+Unbind queue from exchange that match routing key pattern.
+
+- `queueName`: queue name
+- `exchangeName`: exchange name
+- `pattern`: queue binding pattern
 
 ### `broker.consume(queueName, onMessage[, options])`
 Consume queue. Returns a [consumer](#consumer). If the message callback is already used for consumption, the existing consumer will be returned.
@@ -250,10 +273,17 @@ Consume queue. Returns a [consumer](#consumer). If the message callback is alrea
   - `prefetch`: integer, defaults to `1`, number of messages to consume at a time
   - `priority`: integer, defaults to `0`, higher value gets messages first
 
-### `broker.cancel(consumerTag)`
+### `broker.cancel(consumerTag[, requeue = true])`
+
 Cancel consumption by consumer tag.
 
-### `broker.createQueue()`
+- `consumerTag`: consumer tag
+- `requeue`: optional boolean to requeue messages consumed by consumer
+
+### `broker.createQueue(queueName[, options])`
+
+Create queue with name. Throws if queue already exists.
+
 ### `broker.deleteQueue(queueName[, {ifUnused, ifEmpty}])`
 Delete queue by name.
 
@@ -292,12 +322,24 @@ Send message directly to queue, bypassing routing key patterns etc.
 No more messages through this broker, i.e. publish will be ignored. Use [`broker.recover()`](#brokerrecoverstate) to resume.
 
 ### `broker.get(queueName[, options])`
-Get message from queue.
+
+Get message from queue. Returns false if there are no messages to be retrieved. Returns undefined if the queue is not found.
+
+Arguments:
+- `queueName`: name of queue
+- `options`: optional object with options
+  - `noAck`: optional boolean, defaults to `false`
 
 ### `broker.ack(message[, allUpTo])`
 ### `broker.ackAll()`
+
+Acknowledge all outstanding messages.
+
 ### `broker.nack(message[, allUpTo, requeue])`
 ### `broker.nackAll([requeue])`
+
+Nack all outstanding messages.
+
 ### `broker.reject(message[, requeue])`
 
 ### `broker.createShovel(name, source, destination[, options])`
@@ -405,7 +447,7 @@ Properties:
 - `bindings`: getter for list of bindings
 - `stopped`: boolean for if the exchange is stopped
 
-### `exchange.bind(queue, pattern[, bindOptions])`
+### `exchange.bindQueue(queue, pattern[, bindOptions])`
 Bind queue to exchange.
 
 Arguments:
@@ -445,9 +487,15 @@ Stop consuming events from exchange.
 ### `exchange.publish(routingKey[, content, properties])`
 Publish message on exchange.
 
-### `exchange.recover(state, getQueue)`
+### `exchange.recover([state, getQueue])`
+
+Recover exchange.
+
+- `state`: optional object with exchange state, preferably from `exchange.getState()`. NB! state name and type is ignored
+- `getQueue`: mandatory function if state.binding is passed, to recover bindings a queue is required, this function should return such by name
+
 ### `exchange.stop()`
-### `exchange.unbind(queue, pattern)`
+### `exchange.unbindQueue(queue, pattern)`
 Unbind queue from exchange.
 
 Arguments:
@@ -456,6 +504,25 @@ Arguments:
 
 ### `exchange.unbindQueueByName(queueName)`
 Remove all bindings to queue by queue name.
+
+## Binding
+
+Exchange to queue binding
+
+Properties:
+- `id`: exchange binding id
+- `options`: binding options
+- `pattern`: binding pattern
+- `exchange`: exchange instance
+- `queue`: queue instance
+
+### `binding.testPattern(routingKey)`
+
+Test routing key against binding pattern
+
+### `binding.close()`
+
+Close binding
 
 ## Queue
 Queue
@@ -543,7 +610,9 @@ Queue message.
 ### `queue.recover([state])`
 ### `queue.reject(message[, requeue = true])`
 ### `queue.stop()`
-### `queue.unbindConsumer()`
+### `queue.unbindConsumer(consumer)`
+
+Unbind consumer instance.
 
 ## Consumer
 Queue consumer
@@ -559,7 +628,13 @@ Queue consumer
 - `stopped`: is the consumer stopped
 
 ### `consumer.ackAll()`
+
+Ack all messages currently held by consumer
+
 ### `consumer.nackAll([requeue])`
+
+Nack all messages currently held by consumer
+
 ### `consumer.cancel()`
 
 Cancel consumption and unsubscribe from queue
@@ -583,19 +658,22 @@ What it is all about - convey messages.
   - `expiration`: Expire message after milliseconds
 
 ### `message.ack([allUpTo])`
+
 Acknowledge message
 
 - `allUpTo`: boolean, consider all messages above this one to be acknowledged as well
 
 ### `message.nack([allUpTo, requeue])`
-Reject message.
 
-NB! Beware of `requeue` argument since the message will immmediately be returned to queue and consumed, ergo an infinit loop and maximum call stack size exceeded error unless some precautions are made.
+Reject message.
 
 - `allUpTo`: boolean, consider all messages above this one to be rejected as well
 - `requeue`: boolean, requeue messages
 
+> NB! Beware of `requeue` argument since the message will immmediately be returned to queue and consumed, ergo an infinite loop and maximum call stack size exceeded error. Unless! some precautions are taken.
+
 ### `message.reject([requeue])`
+
 Same as `nack(false, true)`
 
 
