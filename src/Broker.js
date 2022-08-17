@@ -24,21 +24,21 @@ Object.defineProperty(Broker.prototype, 'exchangeCount', {
   enumerable: true,
   get() {
     return this[entitiesSymbol].exchanges.length;
-  }
+  },
 });
 
 Object.defineProperty(Broker.prototype, 'queueCount', {
   enumerable: true,
   get() {
     return this[entitiesSymbol].queues.length;
-  }
+  },
 });
 
 Object.defineProperty(Broker.prototype, 'consumerCount', {
   enumerable: true,
   get() {
     return this[entitiesSymbol].consumers.length;
-  }
+  },
 });
 
 Broker.prototype.subscribe = function subscribe(exchangeName, pattern, queueName, onMessage, options = {durable: true}) {
@@ -130,7 +130,7 @@ Broker.prototype.getConsumers = function getConsumers() {
     return {
       queue: consumer.queue.name,
       consumerTag: consumer.options.consumerTag,
-      options: {...consumer.options}
+      options: {...consumer.options},
     };
   });
 };
@@ -230,9 +230,9 @@ Broker.prototype.bindExchange = function bindExchange(source, destination, patte
     consumerTag: `smq.ctag-${name}`,
   }, {
     broker: this,
-    exchange: destination
+    exchange: destination,
   }, {
-    ...args
+    ...args,
   });
 
   const {consumerTag, source: shovelSource} = shovel;

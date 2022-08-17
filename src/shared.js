@@ -8,16 +8,30 @@ function generateId() {
   return Math.random().toString(16).substring(2, 12);
 }
 
+function DirectRoutingKeyPattern(pattern) {
+  this._match = pattern;
+}
+DirectRoutingKeyPattern.prototype.test = function test(routingKey) {
+  return this._match === routingKey;
+};
+
+function EndMatchRoutingKeyPattern(pattern) {
+  this._match = pattern.replace('#', '');
+}
+EndMatchRoutingKeyPattern.prototype.test = function test(routingKey) {
+  return !routingKey.indexOf(this._match);
+};
+
 function getRoutingKeyPattern(pattern) {
   const len = pattern.length;
   const hashIdx = pattern.indexOf('#');
   const astxIdx = pattern.indexOf('*');
   if (hashIdx === -1) {
     if (astxIdx === -1) {
-      return directMatch();
+      return new DirectRoutingKeyPattern(pattern);
     }
   } else if (hashIdx === len - 1 && astxIdx === -1) {
-    return endMatch();
+    return new EndMatchRoutingKeyPattern(pattern);
   }
 
   const rpattern = pattern
@@ -26,25 +40,6 @@ function getRoutingKeyPattern(pattern) {
     .replace(allHashs, '.*?');
 
   return new RegExp(`^${rpattern}$`);
-
-  function directMatch() {
-    return {
-      test
-    };
-    function test(routingKey) {
-      return routingKey === pattern;
-    }
-  }
-
-  function endMatch() {
-    const testString = pattern.replace('#', '');
-    return {
-      test
-    };
-    function test(routingKey) {
-      return routingKey.indexOf(testString) === 0;
-    }
-  }
 }
 
 function sortByPriority(a, b) {

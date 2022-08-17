@@ -11,7 +11,7 @@ function Message(fields, content, properties, onConsumed) {
 
   const mproperties = {
     ...properties,
-    messageId: properties && properties.messageId || `smq.mid-${generateId()}`
+    messageId: properties && properties.messageId || `smq.mid-${generateId()}`,
   };
   const timestamp = (mproperties.timestamp = mproperties.timestamp || Date.now());
   if (mproperties.expiration) {

@@ -64,14 +64,14 @@ Object.defineProperty(Shovel.prototype, 'closed', {
   enumerable: true,
   get() {
     return this[closedSymbol];
-  }
+  },
 });
 
 Object.defineProperty(Shovel.prototype, 'consumerTag', {
   enumerable: true,
   get() {
     return this[consumerTagSymbol];
-  }
+  },
 });
 
 Shovel.prototype.emit = function emit(eventName, content) {

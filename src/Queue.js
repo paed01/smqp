@@ -244,7 +244,7 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
 
     this.emit('dead-letter', {
       deadLetterExchange,
-      message: deadMessage
+      message: deadMessage,
     });
   }
 

@@ -1669,7 +1669,7 @@ describe('Broker', () => {
       broker.subscribeTmp('test', '#', onMessage);
 
       broker.publish('test', 'test.1', {
-        num: 1
+        num: 1,
       });
 
       function onMessage(routingKey, message) {
@@ -1919,7 +1919,7 @@ describe('Broker', () => {
 
       expect(message).to.have.property('fields').that.include({
         exchange: 'event',
-        routingKey: 'test.1'
+        routingKey: 'test.1',
       });
       expect(message).to.have.property('content', 'important1');
 
@@ -1929,7 +1929,7 @@ describe('Broker', () => {
 
       expect(message).to.have.property('fields').that.include({
         exchange: 'event',
-        routingKey: 'test.2'
+        routingKey: 'test.2',
       });
       expect(message).to.have.property('content', 'important2');
 
@@ -1939,7 +1939,7 @@ describe('Broker', () => {
 
       expect(message).to.have.property('fields').that.include({
         exchange: 'event',
-        routingKey: 'test.3'
+        routingKey: 'test.3',
       });
       expect(message).to.have.property('content', 'important3');
     });
@@ -1959,7 +1959,7 @@ describe('Broker', () => {
 
       expect(message).to.have.property('fields').that.include({
         exchange: 'balanced',
-        routingKey: 'test.1'
+        routingKey: 'test.1',
       });
       expect(message).to.have.property('content', 'important');
 
@@ -1969,7 +1969,7 @@ describe('Broker', () => {
 
       expect(message).to.have.property('fields').that.include({
         exchange: 'balanced',
-        routingKey: 'test.2'
+        routingKey: 'test.2',
       });
       expect(message).to.have.property('content', 'important');
     });
@@ -2205,9 +2205,9 @@ describe('Broker', () => {
       broker.bindExchange('source-events', 'dest-events', 'event.#', {
         cloneMessage(msg) {
           return {
-            content: {...msg.content}
+            content: {...msg.content},
           };
-        }
+        },
       });
 
       const messages = [];
@@ -2235,7 +2235,7 @@ describe('Broker', () => {
       }, {noAck: true});
 
       broker.bindExchange('source-events', 'dest-events', 'event.#', {
-        priority: 1000
+        priority: 1000,
       });
 
       broker.subscribeTmp('dest-events', '#', (_, msg) => {
@@ -2260,9 +2260,9 @@ describe('Broker', () => {
       broker.bindExchange('source-events', 'dest-events', 'event.#', {
         cloneMessage(msg) {
           return {
-            content: {...msg.content}
+            content: {...msg.content},
           };
-        }
+        },
       });
 
       const messages = [];
@@ -2381,9 +2381,9 @@ describe('Broker', () => {
       broker.bindExchange('source-events', 'dest-events', 'event.#', {
         cloneMessage(msg) {
           return {
-            content: {...msg.content}
+            content: {...msg.content},
           };
-        }
+        },
       });
 
       const messages = [];
@@ -2408,9 +2408,9 @@ describe('Broker', () => {
       broker.bindExchange('source-events', 'dest-events', 'event.#', {
         cloneMessage(msg) {
           return {
-            content: {...msg.content}
+            content: {...msg.content},
           };
-        }
+        },
       });
 
       const messages = [];

@@ -942,7 +942,7 @@ describe('Queue', () => {
       const state = queue.getState();
       expect(state).to.have.property('name', 'test-q');
       expect(state).to.have.property('options').that.eql({
-        autoDelete: true
+        autoDelete: true,
       });
       expect(state).to.have.property('messages').have.length(2);
     });
@@ -1001,7 +1001,7 @@ describe('Queue', () => {
         'queue.consume',
         'queue.consumer.cancel',
         'queue.consumer.cancel',
-        'queue.delete'
+        'queue.delete',
       ]);
       expect(triggered).to.have.length(6);
 

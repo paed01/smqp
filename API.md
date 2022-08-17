@@ -1,5 +1,5 @@
 <!-- version -->
-# 6.0.0 API Reference
+# 6.1.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.

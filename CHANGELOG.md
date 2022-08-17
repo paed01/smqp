@@ -1,6 +1,12 @@
 Changelog
 =========
 
+# 6.1.0
+
+- Minor performance tweek by prototyping routing key patterns
+- Stop building node 12
+- Lint some
+
 # 6.0.0
 
 ## Breaking

@@ -16,12 +16,12 @@ function generate(filename) {
   const api = fs.readFileSync(filename, 'utf8');
   const tocOptions = {
     bullets: '-',
-    slugify: function(text) {
+    slugify: function (text) {
 
       return text.toLowerCase()
         .replace(/\s/g, '-')
         .replace(/[^\w-]/g, '');
-    }
+    },
   };
 
   const output = toc.insert(api, tocOptions)
@@ -29,4 +29,3 @@ function generate(filename) {
 
   fs.writeFileSync(filename, output);
 }
-

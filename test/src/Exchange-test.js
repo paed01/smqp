@@ -381,7 +381,7 @@ describe('Exchange', () => {
       expect(returnMsg).to.be.ok;
       expect(returnMsg).to.have.property('fields').that.include({
         routingKey: 'test.1',
-        exchange: 'event'
+        exchange: 'event',
       });
       expect(returnMsg).to.have.property('content', 'important');
     });
@@ -398,7 +398,7 @@ describe('Exchange', () => {
       expect(returnMsg).to.be.ok;
       expect(returnMsg).to.have.property('fields').that.include({
         routingKey: 'test.1',
-        exchange: 'balance'
+        exchange: 'balance',
       });
       expect(returnMsg).to.have.property('content', 'important');
     });

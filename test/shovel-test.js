@@ -82,7 +82,7 @@ describe('Shovel', () => {
         queue: 'events-q',
       }, {
         broker: broker2,
-        exchange: 'dest-events'
+        exchange: 'dest-events',
       }, {
         cloneMessage(message) {
           expect(message).to.not.have.property('ack');
@@ -94,7 +94,7 @@ describe('Shovel', () => {
             content: JSON.parse(JSON.stringify(message.content)),
             properties: {mandatory: false},
           };
-        }
+        },
       });
       const content = {
         data: 1,
@@ -138,8 +138,8 @@ describe('Shovel', () => {
         publishProperties: {
           mandatory: false,
           type: 'shoveled',
-          'source-exchange': 'overwrite'
-        }
+          'source-exchange': 'overwrite',
+        },
       }, {
         cloneMessage(message) {
           expect(message).to.not.have.property('ack');
@@ -150,7 +150,7 @@ describe('Shovel', () => {
           return {
             content: JSON.parse(JSON.stringify(message.content)),
           };
-        }
+        },
       });
       const content = {
         data: 1,
@@ -191,7 +191,7 @@ describe('Shovel', () => {
       }, {
         broker: broker2,
         exchange: 'dest-events',
-        exchangeKey: 'shoveled'
+        exchangeKey: 'shoveled',
       });
 
       broker1.publish('source-events', 'event.1');
@@ -222,7 +222,7 @@ describe('Shovel', () => {
         pattern: 'event.#',
       }, {
         broker: broker2,
-        exchange: 'dest-events'
+        exchange: 'dest-events',
       });
 
       broker1.publish('source-events', 'event.1');
@@ -246,7 +246,7 @@ describe('Shovel', () => {
           exchange: 'source-events',
         }, {
           broker: broker2,
-          exchange: 'dest-events'
+          exchange: 'dest-events',
         });
       }).to.throw(/source exchange <source-events> not found/);
     });
@@ -263,7 +263,7 @@ describe('Shovel', () => {
           exchange: 'source-events',
         }, {
           broker: broker2,
-          exchange: 'dest-events'
+          exchange: 'dest-events',
         });
       }).to.throw(/destination exchange <dest-events> not found/);
     });
@@ -284,7 +284,7 @@ describe('Shovel', () => {
         pattern: 'event.#',
       }, {
         broker: broker2,
-        exchange: 'dest-events'
+        exchange: 'dest-events',
       });
 
       broker1.publish('source-events', 'event.1');
@@ -319,7 +319,7 @@ describe('Shovel', () => {
         pattern: 'event.#',
       }, {
         broker: broker2,
-        exchange: 'dest-events'
+        exchange: 'dest-events',
       });
 
       broker1.publish('source-events', 'event.1');
@@ -352,7 +352,7 @@ describe('Shovel', () => {
         pattern: 'event.#',
       }, {
         broker: broker2,
-        exchange: 'dest-events'
+        exchange: 'dest-events',
       });
 
       broker1.publish('source-events', 'event.1');
@@ -382,7 +382,7 @@ describe('Shovel', () => {
         pattern: 'event.#',
       }, {
         broker: broker2,
-        exchange: 'dest-events'
+        exchange: 'dest-events',
       });
 
       shovel.close();
@@ -409,7 +409,7 @@ describe('Shovel', () => {
         queue: 'events-q',
       }, {
         broker: broker2,
-        exchange: 'dest-events'
+        exchange: 'dest-events',
       });
 
       broker1.publish('source-events', 'event.1');
@@ -447,7 +447,7 @@ describe('Shovel', () => {
         queue: 'events-q',
       }, {
         broker: broker2,
-        exchange: 'dest-events'
+        exchange: 'dest-events',
       }];
 
       const shovel = Shovel(...args);
@@ -487,13 +487,13 @@ describe('Shovel', () => {
       broker.subscribeTmp('dest-events', '#', onMessage, {noAck: true});
 
       const args = ['my-shovel', {
-        broker: broker,
+        broker,
         exchange: 'source-events',
         pattern: 'event.#',
         queue: 'events-q',
       }, {
-        broker: broker,
-        exchange: 'dest-events'
+        broker,
+        exchange: 'dest-events',
       }];
 
       const shovel = Shovel(...args);
@@ -540,10 +540,10 @@ describe('Shovel', () => {
         exchange: 'source-events',
         pattern: 'event.#',
         queue: 'events-q',
-        priority: 1000
+        priority: 1000,
       }, {
         broker: broker2,
-        exchange: 'dest-events'
+        exchange: 'dest-events',
       }];
 
       Shovel(...args);
@@ -581,7 +581,7 @@ describe('Shovel', () => {
         exchange: 'events',
         publishProperties: {
           mandatory: false,
-          type: 'shoveled'
+          type: 'shoveled',
         },
       }, {
         cloneMessage(message) {
@@ -594,9 +594,9 @@ describe('Shovel', () => {
             content: JSON.parse(JSON.stringify(message.content)),
             properties: {
               type: undefined,
-            }
+            },
           };
-        }
+        },
       });
 
       const content = {
@@ -906,7 +906,7 @@ describe('Shovel', () => {
         queue: queue.name,
       }, {
         broker: destinationBroker,
-        exchange: 'dest-events'
+        exchange: 'dest-events',
       });
 
       broker.publish('events', 'test.1');
