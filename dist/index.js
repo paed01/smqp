@@ -22,12 +22,8 @@ Object.defineProperty(exports, "getRoutingKeyPattern", {
     return _shared.getRoutingKeyPattern;
   }
 });
-
 var _Broker = require("./src/Broker");
-
 var _Shovel = require("./src/Shovel");
-
 var _shared = require("./src/shared");
-
 var _default = _Broker.Broker;
 exports.default = _default;

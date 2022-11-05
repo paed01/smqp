@@ -90,6 +90,7 @@
     "no-shadow": "error",
     "no-spaced-func": "error",
     "no-trailing-spaces": "error",
+    "no-undef": "error",
     "no-undef-init": "error",
     "no-underscore-dangle": "off",
     "no-unused-expressions": "error",
@@ -113,6 +114,7 @@
       "single",
       { "avoidEscape": true }
     ],
+    "require-await": "error",
     "semi": [ "error", "always" ],
     "semi-spacing": [
       "error",

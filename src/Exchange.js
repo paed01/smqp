@@ -4,10 +4,10 @@ import {sortByPriority, getRoutingKeyPattern, generateId} from './shared';
 
 export {Exchange, EventExchange};
 
-const typeSymbol = Symbol.for('type');
-const stoppedSymbol = Symbol.for('stopped');
-const bindingsSymbol = Symbol.for('bindings');
-const deliveryQueueSymbol = Symbol.for('deliveryQueue');
+const kType = Symbol.for('type');
+const kStopped = Symbol.for('stopped');
+const kBindings = Symbol.for('bindings');
+const kDeliveryQueue = Symbol.for('deliveryQueue');
 
 function Exchange(name, type = 'topic', options) {
   if (!name) throw new Error('Exchange name is required');
@@ -23,52 +23,52 @@ function EventExchange(name) {
 
 function ExchangeBase(name, type, options, eventExchange) {
   this.name = name;
-  this[typeSymbol] = type;
-  this[bindingsSymbol] = [];
-  this[stoppedSymbol] = false;
+  this[kType] = type;
+  this[kBindings] = [];
+  this[kStopped] = false;
   this.options = {durable: true, autoDelete: true, ...options};
   this.events = eventExchange;
 
-  const deliveryQueue = this[deliveryQueueSymbol] = new Queue('delivery-q', {autoDelete: false});
+  const deliveryQueue = this[kDeliveryQueue] = new Queue('delivery-q', {autoDelete: false});
   const onMessage = (type === 'topic' ? this._onTopicMessage : this._onDirectMessage).bind(this);
   deliveryQueue.consume(onMessage, {exclusive: true, consumerTag: '_exchange-tag'});
 }
 
 Object.defineProperty(ExchangeBase.prototype, 'bindingCount', {
   get() {
-    return this[bindingsSymbol].length;
+    return this[kBindings].length;
   },
 });
 
 Object.defineProperty(ExchangeBase.prototype, 'bindings', {
   get() {
-    return this[bindingsSymbol].slice();
+    return this[kBindings].slice();
   },
 });
 
 Object.defineProperty(ExchangeBase.prototype, 'type', {
   get() {
-    return this[typeSymbol];
+    return this[kType];
   },
 });
 
 Object.defineProperty(ExchangeBase.prototype, 'stopped', {
   get() {
-    return this[stoppedSymbol];
+    return this[kStopped];
   },
 });
 
 Object.defineProperty(ExchangeBase.prototype, 'undeliveredCount', {
   get() {
-    return this[deliveryQueueSymbol].messageCount;
+    return this[kDeliveryQueue].messageCount;
   },
 });
 
 ExchangeBase.prototype.publish = function publish(routingKey, content, properties) {
-  if (this[stoppedSymbol]) return;
+  if (this[kStopped]) return;
   if (!this.bindingCount) return this._emitReturn(routingKey, content, properties);
 
-  return this[deliveryQueueSymbol].queueMessage({routingKey}, {
+  return this[kDeliveryQueue].queueMessage({routingKey}, {
     content,
     properties,
   });
@@ -76,7 +76,7 @@ ExchangeBase.prototype.publish = function publish(routingKey, content, propertie
 
 ExchangeBase.prototype._onTopicMessage = function topic(routingKey, message) {
   const publishedMsg = message.content;
-  const bindings = this[bindingsSymbol];
+  const bindings = this[kBindings];
 
   message.ack();
 
@@ -96,7 +96,7 @@ ExchangeBase.prototype._onTopicMessage = function topic(routingKey, message) {
 
 ExchangeBase.prototype._onDirectMessage = function direct(routingKey, message) {
   const publishedMsg = message.content;
-  const bindings = this[bindingsSymbol];
+  const bindings = this[kBindings];
 
   const deliverTo = bindings.find((binding) => binding.testPattern(routingKey));
   if (!deliverTo) {
@@ -132,7 +132,7 @@ ExchangeBase.prototype._emitReturn = function emitReturn(routingKey, content, pr
 };
 
 ExchangeBase.prototype.bindQueue = function bindQueue(queue, pattern, bindOptions) {
-  const bindings = this[bindingsSymbol];
+  const bindings = this[kBindings];
   const bound = bindings.find((bq) => bq.queue === queue && bq.pattern === pattern);
   if (bound) return bound;
 
@@ -146,7 +146,7 @@ ExchangeBase.prototype.bindQueue = function bindQueue(queue, pattern, bindOption
 };
 
 ExchangeBase.prototype.unbindQueue = function unbindQueue(queue, pattern) {
-  const bindings = this[bindingsSymbol];
+  const bindings = this[kBindings];
   const idx = bindings.findIndex((bq) => bq.queue === queue && bq.pattern === pattern);
   if (idx === -1) return;
 
@@ -159,30 +159,30 @@ ExchangeBase.prototype.unbindQueue = function unbindQueue(queue, pattern) {
 };
 
 ExchangeBase.prototype.unbindQueueByName = function unbindQueueByName(queueName) {
-  for (const binding of this[bindingsSymbol]) {
+  for (const binding of this[kBindings]) {
     if (binding.queue.name !== queueName) continue;
     this.unbindQueue(binding.queue, binding.pattern);
   }
 };
 
 ExchangeBase.prototype.close = function close() {
-  for (const binding of this[bindingsSymbol].slice()) {
+  for (const binding of this[kBindings].slice()) {
     binding.close();
   }
-  const deliveryQueue = this[deliveryQueueSymbol];
+  const deliveryQueue = this[kDeliveryQueue];
   deliveryQueue.cancel('_exchange-tag', true);
   deliveryQueue.close();
 };
 
 ExchangeBase.prototype.getState = function getState() {
   let bindings;
-  for (const binding of this[bindingsSymbol]) {
+  for (const binding of this[kBindings]) {
     if (!binding.queue.options.durable) continue;
     if (!bindings) bindings = [];
     bindings.push(binding.getState());
   }
 
-  const deliveryQueue = this[deliveryQueueSymbol];
+  const deliveryQueue = this[kDeliveryQueue];
   return {
     name: this.name,
     type: this.type,
@@ -193,14 +193,14 @@ ExchangeBase.prototype.getState = function getState() {
 };
 
 ExchangeBase.prototype.stop = function stop() {
-  this[stoppedSymbol] = true;
+  this[kStopped] = true;
 };
 
 ExchangeBase.prototype.recover = function recover(state, getQueue) {
-  this[stoppedSymbol] = false;
+  this[kStopped] = false;
   if (!state) return this;
 
-  const deliveryQueue = this[deliveryQueueSymbol];
+  const deliveryQueue = this[kDeliveryQueue];
   if (state.bindings) {
     for (const bindingState of state.bindings) {
       const queue = getQueue(bindingState.queueName);
@@ -210,7 +210,7 @@ ExchangeBase.prototype.recover = function recover(state, getQueue) {
   }
   deliveryQueue.recover(state.deliveryQueue);
   if (!deliveryQueue.consumerCount) {
-    const onMessage = (this[typeSymbol] === 'topic' ? this._onTopicMessage : this._onDirectMessage).bind(this);
+    const onMessage = (this[kType] === 'topic' ? this._onTopicMessage : this._onDirectMessage).bind(this);
     deliveryQueue.consume(onMessage, {exclusive: true, consumerTag: '_exchange-tag'});
   }
 
@@ -218,7 +218,7 @@ ExchangeBase.prototype.recover = function recover(state, getQueue) {
 };
 
 ExchangeBase.prototype.getBinding = function getBinding(queueName, pattern) {
-  return this[bindingsSymbol].find((binding) => binding.queue.name === queueName && binding.pattern === pattern);
+  return this[kBindings].find((binding) => binding.queue.name === queueName && binding.pattern === pattern);
 };
 
 ExchangeBase.prototype.emit = function emit(eventName, content) {
@@ -245,7 +245,7 @@ ExchangeBase.prototype.off = function off(pattern, handler) {
 
   const {consumerTag} = handler;
 
-  for (const binding of this[bindingsSymbol]) {
+  for (const binding of this[kBindings]) {
     if (binding.pattern === pattern) {
       if (consumerTag) binding.queue.cancel(consumerTag);
       else binding.queue.dismiss(handler);
