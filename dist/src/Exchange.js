@@ -5,9 +5,9 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.EventExchange = EventExchange;
 exports.Exchange = Exchange;
-var _Message = require("./Message");
-var _Queue = require("./Queue");
-var _shared = require("./shared");
+var _Message = require("./Message.js");
+var _Queue = require("./Queue.js");
+var _shared = require("./shared.js");
 const kType = Symbol.for('type');
 const kStopped = Symbol.for('stopped');
 const kBindings = Symbol.for('bindings');

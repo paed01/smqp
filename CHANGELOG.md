@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 7.0.0
+
+- Turn into module with exports for node
+- Rename symbol declarations for no reason at all
+
 # 6.1.0
 
 - Minor performance tweek by prototyping routing key patterns
@@ -175,4 +180,3 @@ Confirm messages and node 10 and above.
   - introduced new property named `fields`
   - `.routingKey` is moved to `fields.routingKey` along with new and fresh `exchange` and `consumerTag` properties
   - `.options` is renamed to `.properties`
-

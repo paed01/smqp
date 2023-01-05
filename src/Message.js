@@ -1,4 +1,4 @@
-import { generateId } from './shared';
+import { generateId } from './shared.js';
 
 export { Message };
 

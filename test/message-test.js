@@ -1,5 +1,5 @@
-import {Broker} from '../index';
-import {Message} from '../src/Message';
+import {Broker} from '../index.js';
+import {Message} from '../src/Message.js';
 import ck from 'chronokinesis';
 
 describe('message', () => {

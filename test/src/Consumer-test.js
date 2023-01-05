@@ -1,4 +1,4 @@
-import {Queue} from '../../src/Queue';
+import {Queue} from '../../src/Queue.js';
 
 describe('Consumer', () => {
   describe('internal queue', () => {

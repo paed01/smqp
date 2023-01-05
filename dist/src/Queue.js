@@ -5,8 +5,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.Consumer = Consumer;
 exports.Queue = Queue;
-var _shared = require("./shared");
-var _Message = require("./Message");
+var _shared = require("./shared.js");
+var _Message = require("./Message.js");
 const kConsumers = Symbol.for('consumers');
 const kConsuming = Symbol.for('consuming');
 const kExclusive = Symbol.for('exclusive');

@@ -1,6 +1,6 @@
-import {Message} from './Message';
-import {Queue} from './Queue';
-import {sortByPriority, getRoutingKeyPattern, generateId} from './shared';
+import {Message} from './Message.js';
+import {Queue} from './Queue.js';
+import {sortByPriority, getRoutingKeyPattern, generateId} from './shared.js';
 
 export {Exchange, EventExchange};
 

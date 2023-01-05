@@ -1,6 +1,6 @@
-import {Exchange, EventExchange} from './Exchange';
-import {Queue} from './Queue';
-import {Shovel} from './Shovel';
+import {Exchange, EventExchange} from './Exchange.js';
+import {Queue} from './Queue.js';
+import {Shovel} from './Shovel.js';
 
 const kEntities = Symbol.for('entities');
 const kEventHandler = Symbol.for('eventHandler');

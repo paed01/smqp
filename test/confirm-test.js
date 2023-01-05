@@ -1,4 +1,4 @@
-import {Broker} from '../index';
+import {Broker} from '../index.js';
 import ck from 'chronokinesis';
 
 describe('Confirm messages with confirm property', () => {

@@ -4,9 +4,9 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.Broker = Broker;
-var _Exchange = require("./Exchange");
-var _Queue = require("./Queue");
-var _Shovel = require("./Shovel");
+var _Exchange = require("./Exchange.js");
+var _Queue = require("./Queue.js");
+var _Shovel = require("./Shovel.js");
 const kEntities = Symbol.for('entities');
 const kEventHandler = Symbol.for('eventHandler');
 function Broker(owner) {

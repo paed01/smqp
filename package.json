@@ -1,6 +1,7 @@
 {
   "name": "smqp",
-  "version": "6.1.1",
+  "version": "7.0.0",
+  "type": "module",
   "description": "Synchronous message queueing package",
   "author": {
     "name": "Pål Edman",
@@ -10,6 +11,12 @@
   "module": "index.js",
   "jsnext:main": "index.js",
   "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "require": "./dist/index.js"
+    }
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -17,9 +24,6 @@
   },
   "bugs": {
     "url": "https://github.com/paed01/smqp/issues"
-  },
-  "directories": {
-    "test": "test"
   },
   "files": [
     "src",
@@ -29,12 +33,13 @@
   ],
   "scripts": {
     "test": "mocha",
-    "test:lcov": "nyc mocha && nyc report --reporter lcov && npm run posttest",
-    "posttest": "npm run dist &&  eslint . --cache && npm run toc",
-    "cov:html": "nyc mocha && nyc report --reporter=html",
+    "test:lcov": "c8 -r lcov mocha && npm run lint",
+    "posttest": "npm run dist && npm run lint && npm run toc",
+    "cov:html": "c8 -r html -r text mocha",
     "dist": "babel index.js -d dist && babel src/**.js -d dist/src",
-    "prepare": "npm run dist",
-    "toc": "node ./scripts/generate-api-toc.js"
+    "prepack": "npm run dist",
+    "toc": "node ./scripts/generate-api-toc.cjs",
+    "lint": "eslint . --cache"
   },
   "keywords": [
     "messaging",
@@ -54,21 +59,14 @@
     "shovel"
   ],
   "devDependencies": {
-    "@babel/cli": "^7.19.3",
-    "@babel/core": "^7.20.2",
+    "@babel/cli": "^7.20.7",
+    "@babel/core": "^7.20.12",
     "@babel/preset-env": "^7.20.2",
-    "@babel/register": "^7.18.9",
-    "chai": "^4.3.6",
-    "chronokinesis": "^3.0.0",
-    "eslint": "^8.26.0",
+    "c8": "^7.12.0",
+    "chai": "^4.3.7",
+    "chronokinesis": "^4.0.1",
+    "eslint": "^8.31.0",
     "markdown-toc": "^1.2.0",
-    "mocha": "^10.1.0",
-    "nyc": "^15.1.0"
-  },
-  "nyc": {
-    "exclude": [
-      "dist",
-      "test"
-    ]
+    "mocha": "^10.2.0"
   }
 }

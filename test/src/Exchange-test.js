@@ -1,5 +1,5 @@
-import {Exchange, EventExchange} from '../../src/Exchange';
-import {Queue} from '../../src/Queue';
+import {Exchange, EventExchange} from '../../src/Exchange.js';
+import {Queue} from '../../src/Queue.js';
 
 describe('Exchange', () => {
   describe('ctor', () => {

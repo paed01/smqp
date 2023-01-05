@@ -4,7 +4,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.Shovel = Shovel;
-var _Exchange = require("./Exchange");
+var _Exchange = require("./Exchange.js");
 const kBrokerInternal = Symbol.for('brokerInternal');
 const kCloneMessage = Symbol.for('cloneMessage');
 const kClosed = Symbol.for('closed');

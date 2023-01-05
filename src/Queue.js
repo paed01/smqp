@@ -1,5 +1,5 @@
-import {generateId, sortByPriority} from './shared';
-import {Message} from './Message';
+import {generateId, sortByPriority} from './shared.js';
+import {Message} from './Message.js';
 
 export {Queue, Consumer};
 

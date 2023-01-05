@@ -1,4 +1,4 @@
-import {Broker} from '../../src/Broker';
+import {Broker} from '../../src/Broker.js';
 
 describe('Broker', () => {
   describe('coverage', () => {

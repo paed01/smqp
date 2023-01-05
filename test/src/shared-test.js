@@ -1,4 +1,4 @@
-import {getRoutingKeyPattern} from '../../index';
+import {getRoutingKeyPattern} from '../../index.js';
 
 describe('shared', () => {
   describe('routingKey pattern', () => {

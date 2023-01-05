@@ -1,4 +1,4 @@
-import {Broker, Shovel} from '../index';
+import {Broker, Shovel} from '../index.js';
 
 describe('Shovel', () => {
   describe('api', () => {

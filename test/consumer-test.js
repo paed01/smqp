@@ -1,4 +1,4 @@
-import {Broker} from '../index';
+import {Broker} from '../index.js';
 
 describe('consumer', () => {
   describe('noAck', () => {

@@ -1,4 +1,4 @@
-import {EventExchange} from './Exchange';
+import {EventExchange} from './Exchange.js';
 
 const kBrokerInternal = Symbol.for('brokerInternal');
 const kCloneMessage = Symbol.for('cloneMessage');

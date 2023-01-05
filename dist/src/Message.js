@@ -4,7 +4,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.Message = Message;
-var _shared = require("./shared");
+var _shared = require("./shared.js");
 const kPending = Symbol.for('pending');
 const kOnConsumed = Symbol.for('onConsumed');
 function Message(fields, content, properties, onConsumed) {
