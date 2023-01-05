@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "7.0.0",
+  "version": "7.0.1",
   "type": "module",
   "description": "Synchronous message queueing package",
   "author": {
@@ -29,6 +29,7 @@
     "src",
     "dist/src",
     "dist/index.js",
+    "dist/package.json",
     "index.js"
   ],
   "scripts": {
