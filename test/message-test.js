@@ -1,4 +1,4 @@
-import {Broker} from '../index.js';
+import {Broker} from '../src/index.js';
 import {Message} from '../src/Message.js';
 import ck from 'chronokinesis';
 

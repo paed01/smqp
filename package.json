@@ -1,21 +1,19 @@
 {
   "name": "smqp",
-  "version": "7.0.1",
+  "version": "7.0.2",
   "type": "module",
   "description": "Synchronous message queueing package",
   "author": {
     "name": "Pål Edman",
     "url": "https://github.com/paed01"
   },
-  "main": "dist/index.js",
-  "module": "index.js",
-  "jsnext:main": "index.js",
+  "main": "./dist/index.js",
+  "module": "./src/index.js",
+  "jsnext:main": "./src/index.js",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "import": "./index.js",
-      "require": "./dist/index.js"
-    }
+    "import": "./src/index.js",
+    "require": "./dist/index.js"
   },
   "license": "MIT",
   "repository": {
@@ -27,17 +25,14 @@
   },
   "files": [
     "src",
-    "dist/src",
-    "dist/index.js",
-    "dist/package.json",
-    "index.js"
+    "dist/*.js"
   ],
   "scripts": {
     "test": "mocha",
     "test:lcov": "c8 -r lcov mocha && npm run lint",
     "posttest": "npm run dist && npm run lint && npm run toc",
     "cov:html": "c8 -r html -r text mocha",
-    "dist": "babel index.js -d dist && babel src/**.js -d dist/src",
+    "dist": "babel src/**.js -d dist",
     "prepack": "npm run dist",
     "toc": "node ./scripts/generate-api-toc.cjs",
     "lint": "eslint . --cache"

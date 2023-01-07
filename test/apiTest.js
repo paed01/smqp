@@ -1,4 +1,4 @@
-import * as smqp from '../index.js';
+import * as smqp from '../src/index.js';
 
 describe('smqp', () => {
   it('exposes Broker', () => {
