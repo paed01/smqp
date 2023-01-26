@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 6.2.0
+
+- Consume consumer messages by while loop instead of recursive calls, courtesy of @captHarlock69 #7
+
 # 6.1.0
 
 - Minor performance tweek by prototyping routing key patterns
@@ -175,4 +179,3 @@ Confirm messages and node 10 and above.
   - introduced new property named `fields`
   - `.routingKey` is moved to `fields.routingKey` along with new and fresh `exchange` and `consumerTag` properties
   - `.options` is renamed to `.properties`
-

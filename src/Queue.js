@@ -530,30 +530,24 @@ Consumer.prototype._push = function push(messages) {
 };
 
 Consumer.prototype._consume = function consume() {
-  if (this[stoppedSymbol]) return;
   this[consumingSymbol] = true;
 
-  const msg = this[internalQueueSymbol].get();
+  const internalQ = this[internalQueueSymbol];
+  let _msg;
+  while ((_msg = internalQ.get())) {
+    const msg = _msg;
+    const options = this.options;
+    msg._consume(options);
+    const message = msg.content;
+    message._consume(options, () => msg.ack(false));
 
-  if (!msg) {
-    this[consumingSymbol] = false;
-    return;
+    if (options.noAck) message.ack();
+    this.onMessage(msg.fields.routingKey, message, this.owner);
+
+    if (this[stoppedSymbol]) break;
   }
-
-  msg._consume(this.options);
-  const message = msg.content;
-  message._consume(this.options, onConsumed);
-
-  if (this.options.noAck) msg.content.ack();
-  this.onMessage(msg.fields.routingKey, msg.content, this.owner);
 
   this[consumingSymbol] = false;
-
-  return this._consume();
-
-  function onConsumed() {
-    msg.ack(false);
-  }
 };
 
 Consumer.prototype.nackAll = function nackAll(requeue) {
