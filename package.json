@@ -61,7 +61,7 @@
     "c8": "^7.12.0",
     "chai": "^4.3.7",
     "chronokinesis": "^4.0.1",
-    "eslint": "^8.31.0",
+    "eslint": "^8.32.0",
     "markdown-toc": "^1.2.0",
     "mocha": "^10.2.0"
   }

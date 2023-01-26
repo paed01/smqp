@@ -532,10 +532,11 @@ Consumer.prototype._push = function push(messages) {
 Consumer.prototype._consume = function consume() {
   if (this[kStopped]) return;
   this[kConsuming] = true;
-  let msg = this[kInternalQueue].get();
+
+  const internalQ = this[kInternalQueue];
+  let msg = internalQ.get();
 
   while (msg) {
-
     msg._consume(this.options);
     const message = msg.content;
     const _msg = msg;
@@ -550,10 +551,9 @@ Consumer.prototype._consume = function consume() {
 
     if (this[kStopped]) return;
     this[kConsuming] = true;
-    msg = this[kInternalQueue].get();
+    msg = internalQ.get();
   }
   this[kConsuming] = false;
-};
 };
 
 Consumer.prototype.nackAll = function nackAll(requeue) {
