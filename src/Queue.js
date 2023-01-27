@@ -530,29 +530,23 @@ Consumer.prototype._push = function push(messages) {
 };
 
 Consumer.prototype._consume = function consume() {
-  if (this[kStopped]) return;
   this[kConsuming] = true;
 
   const internalQ = this[kInternalQueue];
-  let msg = internalQ.get();
-
-  while (msg) {
-    msg._consume(this.options);
+  let _msg;
+  while ((_msg = internalQ.get())) {
+    const msg = _msg;
+    const options = this.options;
+    msg._consume(options);
     const message = msg.content;
-    const _msg = msg;
-    message._consume(this.options, () => {
-      _msg.ack(false);
-    });
+    message._consume(options, () => msg.ack(false));
 
-    if (this.options.noAck) msg.content.ack();
-    this.onMessage(msg.fields.routingKey, msg.content, this.owner);
+    if (options.noAck) message.ack();
+    this.onMessage(msg.fields.routingKey, message, this.owner);
 
-    this[kConsuming] = false;
-
-    if (this[kStopped]) return;
-    this[kConsuming] = true;
-    msg = internalQ.get();
+    if (this[kStopped]) break;
   }
+
   this[kConsuming] = false;
 };
 
