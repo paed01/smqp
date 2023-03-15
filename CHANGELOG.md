@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 7.1.0
+
+- Add type declarations
+
 # 7.0.0
 
 - Turn into module with exports for node

@@ -170,7 +170,7 @@ ExchangeBase.prototype.close = function close() {
     binding.close();
   }
   const deliveryQueue = this[kDeliveryQueue];
-  deliveryQueue.cancel('_exchange-tag', true);
+  deliveryQueue.cancel('_exchange-tag');
   deliveryQueue.close();
 };
 
