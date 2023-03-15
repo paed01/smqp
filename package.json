@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "7.0.3",
+  "version": "7.1.0",
   "type": "module",
   "description": "Synchronous message queueing package",
   "author": {
@@ -11,6 +11,7 @@
   "module": "./src/index.js",
   "jsnext:main": "./src/index.js",
   "sideEffects": false,
+  "types": "./types",
   "exports": {
     "import": "./src/index.js",
     "require": "./dist/index.js"
@@ -24,6 +25,7 @@
     "url": "https://github.com/paed01/smqp/issues"
   },
   "files": [
+    "types",
     "src",
     "dist/*.js"
   ],
