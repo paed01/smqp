@@ -1,6 +1,6 @@
 import { Consumer } from './Queue.js';
+import { Broker } from './Broker.js';
 import { Message } from './Message.js';
-
 
 type shovelOptions = {
   cloneMessage?: (message: Message) => Message;

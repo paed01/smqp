@@ -39,9 +39,12 @@ interface Exchange2Exchange {
   close(): void;
 }
 
-interface BrokerShovelSource extends ShovelSource {
-  /** ignored, defaults to current broker */
-  broker?: undefined;
+interface BrokerShovelSource {
+  exchange: string;
+  pattern?: string;
+  priority?: number;
+  queue?: string;
+  consumerTag?: string;
 }
 
 export function Broker(owner?: any): Broker;
@@ -88,7 +91,7 @@ export class Broker {
   }): Message | undefined;
   ack(message: Message, allUpTo?: boolean): void;
   ackAll(): void;
-  nack(message: Message, allUpTo?: bool, requeue?: bool): void;
+  nack(message: Message, allUpTo?: boolean, requeue?: boolean): void;
   nackAll(requeue?: boolean): void;
   reject(message: Message, requeue?: boolean): void;
   validateConsumerTag(consumerTag: string): boolean;

@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 7.1.1
+
+- Fix type declaration forbidden override and boolean typo. Introduce circular type import in Shovel, which apparently is ok!?
+
 # 7.1.0
 
 - Add type declarations
