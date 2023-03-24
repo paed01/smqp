@@ -326,9 +326,9 @@ Broker.prototype.assertQueue = function assertQueue(queueName, options = {}) {
 };
 
 Broker.prototype.deleteQueue = function deleteQueue(queueName, options) {
-  if (!queueName) return false;
+  if (!queueName) return;
   const queue = this.getQueue(queueName);
-  if (!queue) return false;
+  if (!queue) return;
   return queue.delete(options);
 };
 

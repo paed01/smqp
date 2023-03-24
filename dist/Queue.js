@@ -143,7 +143,7 @@ Queue.prototype.get = function getMessage({
     noAck,
     consumerTag
   })[0];
-  if (!message) return false;
+  if (!message) return;
   if (noAck) this._dequeueMessage(message);
   return message;
 };

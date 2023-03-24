@@ -848,7 +848,7 @@ describe('Broker queue', () => {
       expect(consumer.messageCount).to.equal(2);
       expect(queue.messageCount).to.equal(2);
 
-      expect(queue.get()).to.be.false;
+      expect(queue.get()).to.be.undefined;
 
       queue.cancel('_test_tag');
 
@@ -892,7 +892,7 @@ describe('Broker queue', () => {
       expect(consumer.messageCount).to.equal(2);
       expect(queue.messageCount).to.equal(2);
 
-      expect(queue.get()).to.be.false;
+      expect(queue.get()).to.be.undefined;
 
       consumer.cancel();
 

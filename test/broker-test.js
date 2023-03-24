@@ -1602,12 +1602,12 @@ describe('Broker', () => {
 
     it('deleteQueue returns false if queueName is empty', () => {
       const broker = Broker();
-      expect(broker.deleteQueue()).to.be.false;
+      expect(broker.deleteQueue()).to.be.undefined;
     });
 
     it('deleteQueue returns false if queueName was not found', () => {
       const broker = Broker();
-      expect(broker.deleteQueue('test-q')).to.be.false;
+      expect(broker.deleteQueue('test-q')).to.be.undefined;
     });
 
     it('get from unknown queue returns nothing', () => {
@@ -1618,7 +1618,7 @@ describe('Broker', () => {
     it('get from empty queue returns false', () => {
       const broker = Broker();
       broker.assertQueue('test-q');
-      expect(broker.get('test-q')).to.be.false;
+      expect(broker.get('test-q')).to.be.undefined;
     });
   });
 

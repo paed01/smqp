@@ -1,6 +1,12 @@
 Changelog
 =========
 
+# 7.1.3
+
+- no need to type declare that a function can return undefined, prevents assigning a typed variable
+- return undefined instead of false if deleting non-existing queue
+- return undefined instead of false if no message on queue.get
+
 # 7.1.2
 
 - Fix queue recover not returning instance of Queue when recovering without state

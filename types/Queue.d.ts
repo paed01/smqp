@@ -42,13 +42,13 @@ export interface Queue {
   evictFirst(compareMessage?: Message): boolean;
   consume(onMessage: onMessage, consumeOptions?: consumeOptions, owner?: any): Consumer;
   assertConsumer(onMessage: onMessage, consumeOptions?: consumeOptions, owner?: any): Consumer;
-  get(options?: consumeOptions): Message | void;
+  get(options?: consumeOptions): Message;
   ack(message: Message, allUpTo?: boolean): void;
   nack(message: Message, allUpTo?: boolean, requeue?: boolean): void;
   reject(message: Message, requeue?: boolean): void;
   ackAll(): void;
   nackAll(requeue?: boolean): void;
-  peek(ignoreDelivered?: boolean): Message | void;
+  peek(ignoreDelivered?: boolean): Message;
   cancel(consumerTag: string): void;
   dismiss(onMessage: onMessage): void;
   unbindConsumer(consumer: any): void;

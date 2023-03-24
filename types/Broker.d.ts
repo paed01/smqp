@@ -64,23 +64,23 @@ export class Broker {
   unbindQueue(queueName: string, exchangeName: string, pattern: string): void;
   consume(queueName: string, onMessage: onMessage, options?: consumeOptions): Consumer;
   cancel(consumerTag: string, requeue?: boolean): boolean;
-  getExchange(exchangeName: string): Exchange | undefined;
-  getQueue(queueName: string): Queue | void;
+  getExchange(exchangeName: string): Exchange;
+  getQueue(queueName: string): Queue;
   createQueue(queueName: string, options: any): Queue;
   deleteExchange(exchangeName: string, { ifUnused }?: {
     ifUnused?: boolean;
   }): boolean;
-  purgeQueue(queueName: string): number | undefined;
+  purgeQueue(queueName: string): number;
   sendToQueue(queueName: string, content: any, options?: MessageProperties): number;
-  deleteQueue(queueName: string, options?: deleteQueueOptions):  { messageCount: number } | boolean | void;
+  deleteQueue(queueName: string, options?: deleteQueueOptions):  { messageCount: number };
   bindExchange(source: string, destination: string, pattern?: string, options?: shovelOptions): Exchange2Exchange;
   unbindExchange(source: string, destination: string, pattern?: string): boolean;
   createShovel(name: string, source: BrokerShovelSource, destination: ShovelDestination, options?: shovelOptions): Shovel;
   closeShovel(name: string): boolean;
-  getShovel(name: string): Shovel | void;
+  getShovel(name: string): Shovel;
   getShovels(): Shovel[];
   getConsumers(): ConsumerInfo[];
-  getConsumer(consumerTag: string): Consumer | undefined;
+  getConsumer(consumerTag: string): Consumer;
   stop(): void;
   close(): void;
   getState(onlyWithContent?: boolean): any;
@@ -88,7 +88,7 @@ export class Broker {
   publish(exchangeName: string, routingKey: string, content?: any, options?: MessageProperties): number;
   get(queueName: string, { noAck }?: {
     noAck: boolean;
-  }): Message | undefined;
+  }): Message;
   ack(message: Message, allUpTo?: boolean): void;
   ackAll(): void;
   nack(message: Message, allUpTo?: boolean, requeue?: boolean): void;
