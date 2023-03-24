@@ -1,5 +1,5 @@
 <!-- version -->
-# 7.1.1 API Reference
+# 7.1.2 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -661,13 +661,13 @@ What it is all about - convey messages.
 
 Acknowledge message
 
-- `allUpTo`: boolean, consider all messages above this one to be acknowledged as well
+- `allUpTo`: boolean, consider all messages prior to this one to be acknowledged as well
 
 ### `message.nack([allUpTo, requeue])`
 
 Reject message.
 
-- `allUpTo`: boolean, consider all messages above this one to be rejected as well
+- `allUpTo`: boolean, consider all messages prior to this one to be rejected as well
 - `requeue`: boolean, requeue messages
 
 > NB! Beware of `requeue` argument since the message will immmediately be returned to queue and consumed, ergo an infinite loop and maximum call stack size exceeded error. Unless! some precautions are taken.

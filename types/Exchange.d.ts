@@ -30,8 +30,8 @@ export interface Exchange {
   stop(): void;
   recover(state: any, getQueue: CallableFunction): Exchange;
   getBinding(queueName: string, pattern: string): Binding | undefined;
-  emit(eventName: string, content: any): any;
-  on(pattern: string, handler: CallableFunction, consumeOptions?: {}): Consumer;
+  emit(eventName: string, content?: any): any;
+  on(pattern: string, handler: CallableFunction, consumeOptions?: {consumerTag?: string, [x: string]: any}): Consumer;
   off(pattern: string, handler: any): void;
 }
 

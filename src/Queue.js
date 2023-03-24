@@ -393,7 +393,8 @@ Queue.prototype.recover = function recover(state) {
   const consumers = this[kConsumers];
   if (!state) {
     for (const c of consumers.slice()) c.recover();
-    return this._consumeNext();
+    this._consumeNext();
+    return this;
   }
 
   this.name = state.name;

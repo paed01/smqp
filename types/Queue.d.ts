@@ -30,11 +30,11 @@ type deleteQueueOptions = {
   ifEmpty?: boolean;
 }
 
-interface Queue {
+export interface Queue {
   name: string;
   options: queueOptions;
   get consumerCount(): number;
-  get consumers(): number;
+  get consumers(): Consumer[];
   get exclusive(): boolean;
   get messageCount(): number;
   get stopped(): boolean;
@@ -65,7 +65,7 @@ interface Queue {
   stop(): void;
 }
 
-interface Consumer {
+export interface Consumer {
   options: consumeOptions;
   get consumerTag(): string;
   get ready(): boolean;

@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 7.1.2
+
+- Fix queue recover not returning instance of Queue when recovering without state
+- and some typing blunders
+
 # 7.1.1
 
 - Fix type declaration forbidden override and boolean typo. Introduce circular type import in Shovel, which apparently is ok!?

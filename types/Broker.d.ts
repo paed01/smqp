@@ -1,5 +1,5 @@
 import { Queue, Consumer, queueOptions, onMessage, consumeOptions, deleteQueueOptions } from "./Queue.js";
-import { Shovel, ShovelSource, ShovelDestination, shovelOptions } from "./Shovel.js";
+import { Shovel, ShovelDestination, shovelOptions } from "./Shovel.js";
 import { Message, MessageProperties } from "./Message.js";
 import { Exchange, exchangeType, Binding, exchangeOptions, bindingOptions } from "./Exchange.js";
 
@@ -28,7 +28,7 @@ type subscribeOptions = {
 interface ConsumerInfo {
   queue: string;
   consumerTag: string;
-  options: {};
+  options: consumeOptions;
 }
 
 interface Exchange2Exchange {
