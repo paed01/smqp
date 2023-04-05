@@ -97,7 +97,7 @@ export class Broker {
    * @param onlyWithContent [boolean] only return state if any durable exchanges or queues
    */
   getState(onlyWithContent: boolean): BrokerState | undefined;
-  recover(state: BrokerState): Broker;
+  recover(state?: BrokerState): Broker;
   publish(exchangeName: string, routingKey: string, content?: any, options?: MessageProperties): number;
   get(queueName: string, { noAck }?: {
     noAck: boolean;

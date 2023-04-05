@@ -44,7 +44,7 @@ export interface Queue {
   get exclusive(): boolean;
   get messageCount(): number;
   get stopped(): boolean;
-  queueMessage(fields: MessageFields, content: any, properties: MessageProperties): number;
+  queueMessage(fields: MessageFields, content?: any, properties?: MessageProperties): number;
   evictFirst(compareMessage?: Message): boolean;
   consume(onMessage: onMessage, consumeOptions?: consumeOptions, owner?: any): Consumer;
   assertConsumer(onMessage: onMessage, consumeOptions?: consumeOptions, owner?: any): Consumer;
@@ -63,7 +63,7 @@ export interface Queue {
   off(eventName: string, handler: CallableFunction): Consumer;
   purge(): number;
   getState(): QueueState;
-  recover(state: any): number | Queue;
+  recover(state?: QueueState): Queue;
   delete(options?: deleteQueueOptions): {
     messageCount: number;
   };

@@ -46,6 +46,10 @@ export interface Exchange {
   stop(): void;
   /**
    * Recover exchange
+   */
+  recover(): Exchange;
+  /**
+   * Recover exchange
    * @param state
    * @param getQueue function to get queue instance from broker
    */
