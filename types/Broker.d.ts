@@ -1,7 +1,7 @@
-import { Queue, Consumer, queueOptions, onMessage, consumeOptions, deleteQueueOptions } from "./Queue.js";
+import { Queue, Consumer, queueOptions, onMessage, consumeOptions, deleteQueueOptions, QueueState } from "./Queue.js";
 import { Shovel, ShovelDestination, shovelOptions } from "./Shovel.js";
 import { Message, MessageProperties } from "./Message.js";
-import { Exchange, exchangeType, Binding, exchangeOptions, bindingOptions } from "./Exchange.js";
+import { Exchange, exchangeType, Binding, exchangeOptions, bindingOptions, ExchangeState } from "./Exchange.js";
 
 type subscribeOptions = {
   /** defaults to true, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down */
@@ -47,6 +47,11 @@ interface BrokerShovelSource {
   consumerTag?: string;
 }
 
+export interface BrokerState {
+  exchanges?: ExchangeState[];
+  queues?: QueueState[];
+}
+
 export function Broker(owner?: any): Broker;
 export class Broker {
   constructor(owner?: any);
@@ -83,8 +88,16 @@ export class Broker {
   getConsumer(consumerTag: string): Consumer;
   stop(): void;
   close(): void;
-  getState(onlyWithContent?: boolean): any;
-  recover(state: any): Broker;
+  /**
+   * Get broker state with durable entities
+   */
+  getState(): BrokerState;
+  /**
+   * Get broker state with durable entities
+   * @param onlyWithContent [boolean] only return state if any durable exchanges or queues
+   */
+  getState(onlyWithContent: boolean): BrokerState | undefined;
+  recover(state: BrokerState): Broker;
   publish(exchangeName: string, routingKey: string, content?: any, options?: MessageProperties): number;
   get(queueName: string, { noAck }?: {
     noAck: boolean;

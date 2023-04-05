@@ -1,4 +1,4 @@
-import { Message, MessageFields, MessageProperties } from './Message.js';
+import { Message, MessageFields, MessageProperties, MessageMessage } from './Message.js';
 
 type onMessage = (
   routingKey: string,
@@ -30,6 +30,12 @@ type deleteQueueOptions = {
   ifEmpty?: boolean;
 }
 
+export interface QueueState {
+  name: string;
+  options: queueOptions;
+  messages?: MessageMessage[];
+}
+
 export interface Queue {
   name: string;
   options: queueOptions;
@@ -56,7 +62,7 @@ export interface Queue {
   on(eventName: string, handler: CallableFunction): Consumer;
   off(eventName: string, handler: CallableFunction): Consumer;
   purge(): number;
-  getState(): any;
+  getState(): QueueState;
   recover(state: any): number | Queue;
   delete(options?: deleteQueueOptions): {
     messageCount: number;

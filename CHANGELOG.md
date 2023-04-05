@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 7.1.4
+
+- type declare broker state from `getState()`
+
 # 7.1.3
 
 - no need to type declare that a function can return undefined, prevents assigning a typed variable
