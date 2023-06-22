@@ -6,7 +6,7 @@ const kPending = Symbol.for('pending');
 const kOnConsumed = Symbol.for('onConsumed');
 
 function Message(fields, content, properties, onConsumed) {
-  this[kOnConsumed] = [null, onConsumed];
+  this[kOnConsumed] = [ null, onConsumed ];
   this[kPending] = false;
 
   const mproperties = {
@@ -18,7 +18,7 @@ function Message(fields, content, properties, onConsumed) {
     mproperties.ttl = timestamp + parseInt(mproperties.expiration);
   }
 
-  this.fields = {...fields, consumerTag: undefined};
+  this.fields = { ...fields, consumerTag: undefined };
   this.content = content;
   this.properties = mproperties;
 }
@@ -29,7 +29,7 @@ Object.defineProperty(Message.prototype, 'pending', {
   },
 });
 
-Message.prototype._consume = function consume({consumerTag}, consumedCb) {
+Message.prototype._consume = function consume({ consumerTag }, consumedCb) {
   this[kPending] = true;
   this.fields.consumerTag = consumerTag;
   this[kOnConsumed][0] = consumedCb;

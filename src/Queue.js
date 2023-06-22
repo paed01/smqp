@@ -1,7 +1,7 @@
-import {generateId, sortByPriority} from './shared.js';
-import {Message} from './Message.js';
+import { generateId, sortByPriority } from './shared.js';
+import { Message } from './Message.js';
 
-export {Queue, Consumer};
+export { Queue, Consumer };
 
 const kConsumers = Symbol.for('consumers');
 const kConsuming = Symbol.for('consuming');
@@ -16,7 +16,7 @@ function Queue(name, options, eventEmitter) {
   if (!name) name = `smq.qname-${generateId()}`;
   this.name = name;
 
-  this.options = {autoDelete: true, ...options};
+  this.options = { autoDelete: true, ...options };
 
   this.messages = [];
   this.events = eventEmitter;
@@ -64,7 +64,7 @@ Queue.prototype.queueMessage = function queueMessage(fields, content, properties
   if (this[kStopped]) return;
 
   const messageTtl = this.options.messageTtl;
-  const messageProperties = {...properties};
+  const messageProperties = { ...properties };
   if (messageTtl && !('expiration' in messageProperties)) {
     messageProperties.expiration = messageTtl;
   }
@@ -156,8 +156,8 @@ Queue.prototype.assertConsumer = function assertConsumer(onMessage, consumeOptio
   return this.consume(onMessage, consumeOptions, owner);
 };
 
-Queue.prototype.get = function getMessage({noAck, consumerTag} = {}) {
-  const message = this._consumeMessages(1, {noAck, consumerTag})[0];
+Queue.prototype.get = function getMessage({ noAck, consumerTag } = {}) {
+  const message = this._consumeMessages(1, { noAck, consumerTag })[0];
   if (!message) return;
   if (noAck) this._dequeueMessage(message);
 
@@ -220,7 +220,7 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
     case 'nack': {
       if (requeue) {
         this[kAvailableCount]++;
-        messages.splice(msgIdx, 0, new Message({...message.fields, redelivered: true}, message.content, message.properties, this[kOnConsumed]));
+        messages.splice(msgIdx, 0, new Message({ ...message.fields, redelivered: true }, message.content, message.properties, this[kOnConsumed]));
       } else {
         deadLetterExchange = this.options.deadLetterExchange;
       }
@@ -236,12 +236,12 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
   if (!pendingLength) this._consumeNext();
 
   if (!requeue && message.properties.confirm) {
-    this.emit('message.consumed.' + operation, {operation, message: {...message}});
+    this.emit(`message.consumed.${operation}`, { operation, message: { ...message } });
   }
 
   if (deadLetterExchange) {
     const deadLetterRoutingKey = this.options.deadLetterRoutingKey;
-    const deadMessage = new Message(message.fields, message.content, {...message.properties, expiration: undefined});
+    const deadMessage = new Message(message.fields, message.content, { ...message.properties, expiration: undefined });
     if (deadLetterRoutingKey) deadMessage.fields.routingKey = deadLetterRoutingKey;
 
     this.emit('dead-letter', {
@@ -350,7 +350,7 @@ Queue.prototype.off = function off(eventName, handler) {
 };
 
 Queue.prototype.purge = function purge() {
-  const toDelete = this.messages.filter(({pending}) => !pending);
+  const toDelete = this.messages.filter(({ pending }) => !pending);
   this[kAvailableCount] = 0;
 
   for (const msg of toDelete) {
@@ -373,7 +373,7 @@ Queue.prototype.getState = function getState() {
   const msgs = this.messages;
   const state = {
     name: this.name,
-    options: {...this.options},
+    options: { ...this.options },
   };
   if (msgs.length) {
     try {
@@ -410,9 +410,9 @@ Queue.prototype.recover = function recover(state) {
   if (!state.messages) return this;
 
   const onConsumed = this[kOnConsumed];
-  for (const {fields, content, properties} of state.messages) {
+  for (const { fields, content, properties } of state.messages) {
     if (properties.persistent === false) continue;
-    const msg = new Message({...fields, redelivered: true}, content, properties, onConsumed);
+    const msg = new Message({ ...fields, redelivered: true }, content, properties, onConsumed);
     this.messages.push(msg);
   }
   this[kAvailableCount] = this.messages.length;
@@ -424,7 +424,7 @@ Queue.prototype.recover = function recover(state) {
   return this;
 };
 
-Queue.prototype.delete = function deleteQueue({ifUnused, ifEmpty} = {}) {
+Queue.prototype.delete = function deleteQueue({ ifUnused, ifEmpty } = {}) {
   const consumers = this[kConsumers];
   if (ifUnused && consumers.length) return;
   const messages = this.messages;
@@ -439,7 +439,7 @@ Queue.prototype.delete = function deleteQueue({ifUnused, ifEmpty} = {}) {
   messages.splice(0);
 
   this.emit('delete', this);
-  return {messageCount};
+  return { messageCount };
 };
 
 Queue.prototype.close = function close() {
@@ -465,8 +465,8 @@ Queue.prototype._getCapacity = function getCapacity() {
 function Consumer(queue, onMessage, options, owner, eventEmitter) {
   if (typeof onMessage !== 'function') throw new Error('message callback is required and must be a function');
 
-  this.options = {prefetch: 1, priority: 0, noAck: false, ...options};
-  if (!this.options.consumerTag) this.options.consumerTag = 'smq.ctag-' + generateId();
+  this.options = { prefetch: 1, priority: 0, noAck: false, ...options };
+  if (!this.options.consumerTag) this.options.consumerTag = `smq.ctag-${generateId()}`;
 
   this.queue = queue;
   this.onMessage = onMessage;
@@ -476,7 +476,7 @@ function Consumer(queue, onMessage, options, owner, eventEmitter) {
   this[kStopped] = false;
   this[kConsuming] = false;
 
-  this[kInternalQueue] = new Queue(this.options.consumerTag + '-q', {
+  this[kInternalQueue] = new Queue(`${this.options.consumerTag}-q`, {
     autoDelete: false,
     maxLength: this.options.prefetch,
   }, new ConsumerQueueEvents(this));

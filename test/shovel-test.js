@@ -616,6 +616,57 @@ describe('Shovel', () => {
 
       expect(messages).to.have.length(0);
     });
+
+    it('conveys mandatory message even if destination exchange has no bindings', () => {
+      const broker1 = new Broker();
+      broker1.assertExchange('source-events', 'topic');
+
+      const broker2 = new Broker();
+      broker2.assertExchange('dest-events', 'topic');
+
+      const messages = [];
+      broker2.on('return', (message) => messages.push(message));
+
+      Shovel('my-shovel', {
+        broker: broker1,
+        exchange: 'source-events',
+      }, {
+        broker: broker2,
+        exchange: 'dest-events',
+        publishProperties: { destProp: true },
+      });
+
+      broker1.publish('source-events', 'test.1', 'snow', { mandatory: true });
+
+      expect(messages).to.have.length(1);
+    });
+
+    it('handles mandatory message with onMessage handler regardless of destination bindings', () => {
+      const broker1 = new Broker();
+      broker1.assertExchange('source-events', 'topic');
+
+      const broker2 = new Broker();
+      broker2.assertExchange('dest-events', 'topic');
+
+      const messages = [];
+      Shovel('my-shovel', {
+        broker: broker1,
+        exchange: 'source-events',
+      }, {
+        broker: broker2,
+        exchange: 'dest-events',
+        publishProperties: { mandatory: false },
+      }, {
+        cloneMessage(msg) {
+          messages.push(msg);
+          return msg;
+        },
+      });
+
+      broker1.publish('source-events', 'test.1', 'snow', { mandatory: true });
+
+      expect(messages).to.have.length(1);
+    });
   });
 
   describe('broker', () => {

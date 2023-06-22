@@ -1,4 +1,4 @@
-import {Queue} from '../../src/Queue.js';
+import { Queue } from '../../src/Queue.js';
 
 describe('Consumer', () => {
   describe('internal queue', () => {
@@ -6,7 +6,7 @@ describe('Consumer', () => {
       const queue = new Queue();
 
       const messages = [];
-      const consumer = queue.consume(onMessage, {consumerTag: 'test-tag'});
+      const consumer = queue.consume(onMessage, { consumerTag: 'test-tag' });
 
       queue.queueMessage({});
       queue.queueMessage({});
@@ -32,7 +32,7 @@ describe('Consumer', () => {
       const queue = new Queue();
 
       const messages = [];
-      const consumer = queue.consume(onMessage, {consumerTag: 'test-tag', noAck: true});
+      const consumer = queue.consume(onMessage, { consumerTag: 'test-tag', noAck: true });
 
       queue.queueMessage({});
       queue.queueMessage({});
@@ -49,7 +49,7 @@ describe('Consumer', () => {
       const queue = new Queue();
 
       const messages = [];
-      const consumer = queue.consume(onMessage, {consumerTag: 'test-tag', prefetch: 10});
+      const consumer = queue.consume(onMessage, { consumerTag: 'test-tag', prefetch: 10 });
 
       queue.queueMessage({});
       queue.queueMessage({});
@@ -75,7 +75,7 @@ describe('Consumer', () => {
       const queue = new Queue();
 
       const messages = [];
-      const consumer = queue.consume(onMessage, {consumerTag: 'test-tag'});
+      const consumer = queue.consume(onMessage, { consumerTag: 'test-tag' });
 
       queue.queueMessage({});
 
@@ -95,7 +95,7 @@ describe('Consumer', () => {
       const queue = new Queue();
 
       const messages = [];
-      const consumer = queue.consume(onMessage, {consumerTag: 'test-tag'});
+      const consumer = queue.consume(onMessage, { consumerTag: 'test-tag' });
 
       queue.queueMessage({});
 

@@ -1,5 +1,6 @@
-import {Broker} from '../src/index.js';
-import ck from 'chronokinesis';
+import * as ck from 'chronokinesis';
+
+import { Broker } from '../src/index.js';
 
 describe('Confirm messages with confirm property', () => {
   after(ck.reset);
@@ -15,7 +16,7 @@ describe('Confirm messages with confirm property', () => {
         done();
       });
 
-      broker.sendToQueue('event-q', 'MSG', {confirm: true, myProp: 1});
+      broker.sendToQueue('event-q', 'MSG', { confirm: true, myProp: 1 });
 
       const message = broker.get('event-q');
       message.ack();
@@ -31,7 +32,7 @@ describe('Confirm messages with confirm property', () => {
         done();
       });
 
-      broker.sendToQueue('event-q', 'MSG', {confirm: 'my-confirm-id', myProp: 1});
+      broker.sendToQueue('event-q', 'MSG', { confirm: 'my-confirm-id', myProp: 1 });
 
       const message = broker.get('event-q');
       message.nack(false, false);
@@ -47,7 +48,7 @@ describe('Confirm messages with confirm property', () => {
         done();
       });
 
-      broker.sendToQueue('event-q', 'MSG', {confirm: 'my-confirm-id', myProp: 1});
+      broker.sendToQueue('event-q', 'MSG', { confirm: 'my-confirm-id', myProp: 1 });
 
       const message = broker.get('event-q');
       message.reject(false);
@@ -63,7 +64,7 @@ describe('Confirm messages with confirm property', () => {
         events.push(event);
       });
 
-      broker.sendToQueue('event-q', 'MSG', {confirm: true});
+      broker.sendToQueue('event-q', 'MSG', { confirm: true });
 
       let message = broker.get('event-q');
       message.nack(false, true);
@@ -87,8 +88,8 @@ describe('Confirm messages with confirm property', () => {
         events.push(event);
       });
 
-      broker.sendToQueue('event-q', 'MSG1', {confirm: true});
-      broker.sendToQueue('event-q', 'MSG2', {confirm: true});
+      broker.sendToQueue('event-q', 'MSG1', { confirm: true });
+      broker.sendToQueue('event-q', 'MSG2', { confirm: true });
 
       const message1 = broker.get('event-q');
       const message2 = broker.get('event-q');
@@ -116,8 +117,8 @@ describe('Confirm messages with confirm property', () => {
         events.push(event);
       });
 
-      broker.sendToQueue('event-q', 'MSG1', {confirm: true});
-      broker.sendToQueue('event-q', 'MSG2', {confirm: true});
+      broker.sendToQueue('event-q', 'MSG1', { confirm: true });
+      broker.sendToQueue('event-q', 'MSG2', { confirm: true });
 
       const message1 = broker.get('event-q');
       const message2 = broker.get('event-q');
@@ -134,7 +135,7 @@ describe('Confirm messages with confirm property', () => {
 
     it('emits nack event when message has timed out', () => {
       const broker = Broker();
-      broker.assertQueue('event-q', {messageTtl: 200});
+      broker.assertQueue('event-q', { messageTtl: 200 });
 
       const events = [];
 
@@ -142,7 +143,7 @@ describe('Confirm messages with confirm property', () => {
         events.push(event);
       });
 
-      broker.sendToQueue('event-q', 'MSG', {confirm: true});
+      broker.sendToQueue('event-q', 'MSG', { confirm: true });
 
       ck.travel(Date.now() + 400);
 
@@ -184,7 +185,7 @@ describe('Confirm messages with confirm property', () => {
         done();
       });
 
-      broker.publish('event', 'test.1', 'MSG', {confirm: true});
+      broker.publish('event', 'test.1', 'MSG', { confirm: true });
     });
 
     it('topic exchange emits undelivered event when message was undelivered', (done) => {
@@ -196,7 +197,7 @@ describe('Confirm messages with confirm property', () => {
         done();
       });
 
-      broker.publish('event', 'test.1', 'MSG', {confirm: true});
+      broker.publish('event', 'test.1', 'MSG', { confirm: true });
     });
 
     it('topic exchange emits no undelivered event if not confirm', () => {
@@ -238,7 +239,7 @@ describe('Confirm messages with confirm property', () => {
         done();
       });
 
-      broker.publish('event', 'test.1', 'MSG', {confirm: true});
+      broker.publish('event', 'test.1', 'MSG', { confirm: true });
 
       const message = broker.get('event-q');
       message.ack();

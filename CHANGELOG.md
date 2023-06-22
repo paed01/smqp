@@ -1,6 +1,12 @@
 Changelog
 =========
 
+# 8.0.0
+
+- shovel ignores shoveling if destination exchange lacks bindings, could be breaking if cloneMessage function option was used to make things happen
+- abide to new lint rules
+- bump all dev dependencies
+
 # 7.1.4
 
 - type declare broker state from `getState()`

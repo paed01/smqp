@@ -1,5 +1,5 @@
-import {Broker} from '../src/index.js';
-import {Message} from '../src/Message.js';
+import { Broker } from '../src/index.js';
+import { Message } from '../src/Message.js';
 
 const deliveryQueueSymbol = Symbol.for('deliveryQueue');
 
@@ -70,12 +70,12 @@ describe('exchange', () => {
       broker.publish('test', 'test.2.1');
       broker.publish('test', 'test.2.2');
 
-      expect(messages1.map(({fields}) => fields.routingKey)).to.eql([
+      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql([
         'test.1.1',
         'test.2.1',
       ]);
 
-      expect(messages2.map(({fields}) => fields.routingKey)).to.eql([
+      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql([
         'test.1.2',
         'test.2.2',
       ]);
@@ -143,14 +143,14 @@ describe('exchange', () => {
       broker.publish('event', 'test.2.1');
       broker.publish('event', 'test.2.2');
 
-      expect(messages1.map(({fields}) => fields.routingKey)).to.eql([
+      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql([
         'test.1.1',
         'test.1.2',
         'test.2.1',
         'test.2.2',
       ]);
 
-      expect(messages2.map(({fields}) => fields.routingKey)).to.eql([
+      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql([
         'test.1.1',
         'test.1.2',
         'test.2.1',
@@ -208,12 +208,12 @@ describe('exchange', () => {
       function assertMessages(key, message) {
         if (key !== 'done') return message.ack();
 
-        expect(messages1.map(({fields}) => fields.routingKey)).to.eql([
+        expect(messages1.map(({ fields }) => fields.routingKey)).to.eql([
           'test.1',
           'test.2',
         ]);
 
-        expect(messages2.map(({fields}) => fields.routingKey)).to.eql([
+        expect(messages2.map(({ fields }) => fields.routingKey)).to.eql([
           'test.1',
           'test.2',
         ]);
@@ -227,7 +227,7 @@ describe('exchange', () => {
     it('removes exchange when number of bindings drops to zero', () => {
       const broker = Broker();
 
-      broker.assertExchange('test', 'topic', {autoDelete: true});
+      broker.assertExchange('test', 'topic', { autoDelete: true });
       broker.assertQueue('test1');
       broker.assertQueue('test2');
 
@@ -243,7 +243,7 @@ describe('exchange', () => {
     it('removes exchange if deleted queue results in number of bindings drop to zero', () => {
       const broker = Broker();
 
-      broker.assertExchange('test', 'topic', {autoDelete: true});
+      broker.assertExchange('test', 'topic', { autoDelete: true });
       broker.assertQueue('test1');
 
       broker.bindQueue('test1', 'test', 'test.*');
@@ -257,7 +257,7 @@ describe('exchange', () => {
     it('falsey keeps exchange when number of bindings drops to zero', () => {
       const broker = Broker();
 
-      broker.assertExchange('test', 'topic', {autoDelete: false});
+      broker.assertExchange('test', 'topic', { autoDelete: false });
       broker.assertQueue('test1');
       broker.assertQueue('test2');
 
@@ -275,7 +275,7 @@ describe('exchange', () => {
     it('falsey doesn´t recover exchange', () => {
       const broker1 = Broker();
 
-      broker1.assertExchange('test', 'topic', {durable: false});
+      broker1.assertExchange('test', 'topic', { durable: false });
 
       const broker2 = Broker().recover(broker1.getState());
 
@@ -286,8 +286,8 @@ describe('exchange', () => {
   describe('getState()', () => {
     it('onlyWithContentFlag only returns exchange with undelivered messages', () => {
       const broker = Broker();
-      const exchange = broker.assertExchange('test', 'topic', {durable: true});
-      broker.assertQueue('test-q', {durable: true});
+      const exchange = broker.assertExchange('test', 'topic', { durable: true });
+      broker.assertQueue('test-q', { durable: true });
       broker.sendToQueue('test-q', {});
 
       expect(broker.getState().exchanges).to.have.length(1);
@@ -303,7 +303,7 @@ describe('exchange', () => {
   describe('unbindQueueByName(queueName)', () => {
     it('unbinds queue from exchange', () => {
       const broker = Broker();
-      const exchange = broker.assertExchange('event', 'topic', {autoDelete: true});
+      const exchange = broker.assertExchange('event', 'topic', { autoDelete: true });
 
       const consumer = broker.subscribeTmp('event', 'event.#', () => {});
 
@@ -318,7 +318,7 @@ describe('exchange', () => {
 
     it('ignored if queue not in bound to exchange', () => {
       const broker = Broker();
-      const exchange = broker.assertExchange('event', 'topic', {autoDelete: true});
+      const exchange = broker.assertExchange('event', 'topic', { autoDelete: true });
 
       broker.assertQueue('event-q');
       broker.subscribe('event', 'event-q', 'event.#', () => {});

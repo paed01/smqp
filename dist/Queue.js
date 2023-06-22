@@ -207,7 +207,7 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
   const pendingLength = pending && pending.length;
   if (!pendingLength) this._consumeNext();
   if (!requeue && message.properties.confirm) {
-    this.emit('message.consumed.' + operation, {
+    this.emit(`message.consumed.${operation}`, {
       operation,
       message: {
         ...message
@@ -420,7 +420,7 @@ function Consumer(queue, onMessage, options, owner, eventEmitter) {
     noAck: false,
     ...options
   };
-  if (!this.options.consumerTag) this.options.consumerTag = 'smq.ctag-' + (0, _shared.generateId)();
+  if (!this.options.consumerTag) this.options.consumerTag = `smq.ctag-${(0, _shared.generateId)()}`;
   this.queue = queue;
   this.onMessage = onMessage;
   this.owner = owner;
@@ -428,7 +428,7 @@ function Consumer(queue, onMessage, options, owner, eventEmitter) {
   this[kIsReady] = true;
   this[kStopped] = false;
   this[kConsuming] = false;
-  this[kInternalQueue] = new Queue(this.options.consumerTag + '-q', {
+  this[kInternalQueue] = new Queue(`${this.options.consumerTag}-q`, {
     autoDelete: false,
     maxLength: this.options.prefetch
   }, new ConsumerQueueEvents(this));

@@ -1,4 +1,4 @@
-import {Broker} from '../src/index.js';
+import { Broker } from '../src/index.js';
 
 describe('consumer', () => {
   describe('noAck', () => {
@@ -8,14 +8,14 @@ describe('consumer', () => {
       broker.assertExchange('test', 'topic');
 
       broker.subscribe('test', 'test.#', 'persist', onMessageAck);
-      broker.subscribeTmp('test', '#', onMessage, {noAck: true});
+      broker.subscribeTmp('test', '#', onMessage, { noAck: true });
 
       const ackMessages = [];
       const messages = [];
 
-      broker.publish('test', 'tst', {msg: 1});
-      broker.publish('test', 'test.1', {msg: 2});
-      broker.publish('test', 'test.2', {msg: 3});
+      broker.publish('test', 'tst', { msg: 1 });
+      broker.publish('test', 'test.1', { msg: 2 });
+      broker.publish('test', 'test.2', { msg: 3 });
 
       expect(messages).to.have.length(3);
       expect(messages[0].fields).to.have.property('routingKey', 'tst');
@@ -38,7 +38,7 @@ describe('consumer', () => {
       const broker = Broker();
 
       const queue = broker.assertQueue('event-q');
-      broker.consume(queue.name, onMessage, {noAck: true});
+      broker.consume(queue.name, onMessage, { noAck: true });
 
       queue.queueMessage('test');
 
@@ -55,7 +55,7 @@ describe('consumer', () => {
       const broker = Broker();
 
       const queue = broker.assertQueue('event-q');
-      const consumer = broker.consume(queue.name, onMessage, {noAck: true});
+      const consumer = broker.consume(queue.name, onMessage, { noAck: true });
 
       queue.queueMessage('test');
 
@@ -75,7 +75,7 @@ describe('consumer', () => {
       const broker = Broker();
 
       const queue = broker.assertQueue('event-q');
-      const consumer = broker.consume(queue.name, onMessage, {noAck: true, consumerTag: '_test-tag'});
+      const consumer = broker.consume(queue.name, onMessage, { noAck: true, consumerTag: '_test-tag' });
 
       queue.queueMessage('test');
 
@@ -95,7 +95,7 @@ describe('consumer', () => {
       const broker = Broker();
 
       const queue = broker.assertQueue('event-q');
-      const consumer = broker.consume(queue.name, onMessage, {noAck: true, consumerTag: '_test-tag'});
+      const consumer = broker.consume(queue.name, onMessage, { noAck: true, consumerTag: '_test-tag' });
 
       queue.queueMessage('test');
 
@@ -123,12 +123,12 @@ describe('consumer', () => {
       broker.sendToQueue('test', 'test.2.2');
 
       const messages = [];
-      broker.subscribe('test', 'test.#', 'test', onMessage, {prefetch: 2});
+      broker.subscribe('test', 'test.#', 'test', onMessage, { prefetch: 2 });
 
       broker.publish('test', 'test.message', 'test.1.3');
 
       expect(messages).to.have.length(5);
-      expect(messages.map(({content}) => content)).to.eql(['test.1.1', 'test.2.1', 'test.1.2', 'test.2.2', 'test.1.3']);
+      expect(messages.map(({ content }) => content)).to.eql([ 'test.1.1', 'test.2.1', 'test.1.2', 'test.2.2', 'test.1.3' ]);
 
       function onMessage(_, message) {
         messages.push(message);
@@ -145,17 +145,17 @@ describe('consumer', () => {
       broker.assertQueue('test');
 
       const messages = [];
-      broker.subscribe('test', 'test.#', 'test-q', onMessage, {prefetch: 2});
+      broker.subscribe('test', 'test.#', 'test-q', onMessage, { prefetch: 2 });
 
-      broker.publish('test', 'test.1.1', null, {correlationId: 1});
-      broker.publish('test', 'test.2.1', null, {correlationId: 1});
-      broker.publish('test', 'test.1.2', null, {correlationId: 2});
-      broker.publish('test', 'test.2.2', null, {correlationId: 2});
-      broker.publish('test', 'test.1.3', null, {correlationId: 3});
+      broker.publish('test', 'test.1.1', null, { correlationId: 1 });
+      broker.publish('test', 'test.2.1', null, { correlationId: 1 });
+      broker.publish('test', 'test.1.2', null, { correlationId: 2 });
+      broker.publish('test', 'test.2.2', null, { correlationId: 2 });
+      broker.publish('test', 'test.1.3', null, { correlationId: 3 });
 
       function cb() {
         expect(messages).to.have.length(5);
-        expect(messages.map(({fields}) => fields.routingKey)).to.eql(['test.1.1', 'test.2.1', 'test.1.2', 'test.2.2', 'test.1.3']);
+        expect(messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1.1', 'test.2.1', 'test.1.2', 'test.2.2', 'test.1.3' ]);
         done();
       }
 
@@ -179,15 +179,15 @@ describe('consumer', () => {
       const consumer = broker.subscribe('test', 'test.#', 'test-q', onMessage);
       consumer.prefetch(2);
 
-      broker.publish('test', 'test.1.1', null, {correlationId: 1});
-      broker.publish('test', 'test.2.1', null, {correlationId: 1});
-      broker.publish('test', 'test.1.2', null, {correlationId: 2});
-      broker.publish('test', 'test.2.2', null, {correlationId: 2});
-      broker.publish('test', 'test.1.3', null, {correlationId: 3});
+      broker.publish('test', 'test.1.1', null, { correlationId: 1 });
+      broker.publish('test', 'test.2.1', null, { correlationId: 1 });
+      broker.publish('test', 'test.1.2', null, { correlationId: 2 });
+      broker.publish('test', 'test.2.2', null, { correlationId: 2 });
+      broker.publish('test', 'test.1.3', null, { correlationId: 3 });
 
       function cb() {
         expect(messages).to.have.length(5);
-        expect(messages.map(({fields}) => fields.routingKey)).to.eql(['test.1.1', 'test.2.1', 'test.1.2', 'test.2.2', 'test.1.3']);
+        expect(messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1.1', 'test.2.1', 'test.1.2', 'test.2.2', 'test.1.3' ]);
         done();
       }
 
@@ -213,7 +213,7 @@ describe('consumer', () => {
       broker.publish('event', 'event.2');
 
       const messages = [];
-      broker.consume('event-q', onMessage, {prefetch: 10, consumerTag: 'test-prefetch'});
+      broker.consume('event-q', onMessage, { prefetch: 10, consumerTag: 'test-prefetch' });
 
       expect(messages).to.eql([
         'event.1',
@@ -245,7 +245,7 @@ describe('consumer', () => {
       broker.sendToQueue('event-q', {});
       broker.sendToQueue('event-q', {});
 
-      const consumer = queue.consume(() => {}, {consumerTag: 'test-tag', prefetch: 2});
+      const consumer = queue.consume(() => {}, { consumerTag: 'test-tag', prefetch: 2 });
       consumer.ackAll();
 
       expect(queue.messageCount).to.equal(2);
@@ -262,7 +262,7 @@ describe('consumer', () => {
       broker.sendToQueue('event-q', {});
       broker.sendToQueue('event-q', {});
 
-      const consumer = queue.consume(() => {}, {consumerTag: 'test-tag', prefetch: 2});
+      const consumer = queue.consume(() => {}, { consumerTag: 'test-tag', prefetch: 2 });
       consumer.nackAll(false);
 
       expect(queue.messageCount).to.equal(2);
@@ -277,7 +277,7 @@ describe('consumer', () => {
       broker.sendToQueue('event-q', {});
       broker.sendToQueue('event-q', {});
 
-      const consumer = queue.consume(() => {}, {consumerTag: 'test-tag', prefetch: 2});
+      const consumer = queue.consume(() => {}, { consumerTag: 'test-tag', prefetch: 2 });
       consumer.nackAll(true);
 
       expect(queue.messageCount).to.equal(4);

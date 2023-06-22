@@ -15,7 +15,7 @@ const kDeliveryQueue = Symbol.for('deliveryQueue');
 function Exchange(name, type = 'topic', options) {
   if (!name) throw new Error('Exchange name is required');
   if (['topic', 'direct'].indexOf(type) === -1) throw Error('Exchange type must be one of topic or direct');
-  const eventExchange = EventExchange(name + '__events');
+  const eventExchange = new EventExchange(`${name}__events`);
   return new ExchangeBase(name, type, options, eventExchange);
 }
 function EventExchange(name) {

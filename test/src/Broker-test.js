@@ -1,10 +1,10 @@
-import {Broker} from '../../src/Broker.js';
+import { Broker } from '../../src/Broker.js';
 
 describe('Broker', () => {
   describe('coverage', () => {
     it('cancels consumer once', () => {
       const broker = Broker();
-      const queue = broker.assertQueue('test-q', {autoDelete: false});
+      const queue = broker.assertQueue('test-q', { autoDelete: false });
       const consumer = broker.consume('test-q', () => {});
 
       queue.emit('consumer.cancel', consumer);
@@ -22,9 +22,7 @@ describe('Broker', () => {
       const destination = new Broker();
       destination.assertExchange('event', 'topic');
 
-      const shovel = broker.createShovel('shovel-1', {
-        exchange: 'event',
-      }, {
+      const shovel = broker.createShovel('shovel-1', { exchange: 'event' }, {
         broker: destination,
         exchange: 'event',
       });

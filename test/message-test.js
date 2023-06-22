@@ -1,6 +1,7 @@
-import {Broker} from '../src/index.js';
-import {Message} from '../src/Message.js';
-import ck from 'chronokinesis';
+import * as ck from 'chronokinesis';
+
+import { Broker } from '../src/index.js';
+import { Message } from '../src/Message.js';
 
 describe('message', () => {
   after(ck.reset);
@@ -11,7 +12,7 @@ describe('message', () => {
     broker.assertExchange('event');
     const queue = broker.assertQueue('event-q');
     broker.bindQueue('event-q', 'event', '#');
-    broker.consume(queue.name, onMessage, {noAck: true, consumerTag: 'c-1'});
+    broker.consume(queue.name, onMessage, { noAck: true, consumerTag: 'c-1' });
 
     let msg;
 
@@ -33,13 +34,13 @@ describe('message', () => {
     const original = Broker();
 
     original.assertExchange('event');
-    const queue = original.assertQueue('event-q', {durable: true});
+    const queue = original.assertQueue('event-q', { durable: true });
     original.bindQueue('event-q', 'event', '#');
 
     ck.freeze();
     let msg1;
-    original.publish('event', 'test.1', {data: 1}, {expiration: 10000});
-    original.consume(queue.name, onMessage1, {consumerTag: 'c-1'});
+    original.publish('event', 'test.1', { data: 1 }, { expiration: 10000 });
+    original.consume(queue.name, onMessage1, { consumerTag: 'c-1' });
 
     const now = Date.now();
 
@@ -60,7 +61,7 @@ describe('message', () => {
     const broker = Broker().recover(state);
 
     let msg2;
-    broker.consume(queue.name, onMessage2, {consumerTag: 'c-2'});
+    broker.consume(queue.name, onMessage2, { consumerTag: 'c-2' });
 
     expect(msg2).to.be.ok;
     expect(msg2).to.have.property('fields').that.eql({
@@ -83,7 +84,7 @@ describe('message', () => {
   });
 
   it('new message without args sets fields consumer tag to undefined', () => {
-    expect(new Message()).to.have.property('fields').that.deep.equal({consumerTag: undefined});
+    expect(new Message()).to.have.property('fields').that.deep.equal({ consumerTag: undefined });
   });
 
   it('new message without args sets properties message id and timestamp', () => {

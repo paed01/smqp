@@ -1,5 +1,5 @@
 <!-- version -->
-# 7.1.4 API Reference
+# 8.0.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -347,6 +347,7 @@ Nack all outstanding messages.
 Shovel messages from exchange to another broker exchange.
 
 > NB! Shovels are not recovered, the source exchange and queue may be recoverable depending on how they were created.
+> Messages are ignored if the destination exchange lacks bound queues, to save cpu etc.
 
 Arguments:
 - `name`: mandatory name of shovel
@@ -360,9 +361,9 @@ Arguments:
   - `broker`: destination broker instance
   - `exchange`: destination exchange name, must be asserted into existance before shovel is created
   - `exchangeKey`: optional destination exchange key, defaults to original message's routing key
-  - `publishProperties`: optional object with properties to overwrite when shovelling messages, applied after `cloneMessage` function
+  - `publishProperties`: optional object with message properties to overwrite when shovelling messages, applied after `options.cloneMessage` function
 - `options`: Optional options object
-  - `cloneMessage`: clone message function called with shoveled message, should return new message
+  - `cloneMessage(message) => message`: clone message function called with shoveled message, must return new [message](#message), altough fields are ignored completely. Known to be used to clone the message content to make sure no references to the old message is traversed.
 
 Returns Shovel:
 - `name`: name of shovel
@@ -642,6 +643,7 @@ Cancel consumption and unsubscribe from queue
 ### `consumer.prefetch(numberOfMessages)`
 
 ## Message
+
 What it is all about - convey messages.
 
 **Properties**:
@@ -675,7 +677,6 @@ Reject message.
 ### `message.reject([requeue])`
 
 Same as `nack(false, true)`
-
 
 ## `getRoutingKeyPattern(pattern)`
 Test routing key pattern against routing key.

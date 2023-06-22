@@ -116,7 +116,7 @@ Shovel.prototype._messageHandler = function messageHandler(message) {
 
 Shovel.prototype._onShovelMessage = function onShovelMessage(routingKey, message) {
   const destinationExchange = this[kDestinationExchange];
-  if (!destinationExchange.bindingCount) return message.ack();
+  if (!destinationExchange.bindingCount && !message.properties.mandatory) return message.ack();
 
   const { content, properties } = this._messageHandler(message);
   const props = { ...properties, ...this.destination.publishProperties, 'source-exchange': this[kSourceExchange].name };

@@ -286,7 +286,7 @@ Broker.prototype._getExchangeState = function getExchangeState(onlyWithContent) 
 Broker.prototype.createQueue = function createQueue(queueName, options) {
   const self = this;
   if (self.getQueue(queueName)) throw new Error(`Queue named ${queueName} already exists`);
-  const queueEmitter = (0, _Exchange.EventExchange)(queueName + '__events');
+  const queueEmitter = new _Exchange.EventExchange(`${queueName}__events`);
   this[kEventHandler].listen(queueEmitter);
   const queue = new _Queue.Queue(queueName, options, queueEmitter);
   self[kEntities].queues.push(queue);
@@ -471,7 +471,7 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
           operation,
           message
         } = msg.content;
-        this.broker.events.publish('message.' + operation, message);
+        this.broker.events.publish(`message.${operation}`, message);
         break;
       }
     case 'shovel.close':

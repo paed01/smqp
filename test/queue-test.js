@@ -1,12 +1,12 @@
-import {Broker} from '../src/index.js';
+import { Broker } from '../src/index.js';
 
 describe('Broker queue', () => {
   describe('options', () => {
     it('durable autoDelete queue is deleted when last consumer is unsubscribed', () => {
       const broker = Broker();
 
-      const consumer1 = broker.subscribe('test', 'test.1', 'persist', onMessage1, {durable: true});
-      const consumer2 = broker.subscribe('test', 'test.2', 'persist', onMessage2, {durable: true});
+      const consumer1 = broker.subscribe('test', 'test.1', 'persist', onMessage1, { durable: true });
+      const consumer2 = broker.subscribe('test', 'test.2', 'persist', onMessage2, { durable: true });
 
       broker.sendToQueue('persist', 'test.1');
 
@@ -28,10 +28,10 @@ describe('Broker queue', () => {
     it('returns message from queue', () => {
       const broker = Broker();
       broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', { msg: 1 });
 
       const msg = broker.get('test-q');
-      expect(msg).to.have.property('content').that.eql({msg: 1});
+      expect(msg).to.have.property('content').that.eql({ msg: 1 });
     });
 
     it('returns falsey if no message', () => {
@@ -43,22 +43,22 @@ describe('Broker queue', () => {
     it('expects to be acked', () => {
       const broker = Broker();
       broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
 
       const msg = broker.get('test-q');
-      expect(msg).to.have.property('content').that.eql({msg: 1});
+      expect(msg).to.have.property('content').that.eql({ msg: 1 });
       expect(msg.pending).to.be.true;
     });
 
     it('noAck option acks message immediately and leaves the rest of the messages in the queue', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
 
-      const msg = broker.get('test-q', {noAck: true});
-      expect(msg).to.have.property('content').that.eql({msg: 1});
+      const msg = broker.get('test-q', { noAck: true });
+      expect(msg).to.have.property('content').that.eql({ msg: 1 });
       expect(msg.pending).to.be.true;
 
       expect(queue.messageCount).to.equal(1);
@@ -69,7 +69,7 @@ describe('Broker queue', () => {
     it('acks message', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', { msg: 1 });
       expect(queue.messageCount).to.equal(1);
 
       broker.ack(broker.get('test-q'));
@@ -80,9 +80,9 @@ describe('Broker queue', () => {
     it('with allUpTo = true acks all up to outstanding messages', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
-      broker.sendToQueue('test-q', {msg: 3});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
+      broker.sendToQueue('test-q', { msg: 3 });
       expect(queue.messageCount).to.equal(3);
 
       broker.get('test-q');
@@ -94,7 +94,7 @@ describe('Broker queue', () => {
     it('allUpTo = true with no more messages has no effect', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', { msg: 1 });
 
       broker.ack(broker.get('test-q'), true);
 
@@ -107,9 +107,9 @@ describe('Broker queue', () => {
       const broker = Broker();
       const queue1 = broker.assertQueue('test1-q');
       const queue2 = broker.assertQueue('test2-q');
-      broker.sendToQueue('test1-q', {msg: 1});
-      broker.sendToQueue('test1-q', {msg: 2});
-      broker.sendToQueue('test2-q', {msg: 3});
+      broker.sendToQueue('test1-q', { msg: 1 });
+      broker.sendToQueue('test1-q', { msg: 2 });
+      broker.sendToQueue('test2-q', { msg: 3 });
       expect(queue1.messageCount).to.equal(2);
       expect(queue2.messageCount).to.equal(1);
 
@@ -127,7 +127,7 @@ describe('Broker queue', () => {
     it('nacks and requeues message', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', { msg: 1 });
       expect(queue.messageCount).to.equal(1);
 
       broker.nack(broker.get('test-q'));
@@ -138,9 +138,9 @@ describe('Broker queue', () => {
     it('with allUpTo = true nacks and requeues all up to outstanding messages', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
-      broker.sendToQueue('test-q', {msg: 3});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
+      broker.sendToQueue('test-q', { msg: 3 });
       expect(queue.messageCount).to.equal(3);
 
       broker.get('test-q');
@@ -152,7 +152,7 @@ describe('Broker queue', () => {
     it('with falsey requeue dequeues message', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', { msg: 1 });
       expect(queue.messageCount).to.equal(1);
 
       broker.nack(broker.get('test-q'), false, false);
@@ -163,9 +163,9 @@ describe('Broker queue', () => {
     it('with allUpTo = true and no requeue nacks and requeues all up to outstanding messages', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
-      broker.sendToQueue('test-q', {msg: 3});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
+      broker.sendToQueue('test-q', { msg: 3 });
       expect(queue.messageCount).to.equal(3);
 
       broker.get('test-q');
@@ -180,9 +180,9 @@ describe('Broker queue', () => {
       const broker = Broker();
       const queue1 = broker.assertQueue('test1-q');
       const queue2 = broker.assertQueue('test2-q');
-      broker.sendToQueue('test1-q', {msg: 1});
-      broker.sendToQueue('test1-q', {msg: 2});
-      broker.sendToQueue('test2-q', {msg: 3});
+      broker.sendToQueue('test1-q', { msg: 1 });
+      broker.sendToQueue('test1-q', { msg: 2 });
+      broker.sendToQueue('test2-q', { msg: 3 });
       expect(queue1.messageCount).to.equal(2);
       expect(queue2.messageCount).to.equal(1);
 
@@ -199,9 +199,9 @@ describe('Broker queue', () => {
       const broker = Broker();
       const queue1 = broker.assertQueue('test1-q');
       const queue2 = broker.assertQueue('test2-q');
-      broker.sendToQueue('test1-q', {msg: 1});
-      broker.sendToQueue('test1-q', {msg: 2});
-      broker.sendToQueue('test2-q', {msg: 3});
+      broker.sendToQueue('test1-q', { msg: 1 });
+      broker.sendToQueue('test1-q', { msg: 2 });
+      broker.sendToQueue('test2-q', { msg: 3 });
       expect(queue1.messageCount).to.equal(2);
       expect(queue2.messageCount).to.equal(1);
 
@@ -219,7 +219,7 @@ describe('Broker queue', () => {
     it('nacks and requeues message', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', { msg: 1 });
       expect(queue.messageCount).to.equal(1);
 
       broker.reject(broker.get('test-q'));
@@ -230,7 +230,7 @@ describe('Broker queue', () => {
     it('with falsey requeue dequeues message', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
+      broker.sendToQueue('test-q', { msg: 1 });
       expect(queue.messageCount).to.equal(1);
 
       broker.reject(broker.get('test-q'), false, false);
@@ -243,28 +243,28 @@ describe('Broker queue', () => {
     it('sendToQueue() publish message on queue', () => {
       const broker = Broker();
 
-      broker.assertQueue('persist', {durable: true});
-      broker.sendToQueue('persist', {msg: 1});
-      broker.sendToQueue('persist', {msg: 2});
+      broker.assertQueue('persist', { durable: true });
+      broker.sendToQueue('persist', { msg: 1 });
+      broker.sendToQueue('persist', { msg: 2 });
 
       const queueState = broker.assertQueue('persist').getState();
 
       expect(queueState).to.have.property('messages').with.length(2);
-      expect(queueState.messages[0]).to.have.property('content').that.eql({msg: 1});
-      expect(queueState.messages[1]).to.have.property('content').that.eql({msg: 2});
+      expect(queueState.messages[0]).to.have.property('content').that.eql({ msg: 1 });
+      expect(queueState.messages[1]).to.have.property('content').that.eql({ msg: 2 });
     });
 
     it('message in durable queue is consumed', () => {
       const broker = Broker();
 
-      broker.assertQueue('persist', {durable: true});
-      broker.sendToQueue('persist', {msg: 1});
+      broker.assertQueue('persist', { durable: true });
+      broker.sendToQueue('persist', { msg: 1 });
 
       const messages = [];
       broker.consume('persist', onMessage);
 
       expect(messages).to.have.length(1);
-      expect(messages[0]).to.have.property('content').that.eql({msg: 1});
+      expect(messages[0]).to.have.property('content').that.eql({ msg: 1 });
 
       function onMessage(routingKey, message) {
         messages.push(message);
@@ -275,16 +275,16 @@ describe('Broker queue', () => {
     it('multiple messages in durable queue are consumed', () => {
       const broker = Broker();
 
-      broker.assertQueue('persist', {durable: true});
-      broker.sendToQueue('persist', {msg: 1});
-      broker.sendToQueue('persist', {msg: 2});
+      broker.assertQueue('persist', { durable: true });
+      broker.sendToQueue('persist', { msg: 1 });
+      broker.sendToQueue('persist', { msg: 2 });
 
       const messages = [];
-      broker.consume('persist', onMessage, {durable: true});
+      broker.consume('persist', onMessage, { durable: true });
 
       expect(messages).to.have.length(2);
-      expect(messages[0]).to.have.property('content').that.eql({msg: 1});
-      expect(messages[1]).to.have.property('content').that.eql({msg: 2});
+      expect(messages[0]).to.have.property('content').that.eql({ msg: 1 });
+      expect(messages[1]).to.have.property('content').that.eql({ msg: 2 });
 
       function onMessage(routingKey, message) {
         messages.push(message);
@@ -295,16 +295,16 @@ describe('Broker queue', () => {
     it('messages are consumed when sent to durable queue after consume', () => {
       const broker = Broker();
 
-      broker.assertQueue('persist', {durable: true});
-      broker.sendToQueue('persist', {msg: 1});
+      broker.assertQueue('persist', { durable: true });
+      broker.sendToQueue('persist', { msg: 1 });
 
       const messages = [];
 
-      broker.consume('persist', onMessage, {durable: true});
-      broker.sendToQueue('persist', {msg: 2});
+      broker.consume('persist', onMessage, { durable: true });
+      broker.sendToQueue('persist', { msg: 2 });
 
-      expect(messages[0]).to.have.property('content').that.eql({msg: 1});
-      expect(messages[1]).to.have.property('content').that.eql({msg: 2});
+      expect(messages[0]).to.have.property('content').that.eql({ msg: 1 });
+      expect(messages[1]).to.have.property('content').that.eql({ msg: 2 });
       expect(messages).to.have.length(2);
 
       function onMessage(routingKey, message) {
@@ -350,8 +350,8 @@ describe('Broker queue', () => {
       const broker = Broker();
 
       const queue = broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
 
       const messages = [];
 
@@ -373,8 +373,8 @@ describe('Broker queue', () => {
       const broker = Broker();
 
       broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
 
       broker.consume('test-q', onMessage);
 
@@ -391,13 +391,13 @@ describe('Broker queue', () => {
       const broker = Broker();
 
       broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
 
       broker.consume('test-q', onMessage);
       expect(broker.consumerCount).to.equal(1);
 
-      broker.deleteQueue('test-q', {ifUnused: true});
+      broker.deleteQueue('test-q', { ifUnused: true });
 
       expect(broker.getQueue('test-q')).to.be.ok;
 
@@ -411,10 +411,10 @@ describe('Broker queue', () => {
       const broker = Broker();
 
       broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
 
-      broker.deleteQueue('test-q', {ifEmpty: true});
+      broker.deleteQueue('test-q', { ifEmpty: true });
 
       expect(broker.getQueue('test-q')).to.be.ok;
 
@@ -427,8 +427,8 @@ describe('Broker queue', () => {
       const broker = Broker();
 
       const queue = broker.assertQueue('test-q');
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
       broker.consume('test-q', () => {});
 
       queue.delete();
@@ -446,11 +446,11 @@ describe('Broker queue', () => {
     it('maxLength = 0 evicts all messages', () => {
       const broker = Broker();
 
-      const queue = broker.assertQueue('test-q', {maxLength: 0});
+      const queue = broker.assertQueue('test-q', { maxLength: 0 });
 
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
-      broker.sendToQueue('test-q', {msg: 3});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
+      broker.sendToQueue('test-q', { msg: 3 });
 
       expect(queue.messageCount).to.equal(0);
     });
@@ -458,12 +458,12 @@ describe('Broker queue', () => {
     it('maxLength = 0 evicts all messages and leaves nothing to consumer', () => {
       const broker = Broker();
 
-      const queue = broker.assertQueue('test-q', {maxLength: 0});
+      const queue = broker.assertQueue('test-q', { maxLength: 0 });
       const messages = [];
       broker.consume('test-q', onMessage);
 
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
 
       expect(queue.messageCount).to.equal(0);
       expect(messages).to.have.length(0);
@@ -477,12 +477,12 @@ describe('Broker queue', () => {
     it('maxLength = 1 evicts old messages', () => {
       const broker = Broker();
 
-      const queue = broker.assertQueue('test-q', {maxLength: 1});
+      const queue = broker.assertQueue('test-q', { maxLength: 1 });
       const messages = [];
 
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
-      broker.sendToQueue('test-q', {msg: 3});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
+      broker.sendToQueue('test-q', { msg: 3 });
 
       expect(queue.messageCount).to.equal(1);
 
@@ -499,12 +499,12 @@ describe('Broker queue', () => {
     it('maxLength = 1 keeps unacked message', () => {
       const broker = Broker();
 
-      const queue = broker.assertQueue('test-q', {maxLength: 1});
+      const queue = broker.assertQueue('test-q', { maxLength: 1 });
       const messages = [];
 
-      broker.sendToQueue('test-q', {msg: 1});
-      broker.sendToQueue('test-q', {msg: 2});
-      broker.sendToQueue('test-q', {msg: 3});
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
+      broker.sendToQueue('test-q', { msg: 3 });
 
       expect(queue.messageCount).to.equal(1);
 
@@ -514,7 +514,7 @@ describe('Broker queue', () => {
       let msg = messages.pop();
       expect(msg.content.msg).to.equal(3);
 
-      broker.sendToQueue('test-q', {msg: 4});
+      broker.sendToQueue('test-q', { msg: 4 });
 
       expect(queue.messageCount).to.equal(1);
 
@@ -550,8 +550,8 @@ describe('Broker queue', () => {
 
     it('can be unbound from multiple exchanges', () => {
       const broker = Broker();
-      const topic = broker.assertExchange('topic', 'topic', {autoDelete: false});
-      const direct = broker.assertExchange('direct', 'direct', {autoDelete: true});
+      const topic = broker.assertExchange('topic', 'topic', { autoDelete: false });
+      const direct = broker.assertExchange('direct', 'direct', { autoDelete: true });
 
       const queue = broker.assertQueue('multi');
 
@@ -571,8 +571,8 @@ describe('Broker queue', () => {
 
     it('deleted queue is unbound from multiple exchanges', () => {
       const broker = Broker();
-      const topic = broker.assertExchange('topic', 'topic', {autoDelete: false});
-      const direct = broker.assertExchange('direct', 'direct', {autoDelete: true});
+      const topic = broker.assertExchange('topic', 'topic', { autoDelete: false });
+      const direct = broker.assertExchange('direct', 'direct', { autoDelete: true });
 
       const queue = broker.assertQueue('multi');
 
@@ -613,7 +613,7 @@ describe('Broker queue', () => {
 
     it('deleted queue is unbound from same exchange different pattern', () => {
       const broker = Broker();
-      const topic = broker.assertExchange('topic', 'topic', {autoDelete: false});
+      const topic = broker.assertExchange('topic', 'topic', { autoDelete: false });
 
       const queue = broker.assertQueue('multi');
 
@@ -770,7 +770,7 @@ describe('Broker queue', () => {
     it('returns first message in queue', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({ routingKey: 'test.1' });
 
       expect(queue.peek()).to.have.property('fields').with.property('routingKey', 'test.1');
     });
@@ -780,7 +780,7 @@ describe('Broker queue', () => {
     it('cancels consumer by tag', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      queue.consume(() => {}, {consumerTag: 'c-tag'});
+      queue.consume(() => {}, { consumerTag: 'c-tag' });
       expect(queue.consumerCount).to.equal(1);
 
       queue.cancel('c-tag');
@@ -791,7 +791,7 @@ describe('Broker queue', () => {
     it('keeps consumers if cancel unknown tag', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      queue.consume(() => {}, {consumerTag: 'c-tag'});
+      queue.consume(() => {}, { consumerTag: 'c-tag' });
       expect(queue.consumerCount).to.equal(1);
 
       queue.cancel('b-tag');
@@ -803,8 +803,8 @@ describe('Broker queue', () => {
       const broker = Broker();
       const queue = broker.assertQueue('event-q');
 
-      queue.consume(() => {}, {consumerTag: '_keep_tag'});
-      const consumer = queue.consume(() => {}, {consumerTag: '_test_tag'});
+      queue.consume(() => {}, { consumerTag: '_keep_tag' });
+      const consumer = queue.consume(() => {}, { consumerTag: '_test_tag' });
 
       expect(broker.consumerCount).to.equal(2);
 
@@ -820,8 +820,8 @@ describe('Broker queue', () => {
       const broker = Broker();
       const queue = broker.assertQueue('event-q');
 
-      queue.consume(() => {}, {consumerTag: '_keep_tag'});
-      const consumer = queue.consume(() => {}, {consumerTag: '_test_tag'});
+      queue.consume(() => {}, { consumerTag: '_keep_tag' });
+      const consumer = queue.consume(() => {}, { consumerTag: '_test_tag' });
 
       expect(broker.consumerCount).to.equal(2);
 
@@ -838,9 +838,9 @@ describe('Broker queue', () => {
 
     it('cancel consumer requeues messages', () => {
       const broker = Broker();
-      const queue = broker.assertQueue('event-q', {autoDelete: false});
+      const queue = broker.assertQueue('event-q', { autoDelete: false });
 
-      const consumer = queue.consume(() => {}, {consumerTag: '_test_tag', prefetch: 2});
+      const consumer = queue.consume(() => {}, { consumerTag: '_test_tag', prefetch: 2 });
 
       queue.queueMessage({}, 'MSG 1');
       queue.queueMessage({}, 'MSG 2');
@@ -858,9 +858,9 @@ describe('Broker queue', () => {
 
     it('consumer cancelled by self with falsy requeue evicts consumed messages', () => {
       const broker = Broker();
-      const queue = broker.assertQueue('event-q', {autoDelete: false});
+      const queue = broker.assertQueue('event-q', { autoDelete: false });
 
-      const consumer = queue.consume(() => {}, {consumerTag: '_test_tag', prefetch: 2});
+      const consumer = queue.consume(() => {}, { consumerTag: '_test_tag', prefetch: 2 });
 
       queue.queueMessage({}, 'MSG 1');
       queue.queueMessage({}, 'MSG 2');
@@ -882,9 +882,9 @@ describe('Broker queue', () => {
 
     it('consumer cancelled by self requeues messages', () => {
       const broker = Broker();
-      const queue = broker.assertQueue('event-q', {autoDelete: false});
+      const queue = broker.assertQueue('event-q', { autoDelete: false });
 
-      const consumer = queue.consume(() => {}, {consumerTag: '_test_tag', prefetch: 2});
+      const consumer = queue.consume(() => {}, { consumerTag: '_test_tag', prefetch: 2 });
 
       queue.queueMessage({}, 'MSG 1');
       queue.queueMessage({}, 'MSG 2');
@@ -902,9 +902,9 @@ describe('Broker queue', () => {
 
     it('consumer cancelled by self with falsy requeue evicts consumed messages', () => {
       const broker = Broker();
-      const queue = broker.assertQueue('event-q', {autoDelete: false});
+      const queue = broker.assertQueue('event-q', { autoDelete: false });
 
-      const consumer = queue.consume(() => {}, {consumerTag: '_test_tag', prefetch: 2});
+      const consumer = queue.consume(() => {}, { consumerTag: '_test_tag', prefetch: 2 });
 
       queue.queueMessage({}, 'MSG 1');
       queue.queueMessage({}, 'MSG 2');
@@ -930,8 +930,8 @@ describe('Broker queue', () => {
       const broker = Broker();
       const queue = broker.assertQueue('event-q');
 
-      queue.consume(() => {}, {consumerTag: '_keep_tag'});
-      queue.consume(() => {}, {consumerTag: '_test_tag'});
+      queue.consume(() => {}, { consumerTag: '_keep_tag' });
+      queue.consume(() => {}, { consumerTag: '_test_tag' });
 
       expect(broker.consumerCount).to.equal(2);
 
@@ -950,8 +950,8 @@ describe('Broker queue', () => {
       queue.queueMessage({}, 'MSG 1');
       queue.queueMessage({}, 'MSG 2');
 
-      queue.consume(() => {}, {consumerTag: '_keep_tag'});
-      queue.consume(() => {}, {consumerTag: '_test_tag'});
+      queue.consume(() => {}, { consumerTag: '_keep_tag' });
+      queue.consume(() => {}, { consumerTag: '_test_tag' });
 
       expect(broker.consumerCount).to.equal(2);
       expect(queue.messageCount).to.equal(2);
@@ -977,15 +977,15 @@ describe('Broker queue', () => {
     it('returns messages if any', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
-      queue.queueMessage({routingKey: 'test.1'});
+      queue.queueMessage({ routingKey: 'test.1' });
 
       expect(queue.getState()).to.have.property('messages').with.length(1);
     });
 
     it('onlyWithContent flag only returns queue with messages', () => {
       const broker = Broker();
-      const queue = broker.assertQueue('test-q', {durable: true});
-      queue.queueMessage({routingKey: 'test.1'});
+      const queue = broker.assertQueue('test-q', { durable: true });
+      queue.queueMessage({ routingKey: 'test.1' });
 
       expect(broker.getState().queues).to.be.ok;
       expect(broker.getState(true).queues).to.be.ok;
@@ -1000,8 +1000,8 @@ describe('Broker queue', () => {
   describe('recover()', () => {
     it('recover without state returns queue', () => {
       const broker = Broker();
-      const queue = broker.assertQueue('test-q', {durable: true});
-      queue.queueMessage({routingKey: 'test.1'});
+      const queue = broker.assertQueue('test-q', { durable: true });
+      queue.queueMessage({ routingKey: 'test.1' });
 
       expect(broker.getState().queues).to.be.ok;
       expect(broker.getState(true).queues).to.be.ok;

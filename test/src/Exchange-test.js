@@ -1,5 +1,5 @@
-import {Exchange, EventExchange} from '../../src/Exchange.js';
-import {Queue} from '../../src/Queue.js';
+import { Exchange, EventExchange } from '../../src/Exchange.js';
+import { Queue } from '../../src/Queue.js';
 
 describe('Exchange', () => {
   describe('ctor', () => {
@@ -82,12 +82,12 @@ describe('Exchange', () => {
       exchange.publish('test.2.1');
       exchange.publish('test.2.2');
 
-      expect(messages1.map(({fields}) => fields.routingKey)).to.eql([
+      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql([
         'test.1.1',
         'test.2.1',
       ]);
 
-      expect(messages2.map(({fields}) => fields.routingKey)).to.eql([
+      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql([
         'test.1.2',
         'test.2.2',
       ]);
@@ -153,14 +153,14 @@ describe('Exchange', () => {
       exchange.publish('test.2.1');
       exchange.publish('test.2.2');
 
-      expect(messages1.map(({fields}) => fields.routingKey)).to.eql([
+      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql([
         'test.1.1',
         'test.1.2',
         'test.2.1',
         'test.2.2',
       ]);
 
-      expect(messages2.map(({fields}) => fields.routingKey)).to.eql([
+      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql([
         'test.1.1',
         'test.1.2',
         'test.2.1',
@@ -214,12 +214,12 @@ describe('Exchange', () => {
 
       function assertMessages(key, message) {
         if (key !== 'done') return message.ack();
-        expect(messages1.map(({fields}) => fields.routingKey)).to.eql([
+        expect(messages1.map(({ fields }) => fields.routingKey)).to.eql([
           'test.1',
           'test.2',
         ]);
 
-        expect(messages2.map(({fields}) => fields.routingKey)).to.eql([
+        expect(messages2.map(({ fields }) => fields.routingKey)).to.eql([
           'test.1',
           'test.2',
         ]);
@@ -232,13 +232,13 @@ describe('Exchange', () => {
   describe('bindQueue(queue, pattern)', () => {
     it('ups bindingCount', () => {
       const exchange = Exchange('event', 'topic');
-      exchange.bindQueue(new Queue('event-q', {durable: true}), 'test.#');
+      exchange.bindQueue(new Queue('event-q', { durable: true }), 'test.#');
       expect(exchange.bindingCount).to.equal(1);
     });
 
     it('same queue and pattern is ignored', () => {
       const exchange = Exchange('event', 'topic');
-      const queue = new Queue('event-q', {durable: true});
+      const queue = new Queue('event-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
       exchange.bindQueue(queue, 'test.#');
       expect(exchange.bindingCount).to.equal(1);
@@ -246,7 +246,7 @@ describe('Exchange', () => {
 
     it('same queue and different pattern is honored', () => {
       const exchange = Exchange('event', 'topic');
-      const queue = new Queue('event-q', {durable: true});
+      const queue = new Queue('event-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
       exchange.bindQueue(queue, 'test.*');
       expect(exchange.bindingCount).to.equal(2);
@@ -274,7 +274,7 @@ describe('Exchange', () => {
   describe('unbindQueue(queue, pattern)', () => {
     it('reduce bindingCount', () => {
       const exchange = Exchange('event', 'topic');
-      const queue = new Queue('event-q', {durable: true});
+      const queue = new Queue('event-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
       exchange.unbindQueue(queue, 'test.#');
       expect(exchange.bindingCount).to.equal(0);
@@ -282,7 +282,7 @@ describe('Exchange', () => {
 
     it('same queue and different pattern is kept', () => {
       const exchange = Exchange('event', 'topic');
-      const queue = new Queue('event-q', {durable: true});
+      const queue = new Queue('event-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
       exchange.bindQueue(queue, 'test.*');
       exchange.unbindQueue(queue, 'test.#');
@@ -291,7 +291,7 @@ describe('Exchange', () => {
 
     it('twice is ignored', () => {
       const exchange = Exchange('event', 'topic');
-      const queue = new Queue('event-q', {durable: true});
+      const queue = new Queue('event-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
       exchange.unbindQueue(queue, 'test.#');
       exchange.unbindQueue(queue, 'test.#');
@@ -372,11 +372,11 @@ describe('Exchange', () => {
     it('topic mandatory message emits "return" if not routed to any queue', () => {
       const exchange = Exchange('event', 'topic');
       let returnMsg;
-      exchange.on('return', (_, {content}) => {
+      exchange.on('return', (_, { content }) => {
         returnMsg = content;
       });
 
-      exchange.publish('test.1', 'important', {mandatory: true});
+      exchange.publish('test.1', 'important', { mandatory: true });
 
       expect(returnMsg).to.be.ok;
       expect(returnMsg).to.have.property('fields').that.include({
@@ -389,11 +389,11 @@ describe('Exchange', () => {
     it('direct mandatory message emits "return" if not routed to any queue', () => {
       const exchange = Exchange('balance', 'direct');
       let returnMsg;
-      exchange.on('return', (_, {content}) => {
+      exchange.on('return', (_, { content }) => {
         returnMsg = content;
       });
 
-      exchange.publish('test.1', 'important', {mandatory: true});
+      exchange.publish('test.1', 'important', { mandatory: true });
 
       expect(returnMsg).to.be.ok;
       expect(returnMsg).to.have.property('fields').that.include({
@@ -406,16 +406,16 @@ describe('Exchange', () => {
 
   describe('getState()', () => {
     it('returns name, type, and options', () => {
-      const exchange = Exchange('event', 'topic', {durable: true});
+      const exchange = Exchange('event', 'topic', { durable: true });
       const state = exchange.getState();
       expect(state).to.have.property('name', 'event');
       expect(state).to.have.property('type', 'topic');
-      expect(state).to.have.property('options').that.eql({durable: true, autoDelete: true});
+      expect(state).to.have.property('options').that.eql({ durable: true, autoDelete: true });
     });
 
     it('returns bindings with queue name and pattern', () => {
       const exchange = Exchange('event', 'topic');
-      exchange.bindQueue(new Queue('event-q', {durable: true}), 'test.#');
+      exchange.bindQueue(new Queue('event-q', { durable: true }), 'test.#');
 
       const state = exchange.getState();
       expect(state).to.have.property('bindings');
@@ -426,8 +426,8 @@ describe('Exchange', () => {
 
     it('returns only bindings with durables queues', () => {
       const exchange = Exchange('event', 'topic');
-      exchange.bindQueue(new Queue('event-q', {durable: true}), 'test.#');
-      exchange.bindQueue(new Queue('tmp-q', {durable: false}), 'test.#');
+      exchange.bindQueue(new Queue('event-q', { durable: true }), 'test.#');
+      exchange.bindQueue(new Queue('tmp-q', { durable: false }), 'test.#');
 
       const state = exchange.getState();
       expect(state).to.have.property('bindings');
@@ -440,7 +440,7 @@ describe('Exchange', () => {
   describe('stop()', () => {
     it('stops publishing messages to topic exchange', () => {
       const exchange = Exchange('event', 'topic');
-      const queue = new Queue('event-q', {durable: true});
+      const queue = new Queue('event-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
       exchange.publish('test.1');
       exchange.stop();
@@ -451,7 +451,7 @@ describe('Exchange', () => {
 
     it('stop in message callback stops publishing messages to topic exchange', () => {
       const exchange = Exchange('event', 'topic');
-      const queue = new Queue('event-q', {durable: true});
+      const queue = new Queue('event-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
 
       queue.consume(() => {
@@ -466,7 +466,7 @@ describe('Exchange', () => {
 
     it('stops publishing messages to direct exchange', () => {
       const exchange = Exchange('balance', 'direct');
-      const queue = new Queue('balance-q', {durable: true});
+      const queue = new Queue('balance-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
       exchange.publish('test.1');
       exchange.stop();
@@ -477,7 +477,7 @@ describe('Exchange', () => {
 
     it('stop in message callback stops publishing messages to direct exchange', () => {
       const exchange = Exchange('balance', 'direct');
-      const queue = new Queue('balance-q', {durable: true});
+      const queue = new Queue('balance-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
 
       queue.consume(() => {
@@ -494,7 +494,7 @@ describe('Exchange', () => {
   describe('recover()', () => {
     it('recovers stopped topic exchange without state', () => {
       const exchange = Exchange('event', 'topic');
-      const queue = new Queue('event-q', {durable: true});
+      const queue = new Queue('event-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
 
       exchange.publish('test.1');
@@ -515,11 +515,11 @@ describe('Exchange', () => {
 
     it('recovers stopped topic exchange with state', () => {
       const exchange = Exchange('event', 'topic');
-      const queue = new Queue('event-q', {durable: true});
+      const queue = new Queue('event-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
 
-      exchange.publish('test.1', 'data', {contentType: 'text/plain'});
-      exchange.publish('test.2', {data: 1}, {contentType: 'application/json'});
+      exchange.publish('test.1', 'data', { contentType: 'text/plain' });
+      exchange.publish('test.2', { data: 1 }, { contentType: 'application/json' });
 
       exchange.stop();
 
@@ -534,7 +534,7 @@ describe('Exchange', () => {
 
     it('recovers stopped direct exchange without state', () => {
       const exchange = Exchange('balance', 'direct');
-      const queue = new Queue('balance-q', {durable: true});
+      const queue = new Queue('balance-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
 
       exchange.publish('test.1');
@@ -555,11 +555,11 @@ describe('Exchange', () => {
 
     it('recovers stopped direct exchange with state', () => {
       const exchange = Exchange('balance', 'direct');
-      const queue = new Queue('balance-q', {durable: true});
+      const queue = new Queue('balance-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
 
-      exchange.publish('test.1', 'data', {contentType: 'text/plain'});
-      exchange.publish('test.2', {data: 1}, {contentType: 'application/json'});
+      exchange.publish('test.1', 'data', { contentType: 'text/plain' });
+      exchange.publish('test.2', { data: 1 }, { contentType: 'application/json' });
 
       exchange.stop();
 
@@ -576,7 +576,7 @@ describe('Exchange', () => {
 
     it('recover in message callback continues publishing messages to topic exchange', () => {
       const exchange = Exchange('event', 'topic');
-      const queue = new Queue('event-q', {durable: true});
+      const queue = new Queue('event-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
 
       queue.consume(() => {
@@ -590,13 +590,13 @@ describe('Exchange', () => {
 
       exchange.publish('test.1');
 
-      expect(queue.messages.map(({fields}) => fields.routingKey)).to.eql(['test.1', 'test.2']);
+      expect(queue.messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1', 'test.2' ]);
     });
 
     it('recover multiple bindings in message callback continues publishing messages to topic exchange', () => {
       const exchange = Exchange('event', 'topic');
-      const queue1 = new Queue('event1-q', {durable: true});
-      const queue2 = new Queue('event2-q', {durable: true});
+      const queue1 = new Queue('event1-q', { durable: true });
+      const queue2 = new Queue('event2-q', { durable: true });
       exchange.bindQueue(queue1, 'test.#');
       exchange.bindQueue(queue2, 'test.#');
 
@@ -611,13 +611,13 @@ describe('Exchange', () => {
 
       exchange.publish('test.1');
 
-      expect(queue1.messages.map(({fields}) => fields.routingKey)).to.eql(['test.1', 'test.2']);
-      expect(queue2.messages.map(({fields}) => fields.routingKey)).to.eql(['test.1', 'test.2']);
+      expect(queue1.messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1', 'test.2' ]);
+      expect(queue2.messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1', 'test.2' ]);
     });
 
     it('recover in message callback continues publishing messages to direct exchange', () => {
       const exchange = Exchange('balance', 'direct');
-      const queue = new Queue('balance-q', {durable: true});
+      const queue = new Queue('balance-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
 
       queue.consume(() => {
@@ -630,13 +630,13 @@ describe('Exchange', () => {
       });
 
       exchange.publish('test.1');
-      expect(queue.messages.map(({fields}) => fields.routingKey)).to.eql(['test.1', 'test.2']);
+      expect(queue.messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1', 'test.2' ]);
     });
 
     it('recover multiple bindings in message callback continues publishing messages to direct exchange', () => {
       const exchange = Exchange('balance', 'direct');
-      const queue1 = new Queue('balance1-q', {durable: true});
-      const queue2 = new Queue('balance2-q', {durable: true});
+      const queue1 = new Queue('balance1-q', { durable: true });
+      const queue2 = new Queue('balance2-q', { durable: true });
       exchange.bindQueue(queue1, 'test.#');
       exchange.bindQueue(queue2, 'test.#');
 
@@ -653,13 +653,13 @@ describe('Exchange', () => {
 
       exchange.publish('test.1');
 
-      expect(queue1.messages.map(({fields}) => fields.routingKey)).to.eql(['test.1', 'test.3']);
-      expect(queue2.messages.map(({fields}) => fields.routingKey)).to.eql(['test.2', 'test.4']);
+      expect(queue1.messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1', 'test.3' ]);
+      expect(queue2.messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.2', 'test.4' ]);
     });
 
     it('recovers closed direct exchange with state', () => {
       const exchange = Exchange('balance', 'direct');
-      const queue = new Queue('balance-q', {durable: true});
+      const queue = new Queue('balance-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
 
       exchange.publish('test.1');
@@ -684,7 +684,7 @@ describe('Exchange', () => {
 
     it('recovers closed topic exchange with state', () => {
       const exchange = Exchange('balance', 'topic');
-      const queue = new Queue('balance-q', {durable: true});
+      const queue = new Queue('balance-q', { durable: true });
       exchange.bindQueue(queue, 'test.#');
 
       exchange.publish('test.1');
@@ -730,7 +730,7 @@ describe('Exchange', () => {
 
     it('autoDelete emits delete when bindings drops to zero', () => {
       let event;
-      const exchange = Exchange('event', 'topic', {autoDelete: true});
+      const exchange = Exchange('event', 'topic', { autoDelete: true });
 
       exchange.on('delete', onEvent);
 
@@ -749,7 +749,7 @@ describe('Exchange', () => {
 
     it('events can be offed', () => {
       let event;
-      const exchange = Exchange('event', 'topic', {autoDelete: true});
+      const exchange = Exchange('event', 'topic', { autoDelete: true });
 
       exchange.on('delete', onEvent);
       exchange.off('delete', onEvent);
@@ -767,10 +767,10 @@ describe('Exchange', () => {
 
     it('events can be offed by consumerTag', () => {
       let event;
-      const exchange = Exchange('event', 'topic', {autoDelete: true});
+      const exchange = Exchange('event', 'topic', { autoDelete: true });
 
-      exchange.on('delete', onEvent, {consumerTag: 'off-tag'});
-      exchange.off('delete', {consumerTag: 'off-tag'});
+      exchange.on('delete', onEvent, { consumerTag: 'off-tag' });
+      exchange.off('delete', { consumerTag: 'off-tag' });
 
       const queue = new Queue('event-q');
       exchange.bindQueue(queue, 'test.#');
@@ -785,7 +785,7 @@ describe('Exchange', () => {
 
     it('events can be offed even if they are not on', () => {
       let event;
-      const exchange = Exchange('event', 'topic', {autoDelete: true});
+      const exchange = Exchange('event', 'topic', { autoDelete: true });
       exchange.off('delete', onEvent);
 
       const queue = new Queue('event-q');
@@ -802,7 +802,7 @@ describe('Exchange', () => {
 
   describe('getBinding(queueName, pattern)', () => {
     it('finds binding matching queue and pattern', () => {
-      const exchange = Exchange('event', 'topic', {autoDelete: true});
+      const exchange = Exchange('event', 'topic', { autoDelete: true });
       const queue = new Queue('event-q');
       exchange.bindQueue(queue, 'event.#');
 
@@ -811,7 +811,7 @@ describe('Exchange', () => {
     });
 
     it('return nothing if no binding was found', () => {
-      const exchange = Exchange('event', 'topic', {autoDelete: true});
+      const exchange = Exchange('event', 'topic', { autoDelete: true });
 
       expect(exchange.getBinding('event-q', 'event.#')).to.not.be.ok;
 

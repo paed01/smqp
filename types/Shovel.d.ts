@@ -17,8 +17,14 @@ export interface ShovelSource {
 }
 
 export interface ShovelDestination {
+  /** destination broker */
   broker: Broker;
+  /** destination exchange */
   exchange: string;
+  /** optional destination exchange routing key, defaults to original message's routing key */
+  exchangeKey?: string;
+  /** optional object with message properties to overwrite when shovelling messages */
+  publishProperties?: Record<string, any>;
 }
 
 export class Shovel {

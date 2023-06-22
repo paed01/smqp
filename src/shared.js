@@ -1,4 +1,4 @@
-export {generateId, getRoutingKeyPattern, sortByPriority};
+export { generateId, getRoutingKeyPattern, sortByPriority };
 
 const allDots = /\./g;
 const allAstx = /\*/g;

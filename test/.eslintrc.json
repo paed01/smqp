@@ -1,14 +1,6 @@
 {
-  "env": {
-    "mocha": true,
-    "node": true
-  },
+  "extends": [ "exp/test" ],
   "rules": {
-    "no-unused-expressions": 0,
-    "no-var": 1,
-    "prefer-arrow-callback": 1
-  },
-  "globals": {
-    "expect": false
+    "new-cap": "off"
   }
 }
