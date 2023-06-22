@@ -57,13 +57,14 @@
     "shovel"
   ],
   "devDependencies": {
-    "@babel/cli": "^7.21.0",
-    "@babel/core": "^7.21.4",
-    "@babel/preset-env": "^7.21.4",
-    "c8": "^7.13.0",
+    "@babel/cli": "^7.22.5",
+    "@babel/core": "^7.22.5",
+    "@babel/preset-env": "^7.22.5",
+    "c8": "^8.0.0",
     "chai": "^4.3.7",
-    "chronokinesis": "^4.0.1",
-    "eslint": "^8.37.0",
+    "chronokinesis": "^5.0.2",
+    "eslint": "^8.43.0",
+    "eslint-config-exp": "^0.6.2",
     "markdown-toc": "^1.2.0",
     "mocha": "^10.2.0"
   }

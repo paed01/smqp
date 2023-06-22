@@ -1,4 +1,4 @@
-import {EventExchange} from './Exchange.js';
+import { EventExchange } from './Exchange.js';
 
 const kBrokerInternal = Symbol.for('brokerInternal');
 const kCloneMessage = Symbol.for('cloneMessage');
@@ -10,8 +10,8 @@ const kSourceBroker = Symbol.for('sourceBroker');
 const kSourceExchange = Symbol.for('sourceExchange');
 
 export function Shovel(name, source, destination, options = {}) {
-  const {broker: sourceBroker, exchange: sourceExchangeName, pattern, queue, priority} = source;
-  const {broker: destinationBroker, exchange: destinationExchangeName} = destination;
+  const { broker: sourceBroker, exchange: sourceExchangeName, pattern, queue, priority } = source;
+  const { broker: destinationBroker, exchange: destinationExchangeName } = destination;
 
   const sourceExchange = sourceBroker.getExchange(sourceExchangeName);
   if (!sourceExchange) {
@@ -31,8 +31,8 @@ export function Shovel(name, source, destination, options = {}) {
   const routingKeyPattern = pattern || '#';
 
   this.name = name;
-  this.source = {...source, pattern: routingKeyPattern};
-  this.destination = {...destination};
+  this.source = { ...source, pattern: routingKeyPattern };
+  this.destination = { ...destination };
   this.events = new EventExchange('shovel__events');
 
   const consumerTag = this[kConsumerTag] = source.consumerTag || `smq.shoveltag-${name}`;
@@ -52,9 +52,9 @@ export function Shovel(name, source, destination, options = {}) {
   let consumer;
   const shovelHandler = this._onShovelMessage.bind(this);
   if (queue) {
-    consumer = sourceBroker.subscribe(sourceExchangeName, routingKeyPattern, queue, shovelHandler, {consumerTag, priority});
+    consumer = sourceBroker.subscribe(sourceExchangeName, routingKeyPattern, queue, shovelHandler, { consumerTag, priority });
   } else {
-    consumer = sourceBroker.subscribeTmp(sourceExchangeName, routingKeyPattern, shovelHandler, {consumerTag, priority});
+    consumer = sourceBroker.subscribeTmp(sourceExchangeName, routingKeyPattern, shovelHandler, { consumerTag, priority });
     this.source.queue = consumer.queue.name;
   }
   eventHandlers.push(consumer.on('cancel', boundClose));
@@ -100,24 +100,27 @@ Shovel.prototype._messageHandler = function messageHandler(message) {
   const cloneMessage = this[kCloneMessage];
   if (!cloneMessage) return message;
 
-  const {fields, content, properties} = message;
-  const {content: newContent, properties: newProperties} = cloneMessage({
-    fields: {...fields},
+  const { fields, content, properties } = message;
+  const { content: newContent, properties: newProperties } = cloneMessage({
+    fields: { ...fields },
     content,
-    properties: {...properties},
+    properties: { ...properties },
   });
 
   return {
     fields,
     content: newContent,
-    properties: {...properties, ...newProperties},
+    properties: { ...properties, ...newProperties },
   };
 };
 
 Shovel.prototype._onShovelMessage = function onShovelMessage(routingKey, message) {
-  const {content, properties} = this._messageHandler(message);
-  const props = {...properties, ...this.destination.publishProperties, 'source-exchange': this[kSourceExchange].name};
+  const destinationExchange = this[kDestinationExchange];
+  if (!destinationExchange.bindingCount) return message.ack();
+
+  const { content, properties } = this._messageHandler(message);
+  const props = { ...properties, ...this.destination.publishProperties, 'source-exchange': this[kSourceExchange].name };
   if (!this[kBrokerInternal]) props['shovel-name'] = this.name;
-  this[kDestinationExchange].publish(this.destination.exchangeKey || routingKey, content, props);
+  destinationExchange.publish(this.destination.exchangeKey || routingKey, content, props);
   message.ack();
 };

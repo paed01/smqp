@@ -131,6 +131,8 @@ Shovel.prototype._messageHandler = function messageHandler(message) {
   };
 };
 Shovel.prototype._onShovelMessage = function onShovelMessage(routingKey, message) {
+  const destinationExchange = this[kDestinationExchange];
+  if (!destinationExchange.bindingCount) return message.ack();
   const {
     content,
     properties
@@ -141,6 +143,6 @@ Shovel.prototype._onShovelMessage = function onShovelMessage(routingKey, message
     'source-exchange': this[kSourceExchange].name
   };
   if (!this[kBrokerInternal]) props['shovel-name'] = this.name;
-  this[kDestinationExchange].publish(this.destination.exchangeKey || routingKey, content, props);
+  destinationExchange.publish(this.destination.exchangeKey || routingKey, content, props);
   message.ack();
 };
