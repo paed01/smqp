@@ -1,5 +1,5 @@
 import { Queue, Consumer, queueOptions, onMessage, consumeOptions, deleteQueueOptions, QueueState } from "./Queue.js";
-import { Shovel, ShovelDestination, shovelOptions } from "./Shovel.js";
+import { Shovel, Exchange2Exchange, ShovelDestination, shovelOptions } from "./Shovel.js";
 import { Message, MessageProperties } from "./Message.js";
 import { Exchange, exchangeType, Binding, exchangeOptions, bindingOptions, ExchangeState } from "./Exchange.js";
 
@@ -29,14 +29,6 @@ interface ConsumerInfo {
   queue: string;
   consumerTag: string;
   options: consumeOptions;
-}
-
-interface Exchange2Exchange {
-  name: string;
-  source: string;
-  destination: string;
-  on(...onargs: any[]): Consumer;
-  close(): void;
 }
 
 interface BrokerShovelSource {
@@ -94,7 +86,7 @@ export class Broker {
   getState(): BrokerState;
   /**
    * Get broker state with durable entities
-   * @param onlyWithContent [boolean] only return state if any durable exchanges or queues
+   * @param onlyWithContent [boolean] only return state if any durable exchanges or queues that have messages
    */
   getState(onlyWithContent: boolean): BrokerState | undefined;
   recover(state?: BrokerState): Broker;

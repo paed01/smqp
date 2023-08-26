@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.Exchange2Exchange = Exchange2Exchange;
 exports.Shovel = Shovel;
 var _Exchange = require("./Exchange.js");
 const kBrokerInternal = Symbol.for('brokerInternal');
@@ -13,7 +14,9 @@ const kDestinationExchange = Symbol.for('destinationExchange');
 const kEventHandlers = Symbol.for('eventHandlers');
 const kSourceBroker = Symbol.for('sourceBroker');
 const kSourceExchange = Symbol.for('sourceExchange');
+const kE2EShovel = Symbol.for('shovel');
 function Shovel(name, source, destination, options = {}) {
+  if (!name || typeof name !== 'string') throw new TypeError('Shovel name is required and must be a string');
   const {
     broker: sourceBroker,
     exchange: sourceExchangeName,
@@ -95,7 +98,7 @@ Shovel.prototype.off = function off(eventName, handler) {
 Shovel.prototype.close = function closeShovel() {
   if (this[kClosed]) return;
   this[kClosed] = true;
-  this[kEventHandlers].splice(0).forEach(e => e.cancel());
+  for (const eh of this[kEventHandlers].splice(0)) eh.cancel();
   const events = this.events;
   this.emit('close', this);
   events.close();
@@ -145,4 +148,51 @@ Shovel.prototype._onShovelMessage = function onShovelMessage(routingKey, message
   if (!this[kBrokerInternal]) props['shovel-name'] = this.name;
   destinationExchange.publish(this.destination.exchangeKey || routingKey, content, props);
   message.ack();
+};
+function Exchange2Exchange(shovel) {
+  this[kE2EShovel] = shovel;
+}
+Object.defineProperties(Exchange2Exchange.prototype, {
+  name: {
+    enumerable: true,
+    get() {
+      return this[kE2EShovel].name;
+    }
+  },
+  source: {
+    enumerable: true,
+    get() {
+      return this[kE2EShovel].source.exchange;
+    }
+  },
+  destination: {
+    enumerable: true,
+    get() {
+      return this[kE2EShovel].destination.exchange;
+    }
+  },
+  pattern: {
+    enumerable: true,
+    get() {
+      return this[kE2EShovel].source.pattern;
+    }
+  },
+  queue: {
+    enumerable: true,
+    get() {
+      return this[kE2EShovel].source.queue;
+    }
+  },
+  consumerTag: {
+    enumerable: true,
+    get() {
+      return this[kE2EShovel].consumerTag;
+    }
+  }
+});
+Exchange2Exchange.prototype.on = function e2eon(...args) {
+  return this[kE2EShovel].on(...args);
+};
+Exchange2Exchange.prototype.close = function e2eclose() {
+  return this[kE2EShovel].close();
 };

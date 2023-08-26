@@ -1,6 +1,7 @@
 import { Exchange, EventExchange } from './Exchange.js';
 import { Queue } from './Queue.js';
-import { Shovel } from './Shovel.js';
+import { Shovel, Exchange2Exchange } from './Shovel.js';
+import { generateId } from './shared.js';
 
 const kEntities = Symbol.for('entities');
 const kEventHandler = Symbol.for('eventHandler');
@@ -140,10 +141,12 @@ Broker.prototype.getConsumer = function getConsumer(consumerTag) {
 };
 
 Broker.prototype.getExchange = function getExchange(exchangeName) {
+  if (typeof exchangeName !== 'string') throw new TypeError('exchange name must be a string');
   return this[kEntities].exchanges.find(({ name }) => name === exchangeName);
 };
 
 Broker.prototype.deleteExchange = function deleteExchange(exchangeName, { ifUnused } = {}) {
+  if (typeof exchangeName !== 'string') throw new TypeError('exchange name must be a string');
   const exchanges = this[kEntities].exchanges;
   const idx = exchanges.findIndex((exchange) => exchange.name === exchangeName);
   if (idx === -1) return false;
@@ -172,10 +175,11 @@ Broker.prototype.close = function close() {
 Broker.prototype.reset = function reset() {
   this.stop();
   this.close();
-  this[kEntities].exchanges.splice(0);
-  this[kEntities].queues.splice(0);
-  this[kEntities].consumers.splice(0);
-  this[kEntities].shovels.splice(0);
+  const { exchanges, queues, consumers, shovels } = this[kEntities];
+  exchanges.splice(0);
+  queues.splice(0);
+  consumers.splice(0);
+  shovels.splice(0);
 };
 
 Broker.prototype.getState = function getState(onlyWithContent) {
@@ -191,13 +195,14 @@ Broker.prototype.getState = function getState(onlyWithContent) {
 };
 
 Broker.prototype.recover = function recover(state) {
-  const self = this;
-  const boundGetQueue = self.getQueue.bind(self);
+  const boundGetQueue = this.getQueue.bind(this);
   if (state) {
-    if (state.queues) for (const qState of state.queues) recoverQueue(qState);
-    if (state.exchanges) for (const eState of state.exchanges) recoverExchange(eState);
+    if (state.queues) {
+      for (const qState of state.queues) this.assertQueue(qState.name, qState.options).recover(qState);
+    }
+    if (state.exchanges) for (const eState of state.exchanges) this.assertExchange(eState.name, eState.type, eState.options).recover(eState, boundGetQueue);
   } else {
-    const { queues, exchanges } = self[kEntities];
+    const { queues, exchanges } = this[kEntities];
     for (const queue of queues) {
       if (queue.stopped) queue.recover();
     }
@@ -206,17 +211,7 @@ Broker.prototype.recover = function recover(state) {
     }
   }
 
-  return self;
-
-  function recoverQueue(qState) {
-    const queue = self.assertQueue(qState.name, qState.options);
-    queue.recover(qState);
-  }
-
-  function recoverExchange(eState) {
-    const exchange = self.assertExchange(eState.name, eState.type, eState.options);
-    exchange.recover(eState, boundGetQueue);
-  }
+  return this;
 };
 
 Broker.prototype.bindExchange = function bindExchange(source, destination, pattern = '#', args = {}) {
@@ -233,21 +228,7 @@ Broker.prototype.bindExchange = function bindExchange(source, destination, patte
     exchange: destination,
   }, { ...args });
 
-  const { consumerTag, source: shovelSource } = shovel;
-
-  return {
-    name,
-    source,
-    destination,
-    queue: shovelSource.queue,
-    consumerTag,
-    on(...onargs) {
-      return shovel.on(...onargs);
-    },
-    close() {
-      return shovel.close();
-    },
-  };
+  return new Exchange2Exchange(shovel);
 };
 
 Broker.prototype.unbindExchange = function unbindExchange(source, destination, pattern = '#') {
@@ -274,46 +255,50 @@ Broker.prototype.sendToQueue = function sendToQueue(queueName, content, options 
 };
 
 Broker.prototype._getQueuesState = function getQueuesState(onlyWithContent) {
-  return this[kEntities].queues.reduce((result, queue) => {
-    if (!queue.options.durable) return result;
-    if (onlyWithContent && !queue.messageCount) return result;
+  let result;
+  for (const queue of this[kEntities].queues) {
+    if (!queue.options.durable) continue;
+    if (onlyWithContent && !queue.messageCount) continue;
     if (!result) result = [];
     result.push(queue.getState());
-    return result;
-  }, undefined);
+  }
+  return result;
 };
 
 Broker.prototype._getExchangeState = function getExchangeState(onlyWithContent) {
-  return this[kEntities].exchanges.reduce((result, exchange) => {
-    if (!exchange.options.durable) return result;
-    if (onlyWithContent && !exchange.undeliveredCount) return result;
+  let result;
+  for (const exchange of this[kEntities].exchanges) {
+    if (!exchange.options.durable) continue;
+    if (onlyWithContent && !exchange.undeliveredCount) continue;
     if (!result) result = [];
     result.push(exchange.getState());
-    return result;
-  }, undefined);
+  }
+  return result;
 };
 
 Broker.prototype.createQueue = function createQueue(queueName, options) {
-  const self = this;
-  if (self.getQueue(queueName)) throw new Error(`Queue named ${queueName} already exists`);
+  if (queueName && typeof queueName !== 'string') throw new TypeError('queue name must be a string');
+  else if (!queueName) queueName = `smq.qname-${generateId()}`;
+  else if (this.getQueue(queueName)) throw new Error(`Queue named ${queueName} already exists`);
 
   const queueEmitter = new EventExchange(`${queueName}__events`);
   this[kEventHandler].listen(queueEmitter);
   const queue = new Queue(queueName, options, queueEmitter);
 
-  self[kEntities].queues.push(queue);
+  this[kEntities].queues.push(queue);
   return queue;
 };
 
 Broker.prototype.getQueue = function getQueue(queueName) {
-  if (!queueName) return;
+  if (!queueName || typeof queueName !== 'string') throw new TypeError('queue name must be a string');
   const queues = this[kEntities].queues;
   const idx = queues.findIndex((queue) => queue.name === queueName);
   if (idx > -1) return queues[idx];
 };
 
 Broker.prototype.assertQueue = function assertQueue(queueName, options = {}) {
-  if (!queueName) return this.createQueue(null, options);
+  if (queueName && typeof queueName !== 'string') throw new TypeError('queue name must be a string');
+  else if (!queueName) return this.createQueue(null, options);
 
   const queue = this.getQueue(queueName);
   options = { durable: true, ...options };
@@ -324,7 +309,6 @@ Broker.prototype.assertQueue = function assertQueue(queueName, options = {}) {
 };
 
 Broker.prototype.deleteQueue = function deleteQueue(queueName, options) {
-  if (!queueName) return;
   const queue = this.getQueue(queueName);
   if (!queue) return;
   return queue.delete(options);

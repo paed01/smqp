@@ -1,6 +1,13 @@
 Changelog
 =========
 
+# 8.1.0
+
+- noAck consumer continues consuming if error is thrown in message callback, the error is, hopefully, caught somewhere else
+- ack consumer continues consuming if error is thrown in message callback after message was acked
+- add some Broker, Queue, Exchange, Shovel, and Consumer argument constraints
+- fix exchange to exchange binding type
+
 # 8.0.0
 
 - shovel ignores shoveling if destination exchange lacks bindings, could be breaking if cloneMessage function option was used to make things happen

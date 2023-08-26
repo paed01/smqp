@@ -1,6 +1,7 @@
 import * as ck from 'chronokinesis';
 
 import { Broker } from '../src/index.js';
+import { Consumer } from '../src/Queue.js';
 
 describe('Broker', () => {
   describe('api', () => {
@@ -739,8 +740,8 @@ describe('Broker', () => {
       broker.publish('event', 'event.2');
       broker.publish('load', 'load.2');
 
-      broker.getQueue('events').queueMessage('event.stopped');
-      broker.getQueue('loads').queueMessage('load.stopped');
+      broker.getQueue('events').queueMessage({ routingKey: 'event.stopped' });
+      broker.getQueue('loads').queueMessage({ routingKey: 'load.stopped' });
 
       expect(messages).to.eql([
         'event.1',
@@ -772,7 +773,7 @@ describe('Broker', () => {
 
       expect(consumer).to.have.property('stopped', true);
 
-      tmpQueue.queueMessage('event.queued');
+      tmpQueue.queueMessage({ routingKey: 'event.queued' });
 
       expect(messages).to.eql([
         'event.1',
@@ -835,8 +836,8 @@ describe('Broker', () => {
       broker.publish('event', 'event.2');
       broker.publish('load', 'load.2');
 
-      broker.getQueue('events').queueMessage('event.stopped');
-      broker.getQueue('loads').queueMessage('load.stopped');
+      broker.getQueue('events').queueMessage({ routingKey: 'event.stopped' });
+      broker.getQueue('loads').queueMessage({ routingKey: 'load.stopped' });
 
       expect(messages).to.eql([
         'event.1',
@@ -1592,6 +1593,38 @@ describe('Broker', () => {
       expect(broker.queueCount).to.equal(1);
     });
 
+    it('createQueue(null) creates queue with random name', () => {
+      const broker = Broker();
+      const queue = broker.createQueue(null);
+      expect(broker.queueCount).to.equal(1);
+
+      expect(queue.name, 'random name').be.ok.and.not.equal('null');
+      expect(queue.events.name, 'queue event exchange name').to.contain(queue.name);
+    });
+
+    it('createQueue() creates queue with random name', () => {
+      const broker = Broker();
+      const queue = broker.createQueue();
+      expect(broker.queueCount).to.equal(1);
+
+      expect(queue.name, 'random name').be.ok.and.not.equal('undefined');
+      expect(queue.events.name, 'queue event exchange name').to.contain(queue.name);
+    });
+
+    it('createQueue(\'\') creates queue with random name', () => {
+      const broker = Broker();
+      const queue = broker.createQueue('');
+      expect(broker.queueCount).to.equal(1);
+
+      expect(queue.name, 'random name').be.ok;
+      expect(queue.events.name, 'queue event exchange name').to.contain(queue.name);
+    });
+
+    it('createQueue with non-string name throws', () => {
+      const broker = Broker();
+      expect(() => broker.createQueue({})).to.throw(TypeError).that.match(/name/);
+    });
+
     it('createQueue(name) when queue exists throws', () => {
       const broker = Broker();
       broker.createQueue('test-q');
@@ -1601,9 +1634,9 @@ describe('Broker', () => {
       }).to.throw(/test-q already exists/);
     });
 
-    it('deleteQueue returns false if queueName is empty', () => {
+    it('deleteQueue throws if queueName is empty', () => {
       const broker = Broker();
-      expect(broker.deleteQueue()).to.be.undefined;
+      expect(() => broker.deleteQueue()).to.throw(TypeError);
     });
 
     it('deleteQueue returns false if queueName was not found', () => {
@@ -1611,7 +1644,7 @@ describe('Broker', () => {
       expect(broker.deleteQueue('test-q')).to.be.undefined;
     });
 
-    it('get from unknown queue returns nothing', () => {
+    it('get unknown queue returns nothing', () => {
       const broker = Broker();
       expect(broker.get('test-q')).to.be.undefined;
     });
@@ -1620,6 +1653,11 @@ describe('Broker', () => {
       const broker = Broker();
       broker.assertQueue('test-q');
       expect(broker.get('test-q')).to.be.undefined;
+    });
+
+    it('getQueue without name throws', () => {
+      const broker = Broker();
+      expect(() => broker.getQueue()).to.throw(TypeError);
     });
   });
 
@@ -2146,7 +2184,7 @@ describe('Broker', () => {
   });
 
   describe('bindExchange()', () => {
-    it('returns e2e binding or actually a shovel', () => {
+    it('returns e2e binding with expected properties and functions', () => {
       const broker = Broker();
       broker.assertExchange('source-events');
       broker.assertExchange('dest-events');
@@ -2155,9 +2193,11 @@ describe('Broker', () => {
       expect(e2e).to.have.property('name', 'e2e-source-events2dest-events-#');
       expect(e2e).to.have.property('source', 'source-events');
       expect(e2e).to.have.property('destination', 'dest-events');
+      expect(e2e).to.have.property('queue').that.is.a('string');
+      expect(e2e).to.have.property('pattern', '#');
       expect(e2e).to.have.property('consumerTag', 'smq.ctag-e2e-source-events2dest-events-#');
-      expect(e2e).to.have.property('close').that.is.a('function');
       expect(e2e).to.have.property('on').that.is.a('function');
+      expect(e2e).to.have.property('close').that.is.a('function');
     });
 
     it('shovels messages from source exchange to destination exchange', () => {
@@ -2304,9 +2344,11 @@ describe('Broker', () => {
       const e2e = broker.bindExchange('source-events', 'dest-events');
 
       const messages = [];
-      e2e.on('close', () => {
+      const consumer = e2e.on('close', () => {
         messages.push('closed');
       });
+
+      expect(consumer).to.be.instanceof(Consumer);
 
       broker.subscribeTmp('dest-events', '#', (routingKey) => {
         messages.push(routingKey);

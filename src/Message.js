@@ -1,11 +1,9 @@
 import { generateId } from './shared.js';
 
-export { Message };
-
 const kPending = Symbol.for('pending');
 const kOnConsumed = Symbol.for('onConsumed');
 
-function Message(fields, content, properties, onConsumed) {
+export function Message(fields, content, properties, onConsumed) {
   this[kOnConsumed] = [ null, onConsumed ];
   this[kPending] = false;
 

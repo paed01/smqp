@@ -1,8 +1,6 @@
 import { generateId, sortByPriority } from './shared.js';
 import { Message } from './Message.js';
 
-export { Queue, Consumer };
-
 const kConsumers = Symbol.for('consumers');
 const kConsuming = Symbol.for('consuming');
 const kExclusive = Symbol.for('exclusive');
@@ -12,8 +10,9 @@ const kOnConsumed = Symbol.for('kOnConsumed');
 const kAvailableCount = Symbol.for('availableCount');
 const kStopped = Symbol.for('stopped');
 
-function Queue(name, options, eventEmitter) {
-  if (!name) name = `smq.qname-${generateId()}`;
+export function Queue(name, options, eventEmitter) {
+  if (name && typeof name !== 'string') throw new TypeError('Queue name must be a string');
+  else if (!name) name = `smq.qname-${generateId()}`;
   this.name = name;
 
   this.options = { autoDelete: true, ...options };
@@ -61,6 +60,9 @@ Object.defineProperty(Queue.prototype, 'stopped', {
 });
 
 Queue.prototype.queueMessage = function queueMessage(fields, content, properties) {
+  if (fields && typeof fields !== 'object') throw new TypeError('fields must be an object');
+  if (properties && typeof properties !== 'object') throw new TypeError('properties must be an object');
+
   if (this[kStopped]) return;
 
   const messageTtl = this.options.messageTtl;
@@ -416,7 +418,7 @@ Queue.prototype.recover = function recover(state) {
     this.messages.push(msg);
   }
   this[kAvailableCount] = this.messages.length;
-  consumers.forEach((c) => c.recover());
+  for (const c of consumers) c.recover();
   if (continueConsume) {
     this._consumeNext();
   }
@@ -462,11 +464,12 @@ Queue.prototype._getCapacity = function getCapacity() {
   return Infinity;
 };
 
-function Consumer(queue, onMessage, options, owner, eventEmitter) {
+export function Consumer(queue, onMessage, options, owner, eventEmitter) {
   if (typeof onMessage !== 'function') throw new Error('message callback is required and must be a function');
 
-  this.options = { prefetch: 1, priority: 0, noAck: false, ...options };
-  if (!this.options.consumerTag) this.options.consumerTag = `smq.ctag-${generateId()}`;
+  const { consumerTag } = this.options = { prefetch: 1, priority: 0, noAck: false, ...options };
+  if (!consumerTag) this.options.consumerTag = `smq.ctag-${generateId()}`;
+  else if (typeof consumerTag !== 'string') throw new TypeError('consumerTag must be a string');
 
   this.queue = queue;
   this.onMessage = onMessage;
@@ -526,13 +529,16 @@ Consumer.prototype._push = function push(messages) {
     internalQueue.queueMessage(message.fields, message, message.properties);
   }
   if (!this[kConsuming]) {
-    this._consume();
+    this[kConsuming] = true;
+    try {
+      this._consume();
+    } finally {
+      this[kConsuming] = false;
+    }
   }
 };
 
 Consumer.prototype._consume = function consume() {
-  this[kConsuming] = true;
-
   const internalQ = this[kInternalQueue];
   let _msg;
   while ((_msg = internalQ.get())) {
@@ -547,8 +553,6 @@ Consumer.prototype._consume = function consume() {
 
     if (this[kStopped]) break;
   }
-
-  this[kConsuming] = false;
 };
 
 Consumer.prototype.nackAll = function nackAll(requeue) {

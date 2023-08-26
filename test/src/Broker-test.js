@@ -35,5 +35,31 @@ describe('Broker', () => {
 
       expect(broker.getShovels()).to.have.length(0);
     });
+
+    it('assertExchange without string name throws', () => {
+      const broker = Broker();
+      expect(() => broker.assertExchange(null, 'topic')).to.throw(TypeError);
+      expect(() => broker.assertExchange(undefined, 'topic')).to.throw(TypeError);
+      expect(() => broker.assertExchange({}, 'topic')).to.throw(TypeError);
+    });
+
+    it('getExchange without string name throws', () => {
+      const broker = Broker();
+      expect(() => broker.getExchange(null)).to.throw(TypeError);
+      expect(() => broker.getExchange(undefined)).to.throw(TypeError);
+      expect(() => broker.getExchange({})).to.throw(TypeError);
+    });
+
+    it('deleteExchange without string name throws', () => {
+      const broker = Broker();
+      expect(() => broker.deleteExchange(null)).to.throw(TypeError);
+      expect(() => broker.deleteExchange(undefined)).to.throw(TypeError);
+      expect(() => broker.deleteExchange({})).to.throw(TypeError);
+    });
+
+    it('assertQueue without string name throws', () => {
+      const broker = Broker();
+      expect(() => broker.assertQueue({})).to.throw(TypeError);
+    });
   });
 });

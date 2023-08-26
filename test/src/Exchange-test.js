@@ -11,7 +11,13 @@ describe('Exchange', () => {
     it('throws if name is not passed', () => {
       expect(() => {
         Exchange();
-      }).to.throw();
+      }).to.throw(TypeError);
+    });
+
+    it('throws if name is not a string', () => {
+      expect(() => {
+        Exchange({});
+      }).to.throw(TypeError);
     });
 
     it('defaults to topic', () => {

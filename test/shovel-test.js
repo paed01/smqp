@@ -667,6 +667,32 @@ describe('Shovel', () => {
 
       expect(messages).to.have.length(1);
     });
+
+    it('mandatory shoveled message emits return on destination broker only, since source has bound shovel queue', () => {
+      const broker1 = new Broker();
+      broker1.assertExchange('source-events', 'topic');
+
+      const broker2 = new Broker();
+      broker2.assertExchange('dest-events', 'topic');
+
+      const messages = [];
+      broker1.on('return', (message) => messages.push(message));
+      broker2.on('return', (message) => messages.push(message));
+
+      Shovel('my-shovel', {
+        broker: broker1,
+        exchange: 'source-events',
+      }, {
+        broker: broker2,
+        exchange: 'dest-events',
+        publishProperties: { destProp: true },
+      });
+
+      broker1.publish('source-events', 'test.1', 'snow', { mandatory: true });
+
+      expect(messages).to.have.length(1);
+      expect(messages[0].fields).to.have.property('exchange', 'dest-events');
+    });
   });
 
   describe('broker', () => {

@@ -24,7 +24,7 @@ describe('Broker queue', () => {
     });
   });
 
-  describe('broker.get()', () => {
+  describe('broker.get(queueName)', () => {
     it('returns message from queue', () => {
       const broker = Broker();
       broker.assertQueue('test-q');

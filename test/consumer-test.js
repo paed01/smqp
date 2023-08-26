@@ -34,18 +34,169 @@ describe('consumer', () => {
       }
     });
 
-    it('noAck option consumes removes message from queue before message callback', () => {
+    it('noAck removes message from queue before message callback', () => {
       const broker = Broker();
 
       const queue = broker.assertQueue('event-q');
       broker.consume(queue.name, onMessage, { noAck: true });
 
-      queue.queueMessage('test');
+      queue.queueMessage({ routingKey: 'test' });
 
       expect(queue.messageCount).to.equal(0);
 
       function onMessage() {
         expect(queue.messageCount).to.equal(0);
+      }
+    });
+
+    it('noAck removes message from queue if error is thrown in message callback', () => {
+      const broker = Broker();
+
+      const queue = broker.assertQueue('event-q');
+
+      const consumer = broker.consume(queue.name, onMessage, { noAck: true });
+
+      expect(() => queue.queueMessage({ routingKey: 'test' })).to.throw('Provoke');
+
+      expect(queue.messageCount, 'message count').to.equal(0);
+      expect(queue.consumerCount, 'consumer count').to.equal(1);
+      expect(consumer.ready, 'consumer ready').to.be.true;
+
+      expect(() => queue.queueMessage({ routingKey: 'test' })).to.throw('Provoke');
+
+      expect(queue.messageCount, 'message count').to.equal(0);
+      expect(queue.consumerCount, 'consumer count').to.equal(1);
+      expect(consumer.ready, 'consumer ready').to.be.true;
+
+      expect(() => queue.queueMessage({ routingKey: 'test' })).to.throw('Provoke');
+
+      expect(queue.messageCount, 'message count').to.equal(0);
+      expect(queue.consumerCount, 'consumer count').to.equal(1);
+      expect(consumer.ready, 'consumer ready').to.be.true;
+
+      function onMessage() {
+        throw new Error('Provoke');
+      }
+    });
+
+    it('noAck option removes message from queue if error is thrown in message callback', () => {
+      const broker = Broker();
+
+      const queue = broker.assertQueue('event-q');
+
+      const consumer = broker.consume(queue.name, onMessage, { noAck: true });
+
+      expect(() => queue.queueMessage({ routingKey: 'test' })).to.throw('Provoke');
+
+      expect(queue.messageCount, 'message count').to.equal(0);
+      expect(queue.consumerCount, 'consumer count').to.equal(1);
+      expect(consumer.ready, 'consumer ready').to.be.true;
+
+      expect(() => queue.queueMessage({ routingKey: 'test' })).to.throw('Provoke');
+
+      expect(queue.messageCount, 'message count').to.equal(0);
+      expect(queue.consumerCount, 'consumer count').to.equal(1);
+      expect(consumer.ready, 'consumer ready').to.be.true;
+
+      expect(() => queue.queueMessage({ routingKey: 'test' })).to.throw('Provoke');
+
+      expect(queue.messageCount, 'message count').to.equal(0);
+      expect(queue.consumerCount, 'consumer count').to.equal(1);
+      expect(consumer.ready, 'consumer ready').to.be.true;
+
+      function onMessage() {
+        throw new Error('Provoke');
+      }
+    });
+
+    it('noAck removes message from queue if error is thrown in second message callback', () => {
+      const broker = Broker();
+      const messages = [];
+
+      const queue = broker.assertQueue('event-q');
+
+      const consumer = broker.consume(queue.name, onMessage, { noAck: true });
+
+      queue.queueMessage({ routingKey: 'test' });
+
+      expect(messages, 'recieved count').to.have.length(1);
+      expect(queue.messageCount, 'message count').to.equal(0);
+      expect(queue.consumerCount, 'consumer count').to.equal(1);
+      expect(consumer.ready, 'consumer ready').to.be.true;
+
+      expect(() => queue.queueMessage({ routingKey: 'test' })).to.throw('Provoke');
+
+      expect(messages, 'recieved count').to.have.length(2);
+      expect(queue.messageCount, 'message count').to.equal(0);
+      expect(queue.consumerCount, 'consumer count').to.equal(1);
+      expect(consumer.ready, 'consumer ready').to.be.true;
+
+      queue.queueMessage({ routingKey: 'test' });
+
+      expect(messages, 'recieved count').to.have.length(3);
+      expect(queue.messageCount, 'message count').to.equal(0);
+      expect(queue.consumerCount, 'consumer count').to.equal(1);
+      expect(consumer.ready, 'consumer ready').to.be.true;
+
+      function onMessage(_, msg) {
+        const count = messages.push(msg);
+        if (count === 2) throw new Error('Provoke');
+      }
+    });
+  });
+
+  describe('ack', () => {
+    it('consumer stops consuming if error is thrown in message callback before message was acked', () => {
+      const broker = Broker();
+
+      const queue = broker.assertQueue('event-q');
+
+      const consumer = broker.consume(queue.name, onMessage);
+
+      expect(() => queue.queueMessage({ routingKey: 'test' })).to.throw('Provoke');
+
+      expect(queue.messageCount, 'message count').to.equal(1);
+      expect(queue.consumerCount, 'consumer count').to.equal(1);
+      expect(consumer.ready, 'consumer ready').to.be.false;
+
+      function onMessage() {
+        throw new Error('Provoke');
+      }
+    });
+
+    it('consumer continues consuming if error is thrown in message callback after message was acked', () => {
+      const broker = Broker();
+      const messages = [];
+
+      const queue = broker.assertQueue('event-q');
+
+      const consumer = broker.consume(queue.name, onMessage);
+
+      queue.queueMessage({ routingKey: 'test' });
+
+      expect(messages, 'recieved count').to.have.length(1);
+      expect(queue.messageCount, 'message count').to.equal(0);
+      expect(queue.consumerCount, 'consumer count').to.equal(1);
+      expect(consumer.ready, 'consumer ready').to.be.true;
+
+      expect(() => queue.queueMessage({ routingKey: 'test' })).to.throw('Provoke');
+
+      expect(messages, 'recieved count').to.have.length(2);
+      expect(queue.messageCount, 'message count').to.equal(0);
+      expect(queue.consumerCount, 'consumer count').to.equal(1);
+      expect(consumer.ready, 'consumer ready').to.be.true;
+
+      queue.queueMessage({ routingKey: 'test' });
+
+      expect(messages, 'recieved count').to.have.length(3);
+      expect(queue.messageCount, 'message count').to.equal(0);
+      expect(queue.consumerCount, 'consumer count').to.equal(1);
+      expect(consumer.ready, 'consumer ready').to.be.true;
+
+      function onMessage(_, msg) {
+        const count = messages.push(msg);
+        msg.ack();
+        if (count === 2) throw new Error('Provoke');
       }
     });
   });
@@ -57,7 +208,7 @@ describe('consumer', () => {
       const queue = broker.assertQueue('event-q');
       const consumer = broker.consume(queue.name, onMessage, { noAck: true });
 
-      queue.queueMessage('test');
+      queue.queueMessage({ routingKey: 'test' });
 
       consumer.on('cancel', () => {
         expect(queue.messageCount).to.equal(0);
@@ -77,7 +228,7 @@ describe('consumer', () => {
       const queue = broker.assertQueue('event-q');
       const consumer = broker.consume(queue.name, onMessage, { noAck: true, consumerTag: '_test-tag' });
 
-      queue.queueMessage('test');
+      queue.queueMessage({ routingKey: 'test' });
 
       consumer.on('cancel', () => {
         expect(queue.messageCount).to.equal(0);
@@ -97,7 +248,7 @@ describe('consumer', () => {
       const queue = broker.assertQueue('event-q');
       const consumer = broker.consume(queue.name, onMessage, { noAck: true, consumerTag: '_test-tag' });
 
-      queue.queueMessage('test');
+      queue.queueMessage({ routingKey: 'test' });
 
       consumer.on('cancel', () => {
         expect(queue.messageCount).to.equal(0);

@@ -1,10 +1,8 @@
-export { generateId, getRoutingKeyPattern, sortByPriority };
-
 const allDots = /\./g;
 const allAstx = /\*/g;
 const allHashs = /#/g;
 
-function generateId() {
+export function generateId() {
   return Math.random().toString(16).substring(2, 12);
 }
 
@@ -22,7 +20,7 @@ EndMatchRoutingKeyPattern.prototype.test = function test(routingKey) {
   return !routingKey.indexOf(this._match);
 };
 
-function getRoutingKeyPattern(pattern) {
+export function getRoutingKeyPattern(pattern) {
   const len = pattern.length;
   const hashIdx = pattern.indexOf('#');
   const astxIdx = pattern.indexOf('*');
@@ -42,6 +40,6 @@ function getRoutingKeyPattern(pattern) {
   return new RegExp(`^${rpattern}$`);
 }
 
-function sortByPriority(a, b) {
+export function sortByPriority(a, b) {
   return (b.options.priority || 0) - (a.options.priority || 0);
 }

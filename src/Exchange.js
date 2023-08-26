@@ -2,21 +2,22 @@ import { Message } from './Message.js';
 import { Queue } from './Queue.js';
 import { sortByPriority, getRoutingKeyPattern, generateId } from './shared.js';
 
-export { Exchange, EventExchange };
-
 const kType = Symbol.for('type');
 const kStopped = Symbol.for('stopped');
 const kBindings = Symbol.for('bindings');
 const kDeliveryQueue = Symbol.for('deliveryQueue');
 
-function Exchange(name, type = 'topic', options) {
-  if (!name) throw new Error('Exchange name is required');
-  if ([ 'topic', 'direct' ].indexOf(type) === -1) throw Error('Exchange type must be one of topic or direct');
+const exchangeTypes = [ 'topic', 'direct' ];
+
+export function Exchange(name, type = 'topic', options) {
+  if (!name || typeof name !== 'string') throw new TypeError('Exchange name is required and must be a string');
+
+  if (exchangeTypes.indexOf(type) === -1) throw Error('Exchange type must be one of topic or direct');
   const eventExchange = new EventExchange(`${name}__events`);
   return new ExchangeBase(name, type, options, eventExchange);
 }
 
-function EventExchange(name) {
+export function EventExchange(name) {
   if (!name) name = `smq.ename-${generateId()}`;
   return new ExchangeBase(name, 'topic', { durable: false, autoDelete: true });
 }
@@ -34,33 +35,31 @@ function ExchangeBase(name, type, options, eventExchange) {
   deliveryQueue.consume(onMessage, { exclusive: true, consumerTag: '_exchange-tag' });
 }
 
-Object.defineProperty(ExchangeBase.prototype, 'bindingCount', {
-  get() {
-    return this[kBindings].length;
+Object.defineProperties(ExchangeBase.prototype, {
+  bindingCount: {
+    get() {
+      return this[kBindings].length;
+    },
   },
-});
-
-Object.defineProperty(ExchangeBase.prototype, 'bindings', {
-  get() {
-    return this[kBindings].slice();
+  bindings: {
+    get() {
+      return this[kBindings].slice();
+    },
   },
-});
-
-Object.defineProperty(ExchangeBase.prototype, 'type', {
-  get() {
-    return this[kType];
+  type: {
+    get() {
+      return this[kType];
+    },
   },
-});
-
-Object.defineProperty(ExchangeBase.prototype, 'stopped', {
-  get() {
-    return this[kStopped];
+  stopped: {
+    get() {
+      return this[kStopped];
+    },
   },
-});
-
-Object.defineProperty(ExchangeBase.prototype, 'undeliveredCount', {
-  get() {
-    return this[kDeliveryQueue].messageCount;
+  undeliveredCount: {
+    get() {
+      return this[kDeliveryQueue].messageCount;
+    },
   },
 });
 

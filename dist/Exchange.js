@@ -12,9 +12,10 @@ const kType = Symbol.for('type');
 const kStopped = Symbol.for('stopped');
 const kBindings = Symbol.for('bindings');
 const kDeliveryQueue = Symbol.for('deliveryQueue');
+const exchangeTypes = ['topic', 'direct'];
 function Exchange(name, type = 'topic', options) {
-  if (!name) throw new Error('Exchange name is required');
-  if (['topic', 'direct'].indexOf(type) === -1) throw Error('Exchange type must be one of topic or direct');
+  if (!name || typeof name !== 'string') throw new TypeError('Exchange name is required and must be a string');
+  if (exchangeTypes.indexOf(type) === -1) throw Error('Exchange type must be one of topic or direct');
   const eventExchange = new EventExchange(`${name}__events`);
   return new ExchangeBase(name, type, options, eventExchange);
 }
@@ -45,31 +46,58 @@ function ExchangeBase(name, type, options, eventExchange) {
     consumerTag: '_exchange-tag'
   });
 }
-Object.defineProperty(ExchangeBase.prototype, 'bindingCount', {
-  get() {
-    return this[kBindings].length;
+Object.defineProperties(ExchangeBase.prototype, {
+  bindingCount: {
+    get() {
+      return this[kBindings].length;
+    }
+  },
+  bindings: {
+    get() {
+      return this[kBindings].slice();
+    }
+  },
+  type: {
+    get() {
+      return this[kType];
+    }
+  },
+  stopped: {
+    get() {
+      return this[kStopped];
+    }
+  },
+  undeliveredCount: {
+    get() {
+      return this[kDeliveryQueue].messageCount;
+    }
   }
 });
-Object.defineProperty(ExchangeBase.prototype, 'bindings', {
-  get() {
-    return this[kBindings].slice();
-  }
-});
-Object.defineProperty(ExchangeBase.prototype, 'type', {
-  get() {
-    return this[kType];
-  }
-});
-Object.defineProperty(ExchangeBase.prototype, 'stopped', {
-  get() {
-    return this[kStopped];
-  }
-});
-Object.defineProperty(ExchangeBase.prototype, 'undeliveredCount', {
-  get() {
-    return this[kDeliveryQueue].messageCount;
-  }
-});
+
+// Object.defineProperty(ExchangeBase.prototype, 'bindings', {
+//   get() {
+//     return this[kBindings].slice();
+//   },
+// });
+
+// Object.defineProperty(ExchangeBase.prototype, 'type', {
+//   get() {
+//     return this[kType];
+//   },
+// });
+
+// Object.defineProperty(ExchangeBase.prototype, 'stopped', {
+//   get() {
+//     return this[kStopped];
+//   },
+// });
+
+// Object.defineProperty(ExchangeBase.prototype, 'undeliveredCount', {
+//   get() {
+//     return this[kDeliveryQueue].messageCount;
+//   },
+// });
+
 ExchangeBase.prototype.publish = function publish(routingKey, content, properties) {
   if (this[kStopped]) return;
   if (!this.bindingCount) return this._emitReturn(routingKey, content, properties);

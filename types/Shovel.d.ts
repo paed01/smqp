@@ -39,3 +39,16 @@ export class Shovel {
   off(eventName: string, handler: any): Consumer;
   close(): void;
 }
+
+export class Exchange2Exchange {
+  constructor(shovel: Shovel);
+  readonly name: string;
+  readonly source: string;
+  /** name of source e2e queue */
+  readonly queue: string;
+  readonly pattern: string;
+  readonly destination: string;
+  readonly consumerTag: string;
+  on(eventName: string, handler: CallableFunction): Consumer;
+  close(): void;
+}

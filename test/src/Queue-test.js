@@ -12,6 +12,10 @@ describe('Queue', () => {
       expect(queue).to.have.property('name').that.is.ok;
     });
 
+    it('throws error if name is not a string', () => {
+      expect(() => new Queue({})).to.throw(TypeError);
+    });
+
     it('takes options', () => {
       const queue = new Queue(null, { autoDelete: false, durable: true });
       expect(queue).to.have.property('options').that.eql({ autoDelete: false, durable: true });
@@ -230,7 +234,7 @@ describe('Queue', () => {
   });
 
   describe('queueMessage()', () => {
-    it('queues message', () => {
+    it('queues message without any arguments', () => {
       const queue = new Queue();
       queue.queueMessage();
 
@@ -243,6 +247,16 @@ describe('Queue', () => {
       queue.queueMessage();
 
       expect(queue.messageCount).to.equal(2);
+    });
+
+    it('throws if message fields is not an object', () => {
+      const queue = new Queue();
+      expect(() => queue.queueMessage('test.1')).to.throw(TypeError);
+    });
+
+    it('throws if message properties is not an object', () => {
+      const queue = new Queue();
+      expect(() => queue.queueMessage(null, null, 'test.1')).to.throw(TypeError);
     });
   });
 
@@ -427,6 +441,11 @@ describe('Queue', () => {
         message.ack();
         queue.dismiss(onMessage);
       }
+    });
+
+    it('throws if consumerTag is not a string', () => {
+      const queue = new Queue(null, { autoDelete: false });
+      expect(() => queue.consume(() => {}, { consumerTag: {} })).to.throw(TypeError).that.match(/consumerTag/);
     });
   });
 
