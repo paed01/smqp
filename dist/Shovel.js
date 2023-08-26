@@ -74,16 +74,16 @@ function Shovel(name, source, destination, options = {}) {
   }
   eventHandlers.push(consumer.on('cancel', boundClose));
 }
-Object.defineProperty(Shovel.prototype, 'closed', {
-  enumerable: true,
-  get() {
-    return this[kClosed];
-  }
-});
-Object.defineProperty(Shovel.prototype, 'consumerTag', {
-  enumerable: true,
-  get() {
-    return this[kConsumerTag];
+Object.defineProperties(Shovel.prototype, {
+  closed: {
+    get() {
+      return this[kClosed];
+    }
+  },
+  consumerTag: {
+    get() {
+      return this[kConsumerTag];
+    }
   }
 });
 Shovel.prototype.emit = function emit(eventName, content) {
@@ -154,37 +154,31 @@ function Exchange2Exchange(shovel) {
 }
 Object.defineProperties(Exchange2Exchange.prototype, {
   name: {
-    enumerable: true,
     get() {
       return this[kE2EShovel].name;
     }
   },
   source: {
-    enumerable: true,
     get() {
       return this[kE2EShovel].source.exchange;
     }
   },
   destination: {
-    enumerable: true,
     get() {
       return this[kE2EShovel].destination.exchange;
     }
   },
   pattern: {
-    enumerable: true,
     get() {
       return this[kE2EShovel].source.pattern;
     }
   },
   queue: {
-    enumerable: true,
     get() {
       return this[kE2EShovel].source.queue;
     }
   },
   consumerTag: {
-    enumerable: true,
     get() {
       return this[kE2EShovel].consumerTag;
     }

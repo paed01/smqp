@@ -73,31 +73,6 @@ Object.defineProperties(ExchangeBase.prototype, {
     }
   }
 });
-
-// Object.defineProperty(ExchangeBase.prototype, 'bindings', {
-//   get() {
-//     return this[kBindings].slice();
-//   },
-// });
-
-// Object.defineProperty(ExchangeBase.prototype, 'type', {
-//   get() {
-//     return this[kType];
-//   },
-// });
-
-// Object.defineProperty(ExchangeBase.prototype, 'stopped', {
-//   get() {
-//     return this[kStopped];
-//   },
-// });
-
-// Object.defineProperty(ExchangeBase.prototype, 'undeliveredCount', {
-//   get() {
-//     return this[kDeliveryQueue].messageCount;
-//   },
-// });
-
 ExchangeBase.prototype.publish = function publish(routingKey, content, properties) {
   if (this[kStopped]) return;
   if (!this.bindingCount) return this._emitReturn(routingKey, content, properties);

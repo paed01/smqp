@@ -30,32 +30,31 @@ function Queue(name, options, eventEmitter) {
   this[kExclusive] = false;
   this[kOnConsumed] = this._onMessageConsumed.bind(this);
 }
-Object.defineProperty(Queue.prototype, 'consumerCount', {
-  enumerable: true,
-  get() {
-    return this[kConsumers].length;
-  }
-});
-Object.defineProperty(Queue.prototype, 'consumers', {
-  get() {
-    return this[kConsumers].slice();
-  }
-});
-Object.defineProperty(Queue.prototype, 'exclusive', {
-  get() {
-    return this[kExclusive];
-  }
-});
-Object.defineProperty(Queue.prototype, 'messageCount', {
-  enumerable: true,
-  get() {
-    return this.messages.length;
-  }
-});
-Object.defineProperty(Queue.prototype, 'stopped', {
-  enumerable: true,
-  get() {
-    return this[kStopped];
+Object.defineProperties(Queue.prototype, {
+  consumerCount: {
+    get() {
+      return this[kConsumers].length;
+    }
+  },
+  consumers: {
+    get() {
+      return this[kConsumers].slice();
+    }
+  },
+  exclusive: {
+    get() {
+      return this[kExclusive];
+    }
+  },
+  messageCount: {
+    get() {
+      return this.messages.length;
+    }
+  },
+  stopped: {
+    get() {
+      return this[kStopped];
+    }
   }
 });
 Queue.prototype.queueMessage = function queueMessage(fields, content, properties) {
@@ -437,36 +436,36 @@ function Consumer(queue, onMessage, options, owner, eventEmitter) {
     maxLength: this.options.prefetch
   }, new ConsumerQueueEvents(this));
 }
-Object.defineProperty(Consumer.prototype, 'consumerTag', {
-  enumerable: true,
-  get() {
-    return this.options.consumerTag;
-  }
-});
-Object.defineProperty(Consumer.prototype, 'ready', {
-  enumerable: true,
-  get() {
-    return this[kIsReady] && !this[kStopped];
-  }
-});
-Object.defineProperty(Consumer.prototype, 'stopped', {
-  get() {
-    return this[kStopped];
-  }
-});
-Object.defineProperty(Consumer.prototype, 'capacity', {
-  get() {
-    return this[kInternalQueue]._getCapacity();
-  }
-});
-Object.defineProperty(Consumer.prototype, 'messageCount', {
-  get() {
-    return this[kInternalQueue].messageCount;
-  }
-});
-Object.defineProperty(Consumer.prototype, 'queueName', {
-  get() {
-    return this.queue.name;
+Object.defineProperties(Consumer.prototype, {
+  consumerTag: {
+    get() {
+      return this.options.consumerTag;
+    }
+  },
+  ready: {
+    get() {
+      return this[kIsReady] && !this[kStopped];
+    }
+  },
+  stopped: {
+    get() {
+      return this[kStopped];
+    }
+  },
+  capacity: {
+    get() {
+      return this[kInternalQueue]._getCapacity();
+    }
+  },
+  messageCount: {
+    get() {
+      return this[kInternalQueue].messageCount;
+    }
+  },
+  queueName: {
+    get() {
+      return this.queue.name;
+    }
   }
 });
 Consumer.prototype._push = function push(messages) {

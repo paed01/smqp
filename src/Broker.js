@@ -21,24 +21,21 @@ export function Broker(owner) {
   this[kEventHandler] = new EventHandler(this, entities);
 }
 
-Object.defineProperty(Broker.prototype, 'exchangeCount', {
-  enumerable: true,
-  get() {
-    return this[kEntities].exchanges.length;
+Object.defineProperties(Broker.prototype, {
+  exchangeCount: {
+    get() {
+      return this[kEntities].exchanges.length;
+    },
   },
-});
-
-Object.defineProperty(Broker.prototype, 'queueCount', {
-  enumerable: true,
-  get() {
-    return this[kEntities].queues.length;
+  queueCount: {
+    get() {
+      return this[kEntities].queues.length;
+    },
   },
-});
-
-Object.defineProperty(Broker.prototype, 'consumerCount', {
-  enumerable: true,
-  get() {
-    return this[kEntities].consumers.length;
+  consumerCount: {
+    get() {
+      return this[kEntities].consumers.length;
+    },
   },
 });
 

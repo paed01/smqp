@@ -63,7 +63,7 @@
     "c8": "^8.0.1",
     "chai": "^4.3.8",
     "chronokinesis": "^6.0.0",
-    "eslint": "^8.47.0",
+    "eslint": "^8.48.0",
     "eslint-config-exp": "^0.6.2",
     "markdown-toc": "^1.2.0",
     "mocha": "^10.2.0"

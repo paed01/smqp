@@ -26,36 +26,31 @@ export function Queue(name, options, eventEmitter) {
   this[kOnConsumed] = this._onMessageConsumed.bind(this);
 }
 
-Object.defineProperty(Queue.prototype, 'consumerCount', {
-  enumerable: true,
-  get() {
-    return this[kConsumers].length;
+Object.defineProperties(Queue.prototype, {
+  consumerCount: {
+    get() {
+      return this[kConsumers].length;
+    },
   },
-});
-
-Object.defineProperty(Queue.prototype, 'consumers', {
-  get() {
-    return this[kConsumers].slice();
+  consumers: {
+    get() {
+      return this[kConsumers].slice();
+    },
   },
-});
-
-Object.defineProperty(Queue.prototype, 'exclusive', {
-  get() {
-    return this[kExclusive];
+  exclusive: {
+    get() {
+      return this[kExclusive];
+    },
   },
-});
-
-Object.defineProperty(Queue.prototype, 'messageCount', {
-  enumerable: true,
-  get() {
-    return this.messages.length;
+  messageCount: {
+    get() {
+      return this.messages.length;
+    },
   },
-});
-
-Object.defineProperty(Queue.prototype, 'stopped', {
-  enumerable: true,
-  get() {
-    return this[kStopped];
+  stopped: {
+    get() {
+      return this[kStopped];
+    },
   },
 });
 
@@ -485,41 +480,36 @@ export function Consumer(queue, onMessage, options, owner, eventEmitter) {
   }, new ConsumerQueueEvents(this));
 }
 
-Object.defineProperty(Consumer.prototype, 'consumerTag', {
-  enumerable: true,
-  get() {
-    return this.options.consumerTag;
+Object.defineProperties(Consumer.prototype, {
+  consumerTag: {
+    get() {
+      return this.options.consumerTag;
+    },
   },
-});
-
-Object.defineProperty(Consumer.prototype, 'ready', {
-  enumerable: true,
-  get() {
-    return this[kIsReady] && !this[kStopped];
+  ready: {
+    get() {
+      return this[kIsReady] && !this[kStopped];
+    },
   },
-});
-
-Object.defineProperty(Consumer.prototype, 'stopped', {
-  get() {
-    return this[kStopped];
+  stopped: {
+    get() {
+      return this[kStopped];
+    },
   },
-});
-
-Object.defineProperty(Consumer.prototype, 'capacity', {
-  get() {
-    return this[kInternalQueue]._getCapacity();
+  capacity: {
+    get() {
+      return this[kInternalQueue]._getCapacity();
+    },
   },
-});
-
-Object.defineProperty(Consumer.prototype, 'messageCount', {
-  get() {
-    return this[kInternalQueue].messageCount;
+  messageCount: {
+    get() {
+      return this[kInternalQueue].messageCount;
+    },
   },
-});
-
-Object.defineProperty(Consumer.prototype, 'queueName', {
-  get() {
-    return this.queue.name;
+  queueName: {
+    get() {
+      return this.queue.name;
+    },
   },
 });
 
