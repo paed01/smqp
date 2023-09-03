@@ -1,5 +1,5 @@
 <!-- version -->
-# 8.1.0 API Reference
+# 8.2.0 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -7,7 +7,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
 <!-- toc -->
 
 - [API reference](#api-reference)
-  - [`Broker([owner])`](#brokerowner)
+  - [`new Broker([owner])`](#new-brokerowner)
     - [`broker.subscribe(exchangeName, pattern, queueName, onMessage[, options])`](#brokersubscribeexchangename-pattern-queuename-onmessage-options)
     - [`broker.subscribeTmp(exchangeName, pattern, onMessage[, options])`](#brokersubscribetmpexchangename-pattern-onmessage-options)
     - [`broker.subscribeOnce(exchangeName, pattern, onMessage[, options])`](#brokersubscribeonceexchangename-pattern-onmessage-options)
@@ -88,12 +88,14 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [Consumer](#consumer)
     - [`consumer.ackAll()`](#consumerackall)
     - [`consumer.nackAll([requeue])`](#consumernackallrequeue)
-    - [`consumer.cancel()`](#consumercancel)
+    - [`consumer.cancel([requeue = true])`](#consumercancelrequeue--true)
     - [`consumer.prefetch(numberOfMessages)`](#consumerprefetchnumberofmessages)
   - [Message](#message)
     - [`message.ack([allUpTo])`](#messageackallupto)
     - [`message.nack([allUpTo, requeue])`](#messagenackallupto-requeue)
     - [`message.reject([requeue])`](#messagerejectrequeue)
+  - [SmqpError](#smqperror)
+    - [`error.code`](#errorcode)
   - [`getRoutingKeyPattern(pattern)`](#getroutingkeypatternpattern)
   - [Message eviction](#message-eviction)
 
@@ -101,7 +103,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
 
 # API reference
 
-## `Broker([owner])`
+## `new Broker([owner])`
 Start new broker owned by optional `owner`.
 
 ### `broker.subscribe(exchangeName, pattern, queueName, onMessage[, options])`
@@ -636,9 +638,11 @@ Ack all messages currently held by consumer
 
 Nack all messages currently held by consumer
 
-### `consumer.cancel()`
+### `consumer.cancel([requeue = true])`
 
 Cancel consumption and unsubscribe from queue
+
+- `requeue`: optional boolean to requeue messages consumed by consumer
 
 ### `consumer.prefetch(numberOfMessages)`
 
@@ -677,6 +681,24 @@ Reject message.
 ### `message.reject([requeue])`
 
 Same as `nack(false, true)`
+
+## SmqpError
+
+`throw SmqpError(message, code)` inherited from Error, it is thrown when package specific errors occur.
+
+### `error.code`
+
+- `ERR_SMQP_CONSUMER_TAG_CONFLICT`: consumer tag is already taken, must be unique within the broker
+- `ERR_SMQP_EXCHANGE_TYPE_MISMATCH`: asserting an exchange with different type than existing exchange is not allowed
+- `ERR_SMQP_EXCLUSIVE_CONFLICT`: consuming a queue that is exclusively consumed by someone else is not exclusive
+- `ERR_SMQP_EXCLUSIVE_NOT_ALLOWED`: attempting to exclusively consume a queue that already has consumers is not allowed
+- `ERR_SMQP_QUEUE_DURABLE_MISMATCH`: asserting a queue that has different durable option than existing queue is not allowed
+- `ERR_SMQP_QUEUE_NAME_CONFLICT`: creating a queue with the same name as existing queue throws this code
+- `ERR_SMQP_QUEUE_NOT_FOUND`: attempting to send a message to or consume a non-existing queue - KABLAM!
+- `ERR_SMQP_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND`: shovel destination exchange was not found
+- `ERR_SMQP_SHOVEL_NAME_CONFLICT`: a shovel with the same name already exists, suffix something, e.g. `_new` or come up with another name
+- `ERR_SMQP_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND`: shovel source exchange was not found, a bit self-explanatory
+- `EQUEUE_STATE`: legacy code and acually a `TypeError`, will pop if queue messages has circular JSON when getting state
 
 ## `getRoutingKeyPattern(pattern)`
 Test routing key pattern against routing key.

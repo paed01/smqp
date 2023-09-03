@@ -1,5 +1,6 @@
 import { generateId, sortByPriority } from './shared.js';
 import { Message } from './Message.js';
+import { SmqpError, ERR_EXCLUSIVE_CONFLICT, ERR_EXCLUSIVE_NOT_ALLOWED } from './Errors.js';
 
 const kConsumers = Symbol.for('consumers');
 const kConsuming = Symbol.for('consuming');
@@ -116,8 +117,8 @@ Queue.prototype.consume = function consume(onMessage, consumeOptions = {}, owner
   const noOfConsumers = consumers.length;
 
   if (noOfConsumers) {
-    if (this[kExclusive]) throw new Error(`Queue ${this.name} is exclusively consumed by ${consumers[0].consumerTag}`);
-    if (consumeOptions.exclusive) throw new Error(`Queue ${this.name} already has consumers and cannot be exclusively consumed`);
+    if (this[kExclusive]) throw new SmqpError(`Queue ${this.name} is exclusively consumed by ${consumers[0].consumerTag}`, ERR_EXCLUSIVE_CONFLICT);
+    if (consumeOptions.exclusive) throw new SmqpError(`Queue ${this.name} already has consumers and cannot be exclusively consumed`, ERR_EXCLUSIVE_NOT_ALLOWED);
   }
 
   const consumer = new Consumer(this, onMessage, consumeOptions, owner, new ConsumerEmitter(this));
@@ -460,7 +461,7 @@ Queue.prototype._getCapacity = function getCapacity() {
 };
 
 export function Consumer(queue, onMessage, options, owner, eventEmitter) {
-  if (typeof onMessage !== 'function') throw new Error('message callback is required and must be a function');
+  if (typeof onMessage !== 'function') throw new TypeError('message callback is required and must be a function');
 
   const { consumerTag } = this.options = { prefetch: 1, priority: 0, noAck: false, ...options };
   if (!consumerTag) this.options.consumerTag = `smq.ctag-${generateId()}`;

@@ -1,4 +1,5 @@
 import { Broker, Shovel } from '../src/index.js';
+import { SmqpError } from '../src/Errors.js';
 
 describe('Shovel', () => {
   describe('api', () => {
@@ -242,7 +243,7 @@ describe('Shovel', () => {
           broker: broker2,
           exchange: 'dest-events',
         });
-      }).to.throw(/source exchange <source-events> not found/);
+      }).to.throw(SmqpError, /source exchange <source-events> not found/).with.property('code', 'ERR_SMQP_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND');
     });
 
     it('throws if destination exchange is missing', () => {
@@ -259,7 +260,7 @@ describe('Shovel', () => {
           broker: broker2,
           exchange: 'dest-events',
         });
-      }).to.throw(/destination exchange <dest-events> not found/);
+      }).to.throw(SmqpError, /destination exchange <dest-events> not found/).with.property('code', 'ERR_SMQP_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND');
     });
 
     it('close() closes shovel', () => {
@@ -1016,7 +1017,7 @@ describe('Shovel', () => {
 
       expect(() => {
         broker.createShovel('events-shovel', { exchange: 'events', pattern: 'test.*' }, { broker: destinationBroker, exchange: 'dest-events' });
-      }).to.throw(/events-shovel is occupied/);
+      }).to.throw(SmqpError, /events-shovel is occupied/).with.property('code', 'ERR_SMQP_SHOVEL_NAME_CONFLICT');
     });
 
     it('shovel.close() closes shovel once', () => {

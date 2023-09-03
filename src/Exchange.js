@@ -12,7 +12,7 @@ const exchangeTypes = [ 'topic', 'direct' ];
 export function Exchange(name, type = 'topic', options) {
   if (!name || typeof name !== 'string') throw new TypeError('Exchange name is required and must be a string');
 
-  if (exchangeTypes.indexOf(type) === -1) throw Error('Exchange type must be one of topic or direct');
+  if (exchangeTypes.indexOf(type) === -1) throw new TypeError('Exchange type must be one of topic or direct');
   const eventExchange = new EventExchange(`${name}__events`);
   return new ExchangeBase(name, type, options, eventExchange);
 }

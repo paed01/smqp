@@ -8,6 +8,7 @@ var _Exchange = require("./Exchange.js");
 var _Queue = require("./Queue.js");
 var _Shovel = require("./Shovel.js");
 var _shared = require("./shared.js");
+var _Errors = require("./Errors.js");
 const kEntities = Symbol.for('entities');
 const kEventHandler = Symbol.for('eventHandler');
 function Broker(owner) {
@@ -44,7 +45,7 @@ Object.defineProperties(Broker.prototype, {
 Broker.prototype.subscribe = function subscribe(exchangeName, pattern, queueName, onMessage, options = {
   durable: true
 }) {
-  if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new Error('exchange name, pattern, and message callback are required');
+  if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new TypeError('exchange name, pattern, and message callback are required');
   if (options && options.consumerTag) this.validateConsumerTag(options.consumerTag);
   const exchange = this.assertExchange(exchangeName);
   const queue = this.assertQueue(queueName, options);
@@ -58,7 +59,7 @@ Broker.prototype.subscribeTmp = function subscribeTmp(exchangeName, pattern, onM
   });
 };
 Broker.prototype.subscribeOnce = function subscribeOnce(exchangeName, pattern, onMessage, options = {}) {
-  if (typeof onMessage !== 'function') throw new Error('message callback is required');
+  if (typeof onMessage !== 'function') throw new TypeError('message callback is required');
   if (options && options.consumerTag) this.validateConsumerTag(options.consumerTag);
   const exchange = this.assertExchange(exchangeName);
   const onceOptions = {
@@ -85,7 +86,7 @@ Broker.prototype.unsubscribe = function unsubscribe(queueName, onMessage) {
 Broker.prototype.assertExchange = function assertExchange(exchangeName, type, options) {
   let exchange = this.getExchange(exchangeName);
   if (exchange) {
-    if (type && exchange.type !== type) throw new Error('Type doesn\'t match');
+    if (type && exchange.type !== type) throw new _Errors.SmqpError('Type doesn\'t match', _Errors.ERR_EXCHANGE_TYPE_MISMATCH);
     return exchange;
   }
   exchange = new _Exchange.Exchange(exchangeName, type || 'topic', options);
@@ -107,7 +108,7 @@ Broker.prototype.unbindQueue = function unbindQueue(queueName, exchangeName, pat
 };
 Broker.prototype.consume = function consume(queueName, onMessage, options) {
   const queue = this.getQueue(queueName);
-  if (!queue) throw new Error(`Queue with name <${queueName}> was not found`);
+  if (!queue) throw new _Errors.SmqpError(`Queue with name <${queueName}> was not found`, _Errors.ERR_QUEUE_NOT_FOUND);
   if (options) this.validateConsumerTag(options.consumerTag);
   return queue.consume(onMessage, options, this.owner);
 };
@@ -247,7 +248,7 @@ Broker.prototype.purgeQueue = function purgeQueue(queueName) {
 };
 Broker.prototype.sendToQueue = function sendToQueue(queueName, content, options = {}) {
   const queue = this.getQueue(queueName);
-  if (!queue) throw new Error(`Queue named ${queueName} doesn't exists`);
+  if (!queue) throw new _Errors.SmqpError(`Queue with name <${queueName}> was not found`, _Errors.ERR_QUEUE_NOT_FOUND);
   return queue.queueMessage(null, content, options);
 };
 Broker.prototype._getQueuesState = function getQueuesState(onlyWithContent) {
@@ -271,7 +272,7 @@ Broker.prototype._getExchangeState = function getExchangeState(onlyWithContent) 
   return result;
 };
 Broker.prototype.createQueue = function createQueue(queueName, options) {
-  if (queueName && typeof queueName !== 'string') throw new TypeError('queue name must be a string');else if (!queueName) queueName = `smq.qname-${(0, _shared.generateId)()}`;else if (this.getQueue(queueName)) throw new Error(`Queue named ${queueName} already exists`);
+  if (queueName && typeof queueName !== 'string') throw new TypeError('queue name must be a string');else if (!queueName) queueName = `smq.qname-${(0, _shared.generateId)()}`;else if (this.getQueue(queueName)) throw new _Errors.SmqpError(`Queue named ${queueName} already exists`, _Errors.ERR_QUEUE_NAME_CONFLICT);
   const queueEmitter = new _Exchange.EventExchange(`${queueName}__events`);
   this[kEventHandler].listen(queueEmitter);
   const queue = new _Queue.Queue(queueName, options, queueEmitter);
@@ -292,7 +293,7 @@ Broker.prototype.assertQueue = function assertQueue(queueName, options = {}) {
     ...options
   };
   if (!queue) return this.createQueue(queueName, options);
-  if (queue.options.durable !== options.durable) throw new Error('Durable doesn\'t match');
+  if (queue.options.durable !== options.durable) throw new _Errors.SmqpError('Durable doesn\'t match', _Errors.ERR_QUEUE_DURABLE_MISMATCH);
   return queue;
 };
 Broker.prototype.deleteQueue = function deleteQueue(queueName, options) {
@@ -327,13 +328,13 @@ Broker.prototype.reject = function reject(message, requeue) {
 Broker.prototype.validateConsumerTag = function validateConsumerTag(consumerTag) {
   if (!consumerTag) return true;
   if (this.getConsumer(consumerTag)) {
-    throw new Error(`Consumer tag must be unique, ${consumerTag} is occupied`);
+    throw new _Errors.SmqpError(`Consumer tag must be unique, ${consumerTag} is occupied`, _Errors.ERR_CONSUMER_TAG_CONFLICT);
   }
   return true;
 };
 Broker.prototype.createShovel = function createShovel(name, source, destination, options) {
   const shovels = this[kEntities].shovels;
-  if (this.getShovel(name)) throw new Error(`Shovel name must be unique, ${name} is occupied`);
+  if (this.getShovel(name)) throw new _Errors.SmqpError(`Shovel name must be unique, ${name} is occupied`, _Errors.ERR_SHOVEL_NAME_CONFLICT);
   const shovel = new _Shovel.Shovel(name, {
     ...source,
     broker: this

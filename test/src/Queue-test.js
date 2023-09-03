@@ -1,4 +1,5 @@
 import { Queue } from '../../src/Queue.js';
+import { SmqpError } from '../../src/Errors.js';
 
 describe('Queue', () => {
   describe('ctor', () => {
@@ -212,7 +213,7 @@ describe('Queue', () => {
 
         expect(() => {
           queue.consume(() => {});
-        }).to.throw(/is exclusively consumed/);
+        }).to.throw(SmqpError, /is exclusively consumed/).with.property('code', 'ERR_SMQP_EXCLUSIVE_CONFLICT');
       });
 
       it('exclusively consume on queue with consumer throws error', () => {
@@ -221,7 +222,7 @@ describe('Queue', () => {
 
         expect(() => {
           queue.consume(() => {}, { exclusive: true });
-        }).to.throw(/already has consumers/);
+        }).to.throw(SmqpError, /already has consumers/).with.property('code', 'ERR_SMQP_EXCLUSIVE_NOT_ALLOWED');
       });
 
       it('releases exclusive consumed queue when consumer is canceled', () => {
@@ -445,7 +446,7 @@ describe('Queue', () => {
 
     it('throws if consumerTag is not a string', () => {
       const queue = new Queue(null, { autoDelete: false });
-      expect(() => queue.consume(() => {}, { consumerTag: {} })).to.throw(TypeError).that.match(/consumerTag/);
+      expect(() => queue.consume(() => {}, { consumerTag: {} })).to.throw(TypeError, /consumerTag/);
     });
   });
 
@@ -483,7 +484,7 @@ describe('Queue', () => {
 
       expect(() => {
         queue.assertConsumer(onMessage, { consumerTag: 'test-consumer', exclusive: false });
-      }).to.throw(Error);
+      }).to.throw(SmqpError);
 
       expect(queue.assertConsumer(onMessage, { consumerTag: 'test-consumer', exclusive: true }) === consumer).to.be.true;
 

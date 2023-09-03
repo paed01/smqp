@@ -1,4 +1,5 @@
 import { EventExchange } from './Exchange.js';
+import { SmqpError, ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND, ERR_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND } from './Errors.js';
 
 const kBrokerInternal = Symbol.for('brokerInternal');
 const kCloneMessage = Symbol.for('cloneMessage');
@@ -18,12 +19,12 @@ export function Shovel(name, source, destination, options = {}) {
 
   const sourceExchange = sourceBroker.getExchange(sourceExchangeName);
   if (!sourceExchange) {
-    throw new Error(`shovel ${name} source exchange <${sourceExchangeName}> not found`);
+    throw new SmqpError(`shovel ${name} source exchange <${sourceExchangeName}> not found`, ERR_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND);
   }
 
   const destinationExchange = destinationBroker.getExchange(destinationExchangeName);
   if (!destinationExchange) {
-    throw new Error(`shovel ${name} destination exchange <${destinationExchangeName}> not found`);
+    throw new SmqpError(`shovel ${name} destination exchange <${destinationExchangeName}> not found`, ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND);
   }
 
   if (!(this instanceof Shovel)) {

@@ -2,6 +2,7 @@ import * as ck from 'chronokinesis';
 
 import { Broker } from '../src/index.js';
 import { Consumer } from '../src/Queue.js';
+import { SmqpError } from '../src/Errors.js';
 
 describe('Broker', () => {
   describe('api', () => {
@@ -28,13 +29,13 @@ describe('Broker', () => {
       const broker = Broker();
       broker.assertExchange('test');
 
-      expect(() => broker.subscribe('test', '', 'persist', () => {})).to.throw(Error);
+      expect(() => broker.subscribe('test', '', 'persist', () => {})).to.throw(TypeError);
     });
 
     it('throws if subscribe without onMessage callback', () => {
       const broker = Broker();
 
-      expect(() => broker.subscribe('test', 'test.#', 'persist')).to.throw(Error);
+      expect(() => broker.subscribe('test', 'test.#', 'persist')).to.throw(TypeError);
     });
 
     it('pass options to exchange and queue', () => {
@@ -94,7 +95,7 @@ describe('Broker', () => {
 
       expect(() => {
         broker.subscribe('test', 'test.#', 'durableQueue', onMessage2, { durable: false, memem: 1 });
-      }).to.throw(/durable/i);
+      }).to.throw(SmqpError).that.have.property('code', 'ERR_SMQP_QUEUE_DURABLE_MISMATCH');
 
       function onMessage1() {}
       function onMessage2() {}
@@ -131,7 +132,7 @@ describe('Broker', () => {
 
       expect(() => {
         broker.subscribe('test', 'test.#', 'exclusive-q', onMessage2);
-      }).to.throw(/exclusively/i);
+      }).to.throw(SmqpError).with.property('code', 'ERR_SMQP_EXCLUSIVE_CONFLICT');
 
       function onMessage1() {}
       function onMessage2() {}
@@ -144,7 +145,7 @@ describe('Broker', () => {
 
       expect(() => {
         broker.subscribe('test', 'test.#', 'exclusive-q', onMessage2, { exclusive: true });
-      }).to.throw(Error);
+      }).to.throw(SmqpError).with.property('code', 'ERR_SMQP_EXCLUSIVE_NOT_ALLOWED');
 
       function onMessage1() {}
       function onMessage2() {}
@@ -352,10 +353,10 @@ describe('Broker', () => {
       broker.assertExchange('event');
       expect(() => {
         broker.subscribeOnce('event', '#');
-      }).to.throw(/message callback/);
+      }).to.throw(TypeError, /message callback/);
       expect(() => {
         broker.subscribeOnce('event', '#', 'not-fn');
-      }).to.throw(/message callback/);
+      }).to.throw(TypeError, /message callback/);
     });
   });
 
@@ -475,7 +476,7 @@ describe('Broker', () => {
 
       expect(() => {
         broker.consume('test');
-      }).to.throw(Error, /message callback/);
+      }).to.throw(TypeError, /message callback/);
     });
 
     it('keeps count of consumers', () => {
@@ -500,7 +501,7 @@ describe('Broker', () => {
 
       expect(() => {
         broker.consume('test-q', () => {});
-      }).to.throw(/exclusively/);
+      }).to.throw(SmqpError, /exclusively/).with.property('code', 'ERR_SMQP_EXCLUSIVE_CONFLICT');
     });
 
     it('exclusive consumption is released when consumer is cancelled', () => {
@@ -511,7 +512,7 @@ describe('Broker', () => {
 
       expect(() => {
         broker.consume('test-q', () => {});
-      }).to.throw(/exclusively/);
+      }).to.throw(SmqpError, /exclusively/).with.property('code', 'ERR_SMQP_EXCLUSIVE_CONFLICT');
 
       exclusive.cancel();
       broker.consume('test-q', () => {});
@@ -525,7 +526,7 @@ describe('Broker', () => {
 
       expect(() => {
         broker.consume('test', () => {}, { consumerTag: 'guid' });
-      }).to.throw(Error, /guid/);
+      }).to.throw(SmqpError, /guid/).with.property('code', 'ERR_SMQP_CONSUMER_TAG_CONFLICT');
 
       function onMessage() {}
     });
@@ -543,7 +544,7 @@ describe('Broker', () => {
       const broker = Broker();
       expect(() => {
         broker.consume('non-q', () => {}, { exclusive: true, consumerTag: 'guid' });
-      }).to.throw(/not found/);
+      }).to.throw(SmqpError, /not found/).with.property('code', 'ERR_SMQP_QUEUE_NOT_FOUND');
     });
   });
 
@@ -560,16 +561,16 @@ describe('Broker', () => {
 
       expect(() => {
         broker.assertExchange('test', 'fanout');
-      }).to.throw(/topic or direct/);
+      }).to.throw(TypeError, /topic or direct/);
       expect(() => {
         broker.assertExchange('test', new Date());
-      }).to.throw(/topic or direct/);
+      }).to.throw(TypeError, /topic or direct/);
       expect(() => {
         broker.assertExchange('test', {});
-      }).to.throw(/topic or direct/);
+      }).to.throw(TypeError, /topic or direct/);
       expect(() => {
         broker.assertExchange('test', () => {});
-      }).to.throw(/topic or direct/);
+      }).to.throw(TypeError, /topic or direct/);
     });
 
     it('returns the same exchange if it exists', () => {
@@ -580,21 +581,12 @@ describe('Broker', () => {
       expect(exchange1 === exchange2).to.be.true;
     });
 
-    it('throws if exchange type is not the same as existing type', () => {
-      const broker = Broker();
-      broker.assertExchange('test', 'direct');
-      expect(() => {
-        broker.assertExchange('test', 'fanout');
-      }).to.throw(/match/);
-    });
-
     it('asserExchange() throws if exchange type is not the same as existing type', () => {
       const broker = Broker();
-
       broker.assertExchange('test', 'direct');
       expect(() => {
         broker.assertExchange('test', 'fanout');
-      }).to.throw(/match/);
+      }).to.throw(SmqpError, /match/).with.property('code', 'ERR_SMQP_EXCHANGE_TYPE_MISMATCH');
     });
   });
 
@@ -1622,7 +1614,7 @@ describe('Broker', () => {
 
     it('createQueue with non-string name throws', () => {
       const broker = Broker();
-      expect(() => broker.createQueue({})).to.throw(TypeError).that.match(/name/);
+      expect(() => broker.createQueue({})).to.throw(TypeError, /name/);
     });
 
     it('createQueue(name) when queue exists throws', () => {
@@ -1631,7 +1623,7 @@ describe('Broker', () => {
 
       expect(() => {
         broker.createQueue('test-q');
-      }).to.throw(/test-q already exists/);
+      }).to.throw(SmqpError, /test-q already exists/).with.property('code', 'ERR_SMQP_QUEUE_NAME_CONFLICT');
     });
 
     it('deleteQueue throws if queueName is empty', () => {
@@ -1908,7 +1900,7 @@ describe('Broker', () => {
       const broker = Broker();
       expect(() => {
         broker.sendToQueue('not-found-q');
-      }).to.throw(/not-found-q/);
+      }).to.throw(SmqpError, /not-found-q/).with.property('code', 'ERR_SMQP_QUEUE_NOT_FOUND');
     });
   });
 

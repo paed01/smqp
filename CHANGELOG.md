@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 8.2.0
+
+- introduce `SmqpError(message, code)` inherited from Error, it is thrown when package specific errors occur. It is also exported so that instance can be checked
+- no more general errors, either it is a `TypeError` or `SmqpError`
+
 # 8.1.0
 
 - noAck consumer continues consuming if error is thrown in message callback, the error is, hopefully, caught somewhere else

@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", {
 exports.Exchange2Exchange = Exchange2Exchange;
 exports.Shovel = Shovel;
 var _Exchange = require("./Exchange.js");
+var _Errors = require("./Errors.js");
 const kBrokerInternal = Symbol.for('brokerInternal');
 const kCloneMessage = Symbol.for('cloneMessage');
 const kClosed = Symbol.for('closed');
@@ -30,11 +31,11 @@ function Shovel(name, source, destination, options = {}) {
   } = destination;
   const sourceExchange = sourceBroker.getExchange(sourceExchangeName);
   if (!sourceExchange) {
-    throw new Error(`shovel ${name} source exchange <${sourceExchangeName}> not found`);
+    throw new _Errors.SmqpError(`shovel ${name} source exchange <${sourceExchangeName}> not found`, _Errors.ERR_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND);
   }
   const destinationExchange = destinationBroker.getExchange(destinationExchangeName);
   if (!destinationExchange) {
-    throw new Error(`shovel ${name} destination exchange <${destinationExchangeName}> not found`);
+    throw new _Errors.SmqpError(`shovel ${name} destination exchange <${destinationExchangeName}> not found`, _Errors.ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND);
   }
   if (!(this instanceof Shovel)) {
     return new Shovel(name, source, destination, options);

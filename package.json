@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "8.1.0",
+  "version": "8.2.0",
   "type": "module",
   "description": "Synchronous message queueing package",
   "author": {
@@ -27,7 +27,7 @@
   "files": [
     "types",
     "src",
-    "dist/*.js"
+    "dist"
   ],
   "scripts": {
     "test": "mocha",
@@ -59,7 +59,7 @@
   "devDependencies": {
     "@babel/cli": "^7.22.10",
     "@babel/core": "^7.22.11",
-    "@babel/preset-env": "^7.22.10",
+    "@babel/preset-env": "^7.22.14",
     "c8": "^8.0.1",
     "chai": "^4.3.8",
     "chronokinesis": "^6.0.0",
