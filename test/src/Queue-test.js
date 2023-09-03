@@ -515,6 +515,18 @@ describe('Queue', () => {
       function onMessage() {}
     });
 
+    it('nacks non acknowledge message if requeue is falsy', () => {
+      const queue = new Queue(null, { autoDelete: false });
+      queue.consume(onMessage);
+      queue.queueMessage({ routingKey: 'test.1' });
+
+      queue.dismiss(onMessage, false);
+
+      expect(queue.messageCount).to.equal(0);
+
+      function onMessage() {}
+    });
+
     it('ignored if onMessage is not registered', () => {
       const queue = new Queue(null, { autoDelete: false });
       queue.consume(onMessage);

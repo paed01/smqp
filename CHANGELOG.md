@@ -5,6 +5,7 @@ Changelog
 
 - introduce `SmqpError(message, code)` inherited from Error, it is thrown when package specific errors occur. It is also exported so that instance can be checked
 - no more general errors, either it is a `TypeError` or `SmqpError`
+- fix inconsistent cancel consumer implementations in queue, add requeue argument when applicable
 
 # 8.1.0
 

@@ -67,11 +67,11 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`queue.ack(message)`](#queueackmessage)
     - [`queue.ackAll()`](#queueackall)
     - [`queue.assertConsumer(onMessage[, consumeOptions, owner])`](#queueassertconsumeronmessage-consumeoptions-owner)
-    - [`queue.cancel(consumerTag)`](#queuecancelconsumertag)
+    - [`queue.cancel(consumerTag[, requeue = true])`](#queuecancelconsumertag-requeue--true)
     - [`queue.close()`](#queueclose)
     - [`queue.consume(onMessage[, consumeOptions, owner])`](#queueconsumeonmessage-consumeoptions-owner)
     - [`queue.delete([deleteOptions])`](#queuedeletedeleteoptions)
-    - [`queue.dismiss(onMessage)`](#queuedismissonmessage)
+    - [`queue.dismiss(onMessage[, requeue = true])`](#queuedismissonmessage-requeue--true)
     - [`queue.get([consumeOptions])`](#queuegetconsumeoptions)
     - [`queue.getState()`](#queuegetstate)
     - [`queue.nack(message[, allUpTo, requeue = true])`](#queuenackmessage-allupto-requeue--true)
@@ -84,7 +84,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`queue.recover([state])`](#queuerecoverstate)
     - [`queue.reject(message[, requeue = true])`](#queuerejectmessage-requeue--true)
     - [`queue.stop()`](#queuestop)
-    - [`queue.unbindConsumer(consumer)`](#queueunbindconsumerconsumer)
+    - [`queue.unbindConsumer(consumer[, requeue = true])`](#queueunbindconsumerconsumer-requeue--true)
   - [Consumer](#consumer)
     - [`consumer.ackAll()`](#consumerackall)
     - [`consumer.nackAll([requeue])`](#consumernackallrequeue)
@@ -545,9 +545,12 @@ Properties:
 ### `queue.ack(message)`
 ### `queue.ackAll()`
 ### `queue.assertConsumer(onMessage[, consumeOptions, owner])`
-### `queue.cancel(consumerTag)`
+### `queue.cancel(consumerTag[, requeue = true])`
 
 Cancel consumer with tag
+
+- `consumerTag`: consumer tag
+- `requeue`: optional boolean to requeue messages consumed by consumer
 
 ### `queue.close()`
 ### `queue.consume(onMessage[, consumeOptions, owner])`
@@ -563,9 +566,12 @@ Arguments:
 Returns:
 - `messageCount`: number of messages deleted
 
-### `queue.dismiss(onMessage)`
+### `queue.dismiss(onMessage[, requeue = true])`
 
-Dismiss first consumer with `onMessage` handler.
+Dismiss first consumer with matching `onMessage` handler.
+
+- `onMessage`: message handler function
+- `requeue`: optional boolean to requeue messages consumed by consumer
 
 ### `queue.get([consumeOptions])`
 ### `queue.getState()`
@@ -613,9 +619,12 @@ Queue message.
 ### `queue.recover([state])`
 ### `queue.reject(message[, requeue = true])`
 ### `queue.stop()`
-### `queue.unbindConsumer(consumer)`
+### `queue.unbindConsumer(consumer[, requeue = true])`
 
 Unbind consumer instance.
+
+- `consumer`: consumer instance
+- `requeue`: optional boolean to requeue messages consumed by consumer
 
 ## Consumer
 Queue consumer

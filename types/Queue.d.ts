@@ -55,9 +55,9 @@ export interface Queue {
   ackAll(): void;
   nackAll(requeue?: boolean): void;
   peek(ignoreDelivered?: boolean): Message;
-  cancel(consumerTag: string): void;
-  dismiss(onMessage: onMessage): void;
-  unbindConsumer(consumer: any): void;
+  cancel(consumerTag: string, requeue?: boolean): void;
+  dismiss(onMessage: onMessage, requeue?: boolean): void;
+  unbindConsumer(consumer: Consumer, requeue?: boolean): void;
   emit(eventName: string, content?: any): void;
   on(eventName: string, handler: CallableFunction): Consumer;
   off(eventName: string, handler: CallableFunction): Consumer;

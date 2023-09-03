@@ -836,7 +836,7 @@ describe('Broker queue', () => {
       expect(broker.consumerCount).to.equal(1);
     });
 
-    it('cancel consumer requeues messages', () => {
+    it('queue cancel by consumer tag requeues messages', () => {
       const broker = Broker();
       const queue = broker.assertQueue('event-q', { autoDelete: false });
 
@@ -854,6 +854,25 @@ describe('Broker queue', () => {
 
       expect(queue.messageCount).to.equal(2);
       expect(queue.get()).to.have.property('content', 'MSG 1');
+    });
+
+    it('queue cancel by consumer tag and falsy requeue nacks messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('event-q', { autoDelete: false });
+
+      const consumer = queue.consume(() => {}, { consumerTag: '_test_tag', prefetch: 2 });
+
+      queue.queueMessage({}, 'MSG 1');
+      queue.queueMessage({}, 'MSG 2');
+
+      expect(consumer.messageCount).to.equal(2);
+      expect(queue.messageCount).to.equal(2);
+
+      expect(queue.get()).to.be.undefined;
+
+      queue.cancel('_test_tag', false);
+
+      expect(queue.messageCount).to.equal(0);
     });
 
     it('consumer cancelled by self with falsy requeue evicts consumed messages', () => {

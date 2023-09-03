@@ -266,27 +266,27 @@ Queue.prototype.peek = function peek(ignoreDelivered) {
     if (!msg.pending) return msg;
   }
 };
-Queue.prototype.cancel = function cancel(consumerTag) {
+Queue.prototype.cancel = function cancel(consumerTag, requeue) {
   const consumers = this[kConsumers];
   const idx = consumers.findIndex(c => c.consumerTag === consumerTag);
   if (idx === -1) return;
   const consumer = consumers[idx];
-  this.unbindConsumer(consumer);
+  this.unbindConsumer(consumer, requeue);
 };
-Queue.prototype.dismiss = function dismiss(onMessage) {
+Queue.prototype.dismiss = function dismiss(onMessage, requeue) {
   const consumers = this[kConsumers];
   const consumer = consumers.find(c => c.onMessage === onMessage);
   if (!consumer) return;
-  this.unbindConsumer(consumer);
+  this.unbindConsumer(consumer, requeue);
 };
-Queue.prototype.unbindConsumer = function unbindConsumer(consumer) {
+Queue.prototype.unbindConsumer = function unbindConsumer(consumer, requeue = true) {
   const consumers = this[kConsumers];
   const idx = consumers.indexOf(consumer);
   if (idx === -1) return;
   consumers.splice(idx, 1);
   this[kExclusive] = false;
   consumer.stop();
-  consumer.nackAll(true);
+  consumer.nackAll(requeue);
   this.emit('consumer.cancel', consumer);
   if (!consumers.length && this.options.autoDelete) return this.emit('delete', this);
 };
