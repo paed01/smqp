@@ -1,5 +1,5 @@
 import { generateId, sortByPriority } from './shared.js';
-import { Message } from './Message.js';
+import { kPending, Message } from './Message.js';
 import { SmqpError, ERR_EXCLUSIVE_CONFLICT, ERR_EXCLUSIVE_NOT_ALLOWED } from './Errors.js';
 
 const kConsumers = Symbol.for('consumers');
@@ -7,7 +7,6 @@ const kConsuming = Symbol.for('consuming');
 const kExclusive = Symbol.for('exclusive');
 const kInternalQueue = Symbol.for('internalQueue');
 const kIsReady = Symbol.for('isReady');
-const kOnConsumed = Symbol.for('kOnConsumed');
 const kAvailableCount = Symbol.for('availableCount');
 const kStopped = Symbol.for('stopped');
 
@@ -24,7 +23,7 @@ export function Queue(name, options, eventEmitter) {
   this[kStopped] = false;
   this[kAvailableCount] = 0;
   this[kExclusive] = false;
-  this[kOnConsumed] = this._onMessageConsumed.bind(this);
+  this._onMessageConsumed = this._onMessageConsumed.bind(this);
 }
 
 Object.defineProperties(Queue.prototype, {
@@ -66,7 +65,7 @@ Queue.prototype.queueMessage = function queueMessage(fields, content, properties
   if (messageTtl && !('expiration' in messageProperties)) {
     messageProperties.expiration = messageTtl;
   }
-  const message = new Message(fields, content, messageProperties, this[kOnConsumed]);
+  const message = new Message(fields, content, messageProperties, this._onMessageConsumed);
 
   const capacity = this._getCapacity();
   this.messages.push(message);
@@ -157,7 +156,10 @@ Queue.prototype.assertConsumer = function assertConsumer(onMessage, consumeOptio
 Queue.prototype.get = function getMessage({ noAck, consumerTag } = {}) {
   const message = this._consumeMessages(1, { noAck, consumerTag })[0];
   if (!message) return;
-  if (noAck) this._dequeueMessage(message);
+  if (noAck) {
+    this._dequeueMessage(message);
+    message[kPending] = false;
+  }
 
   return message;
 };
@@ -191,22 +193,22 @@ Queue.prototype._consumeMessages = function consumeMessages(n, consumeOptions) {
 };
 
 Queue.prototype.ack = function ack(message, allUpTo) {
-  this._onMessageConsumed(message, 'ack', allUpTo, false);
+  if (this._onMessageConsumed(message, 'ack', allUpTo, false)) message[kPending] = false;
 };
 
 Queue.prototype.nack = function nack(message, allUpTo, requeue = true) {
-  this._onMessageConsumed(message, 'nack', allUpTo, requeue);
+  if (this._onMessageConsumed(message, 'nack', allUpTo, requeue)) message[kPending] = false;
 };
 
 Queue.prototype.reject = function reject(message, requeue = true) {
-  this._onMessageConsumed(message, 'nack', false, requeue);
+  if (this._onMessageConsumed(message, 'nack', false, requeue)) message[kPending] = false;
 };
 
 Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operation, allUpTo, requeue) {
   if (this[kStopped]) return;
 
   const msgIdx = this._dequeueMessage(message);
-  if (msgIdx === -1) return;
+  if (msgIdx === -1) return false;
 
   const messages = this.messages;
   const pending = allUpTo && this._getPendingMessages(msgIdx);
@@ -218,7 +220,7 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
     case 'nack': {
       if (requeue) {
         this[kAvailableCount]++;
-        messages.splice(msgIdx, 0, new Message({ ...message.fields, redelivered: true }, message.content, message.properties, this[kOnConsumed]));
+        messages.splice(msgIdx, 0, new Message({ ...message.fields, redelivered: true }, message.content, message.properties, this._onMessageConsumed));
       } else {
         deadLetterExchange = this.options.deadLetterExchange;
       }
@@ -253,6 +255,7 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
       msg[operation](false, requeue);
     }
   }
+  return true;
 };
 
 Queue.prototype.ackAll = function ackAll() {
@@ -299,10 +302,12 @@ Queue.prototype.peek = function peek(ignoreDelivered) {
 Queue.prototype.cancel = function cancel(consumerTag, requeue) {
   const consumers = this[kConsumers];
   const idx = consumers.findIndex((c) => c.consumerTag === consumerTag);
-  if (idx === -1) return;
+  if (idx === -1) return false;
 
   const consumer = consumers[idx];
   this.unbindConsumer(consumer, requeue);
+
+  return true;
 };
 
 Queue.prototype.dismiss = function dismiss(onMessage, requeue) {
@@ -335,10 +340,10 @@ Queue.prototype.emit = function emit(eventName, content) {
   eventEmitter.emit(`queue.${eventName}`, content);
 };
 
-Queue.prototype.on = function on(eventName, handler) {
+Queue.prototype.on = function on(eventName, handler, options) {
   const eventEmitter = this.events;
   if (!eventEmitter) return;
-  return eventEmitter.on(`queue.${eventName}`, handler);
+  return eventEmitter.on(`queue.${eventName}`, handler, options);
 };
 
 Queue.prototype.off = function off(eventName, handler) {
@@ -407,7 +412,7 @@ Queue.prototype.recover = function recover(state) {
 
   if (!state.messages) return this;
 
-  const onConsumed = this[kOnConsumed];
+  const onConsumed = this._onMessageConsumed;
   for (const { fields, content, properties } of state.messages) {
     if (properties.persistent === false) continue;
     const msg = new Message({ ...fields, redelivered: true }, content, properties, onConsumed);

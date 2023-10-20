@@ -1,7 +1,11 @@
 import { Broker } from './Broker.js';
-import { Shovel } from './Shovel.js';
-import { getRoutingKeyPattern } from './shared.js';
-import { SmqpError } from './Errors.js';
+
+export { Broker };
+export { Message } from './Message.js';
+export { Queue, Consumer } from './Queue.js';
+export { Shovel } from './Shovel.js';
+export { Exchange } from './Exchange.js';
+export * from './Errors.js';
+export { getRoutingKeyPattern } from './shared.js';
 
 export default Broker;
-export { Broker, Shovel, getRoutingKeyPattern, SmqpError };

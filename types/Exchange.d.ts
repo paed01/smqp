@@ -1,5 +1,5 @@
 import { MessageProperties } from './Message.js';
-import { Queue, Consumer, QueueState } from './Queue.js';
+import { Queue, Consumer, QueueState, consumeOptions } from './Queue.js';
 
 type exchangeType = 'topic' | 'direct';
 
@@ -42,7 +42,7 @@ export interface Exchange {
   unbindQueue(queue: Queue, pattern: string): void;
   unbindQueueByName(queueName: string): void;
   close(): void;
-  getState(): any;
+  getState(): ExchangeState;
   stop(): void;
   /**
    * Recover exchange
@@ -56,8 +56,8 @@ export interface Exchange {
   recover(state: ExchangeState, getQueue: CallableFunction): Exchange;
   getBinding(queueName: string, pattern: string): Binding;
   emit(eventName: string, content?: any): any;
-  on(pattern: string, handler: CallableFunction, consumeOptions?: {consumerTag?: string, [x: string]: any}): Consumer;
-  off(pattern: string, handler: any): void;
+  on(pattern: string, handler: CallableFunction, consumeOptions?: consumeOptions): Consumer;
+  off(pattern: string, handler: CallableFunction | consumeOptions): void;
 }
 
 export interface Binding {

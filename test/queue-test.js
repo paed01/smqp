@@ -59,7 +59,7 @@ describe('Broker queue', () => {
 
       const msg = broker.get('test-q', { noAck: true });
       expect(msg).to.have.property('content').that.eql({ msg: 1 });
-      expect(msg.pending).to.be.true;
+      expect(msg.pending).to.be.false;
 
       expect(queue.messageCount).to.equal(1);
     });
@@ -97,6 +97,51 @@ describe('Broker queue', () => {
       broker.sendToQueue('test-q', { msg: 1 });
 
       broker.ack(broker.get('test-q'), true);
+
+      expect(queue.messageCount).to.equal(0);
+    });
+  });
+
+  describe('queue.ack(message[, allUpTo])', () => {
+    it('acks message', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', { msg: 1 });
+      expect(queue.messageCount).to.equal(1);
+
+      const msg = queue.get();
+
+      queue.ack(msg);
+
+      expect(queue.messageCount).to.equal(0);
+
+      expect(msg.pending).to.be.false;
+    });
+
+    it('with allUpTo = true acks all up to outstanding messages', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', { msg: 1 });
+      broker.sendToQueue('test-q', { msg: 2 });
+      broker.sendToQueue('test-q', { msg: 3 });
+      expect(queue.messageCount).to.equal(3);
+
+      broker.get('test-q');
+      const msg = queue.get();
+
+      queue.ack(msg, true);
+
+      expect(queue.messageCount).to.equal(1);
+
+      expect(msg.pending, 'acked message pending').to.be.false;
+    });
+
+    it('allUpTo = true with no more messages has no effect', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+      broker.sendToQueue('test-q', { msg: 1 });
+
+      queue.ack(broker.get('test-q'), true);
 
       expect(queue.messageCount).to.equal(0);
     });
@@ -660,6 +705,40 @@ describe('Broker queue', () => {
       }
     });
 
+    it('events can be offed by consumerTag', () => {
+      let event;
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+
+      queue.on('delete', onEvent, { consumerTag: 'off-tag' });
+      queue.off('delete', { consumerTag: 'off-tag' });
+
+      queue.delete();
+
+      expect(event).to.not.be.ok;
+
+      function onEvent(eventName, message) {
+        event = message;
+      }
+    });
+
+    it('events can be offed by cancelling event consumer', () => {
+      let event;
+      const broker = Broker();
+      const queue = broker.assertQueue('test-q');
+
+      const eventConsumer = queue.on('delete', onEvent, { consumerTag: 'off-tag' });
+      eventConsumer.cancel();
+
+      queue.delete();
+
+      expect(event).to.not.be.ok;
+
+      function onEvent(eventName, message) {
+        event = message;
+      }
+    });
+
     it('emits depleted more than once', () => {
       const broker = Broker();
       const exchange = broker.assertExchange('event');
@@ -783,7 +862,7 @@ describe('Broker queue', () => {
       queue.consume(() => {}, { consumerTag: 'c-tag' });
       expect(queue.consumerCount).to.equal(1);
 
-      queue.cancel('c-tag');
+      expect(queue.cancel('c-tag')).to.be.true;
 
       expect(queue.consumerCount).to.equal(0);
     });
@@ -794,7 +873,7 @@ describe('Broker queue', () => {
       queue.consume(() => {}, { consumerTag: 'c-tag' });
       expect(queue.consumerCount).to.equal(1);
 
-      queue.cancel('b-tag');
+      expect(queue.cancel('b-tag')).to.be.false;
 
       expect(queue.consumerCount).to.equal(1);
     });

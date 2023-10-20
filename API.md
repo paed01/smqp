@@ -1,5 +1,5 @@
 <!-- version -->
-# 8.2.0 API Reference
+# 8.2.1 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -282,6 +282,8 @@ Cancel consumption by consumer tag.
 - `consumerTag`: consumer tag
 - `requeue`: optional boolean to requeue messages consumed by consumer
 
+Returns true if consumer tag was found, and consequently false if not.
+
 ### `broker.createQueue(queueName[, options])`
 
 Create queue with name. Throws if queue already exists.
@@ -552,6 +554,8 @@ Cancel consumer with tag
 - `consumerTag`: consumer tag
 - `requeue`: optional boolean to requeue messages consumed by consumer
 
+Returns true if consumer tag was found, and consequently false if not.
+
 ### `queue.close()`
 ### `queue.consume(onMessage[, consumeOptions, owner])`
 ### `queue.delete([deleteOptions])`
@@ -589,14 +593,14 @@ Stop listening for events from queue.
 Listen for events from queue.
 
 Events:
-- `cancel`: consumer was cancelled
-- `consume`: consumer was added
-- `dead-letter`: message was dead-lettered, sends `deadLetterExchange` name and message
-- `delete`: queue was deleted
-- `depleted`: queue is depleted
-- `message`: message was queued
-- `ready`: queue is ready to ready to receive new messages
-- `saturated`: queue is saturated, i.e. max capacity was reached
+- `queue.consumer.cancel`: consumer was cancelled
+- `queue.consume`: consumer was added
+- `queue.dead-letter`: message was dead-lettered, sends `deadLetterExchange` name and message
+- `queue.delete`: queue was deleted
+- `queue.depleted`: queue is depleted
+- `queue.message`: message was queued
+- `queue.ready`: queue is ready to receive new messages
+- `queue.saturated`: queue is saturated, i.e. max capacity was reached
 
 ### `queue.peek([ignoreDelivered])`
 Peek into queue.
@@ -671,6 +675,7 @@ What it is all about - convey messages.
   - `persistent`: persist message, if unset queue option durable prevails
   - `timestamp`: `Date.now()`
   - `expiration`: Expire message after milliseconds
+- `get pending()`: boolean indicating that the message is awaiting ack (true) or is acked/nacked (false)
 
 ### `message.ack([allUpTo])`
 

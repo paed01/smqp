@@ -1,11 +1,27 @@
 import * as ck from 'chronokinesis';
 
+import * as smqp from '../src/index.js';
 import { Broker } from '../src/index.js';
-import { Consumer } from '../src/Queue.js';
+import { Queue, Consumer } from '../src/Queue.js';
+import { Exchange } from '../src/Exchange.js';
 import { SmqpError } from '../src/Errors.js';
+import { Shovel } from '../src/Shovel.js';
+import { Message } from '../src/Message.js';
 
 describe('Broker', () => {
   describe('api', () => {
+    it('has the expected export', () => {
+      expect(smqp.default === Broker, 'default Broker').to.be.true;
+      expect(smqp.Broker === Broker, 'Broker').to.be.true;
+      expect(smqp.Queue === Queue, 'Queue').to.be.true;
+      expect(smqp.Consumer === Consumer, 'Consumer').to.be.true;
+      expect(smqp.Message === Message, 'Message').to.be.true;
+      expect(smqp.Exchange === Exchange, 'Exchange').to.be.true;
+      expect(smqp.Shovel === Shovel, 'Shovel').to.be.true;
+      expect(smqp.SmqpError === SmqpError, 'SmqpError').to.be.true;
+      expect(smqp.ERR_CONSUMER_TAG_CONFLICT, 'ERR_CONSUMER_TAG_CONFLICT').to.equal('ERR_SMQP_CONSUMER_TAG_CONFLICT');
+    });
+
     it('exposes owner as owner', () => {
       const owner = {};
       const broker = Broker(owner);
@@ -1223,7 +1239,7 @@ describe('Broker', () => {
       broker.publish('event', 'test.1');
       expect(messages).to.have.length(1);
 
-      broker.cancel('cancel-me');
+      expect(broker.cancel('cancel-me')).to.be.true;
 
       broker.publish('event', 'test.2');
       expect(messages).to.have.length(1);
@@ -1307,7 +1323,7 @@ describe('Broker', () => {
 
     it('is ignored if no consumer tag was found', () => {
       const broker = Broker();
-      broker.cancel('cancel-me');
+      expect(broker.cancel('cancel-me')).to.be.false;
     });
   });
 
@@ -2491,6 +2507,79 @@ describe('Broker', () => {
         prefetch: 1,
         priority: 0,
       });
+    });
+  });
+
+  describe('ack(message[, allUpTo])', () => {
+    it('acks message', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+      const q = broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+
+      const messages = [];
+      broker.consume('event-q', (_, msg) => {
+        messages.push(msg);
+        broker.ack(msg);
+      }, { consumerTag: 'ct-test-1' });
+
+      broker.publish('event', 'event.1', 'MSG');
+
+      expect(messages).to.have.length(1);
+
+      expect(q.messageCount).to.equal(0);
+    });
+
+    it('double ack is ignored', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+      const q = broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+
+      const messages = [];
+      broker.consume('event-q', (_, msg) => {
+        messages.push(msg);
+        broker.ack(msg);
+        broker.ack(msg);
+      }, { consumerTag: 'ct-test-1' });
+
+      broker.publish('event', 'event.1', 'MSG');
+
+      expect(messages).to.have.length(1);
+
+      expect(q.messageCount).to.equal(0);
+    });
+  });
+
+  describe('get(queueName[, { noAck }])', () => {
+    it('get message returns message awaiting ack', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+      broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+
+      broker.publish('event', 'event.1', 'MSG');
+
+      const msg = broker.get('event-q');
+
+      expect(msg.pending).to.be.true;
+
+      broker.ack(msg);
+
+      expect(msg.pending).to.be.false;
+    });
+
+    it('get with noAck consumes message immediately', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+      broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+
+      broker.publish('event', 'event.1', 'MSG');
+
+      const msg = broker.get('event-q', { noAck: true });
+
+      expect(msg.pending).to.be.false;
     });
   });
 });

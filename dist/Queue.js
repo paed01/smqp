@@ -13,7 +13,6 @@ const kConsuming = Symbol.for('consuming');
 const kExclusive = Symbol.for('exclusive');
 const kInternalQueue = Symbol.for('internalQueue');
 const kIsReady = Symbol.for('isReady');
-const kOnConsumed = Symbol.for('kOnConsumed');
 const kAvailableCount = Symbol.for('availableCount');
 const kStopped = Symbol.for('stopped');
 function Queue(name, options, eventEmitter) {
@@ -29,7 +28,7 @@ function Queue(name, options, eventEmitter) {
   this[kStopped] = false;
   this[kAvailableCount] = 0;
   this[kExclusive] = false;
-  this[kOnConsumed] = this._onMessageConsumed.bind(this);
+  this._onMessageConsumed = this._onMessageConsumed.bind(this);
 }
 Object.defineProperties(Queue.prototype, {
   consumerCount: {
@@ -69,7 +68,7 @@ Queue.prototype.queueMessage = function queueMessage(fields, content, properties
   if (messageTtl && !('expiration' in messageProperties)) {
     messageProperties.expiration = messageTtl;
   }
-  const message = new _Message.Message(fields, content, messageProperties, this[kOnConsumed]);
+  const message = new _Message.Message(fields, content, messageProperties, this._onMessageConsumed);
   const capacity = this._getCapacity();
   this.messages.push(message);
   this[kAvailableCount]++;
@@ -146,7 +145,10 @@ Queue.prototype.get = function getMessage({
     consumerTag
   })[0];
   if (!message) return;
-  if (noAck) this._dequeueMessage(message);
+  if (noAck) {
+    this._dequeueMessage(message);
+    message[_Message.kPending] = false;
+  }
   return message;
 };
 Queue.prototype._consumeMessages = function consumeMessages(n, consumeOptions) {
@@ -172,18 +174,18 @@ Queue.prototype._consumeMessages = function consumeMessages(n, consumeOptions) {
   return msgs;
 };
 Queue.prototype.ack = function ack(message, allUpTo) {
-  this._onMessageConsumed(message, 'ack', allUpTo, false);
+  if (this._onMessageConsumed(message, 'ack', allUpTo, false)) message[_Message.kPending] = false;
 };
 Queue.prototype.nack = function nack(message, allUpTo, requeue = true) {
-  this._onMessageConsumed(message, 'nack', allUpTo, requeue);
+  if (this._onMessageConsumed(message, 'nack', allUpTo, requeue)) message[_Message.kPending] = false;
 };
 Queue.prototype.reject = function reject(message, requeue = true) {
-  this._onMessageConsumed(message, 'nack', false, requeue);
+  if (this._onMessageConsumed(message, 'nack', false, requeue)) message[_Message.kPending] = false;
 };
 Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operation, allUpTo, requeue) {
   if (this[kStopped]) return;
   const msgIdx = this._dequeueMessage(message);
-  if (msgIdx === -1) return;
+  if (msgIdx === -1) return false;
   const messages = this.messages;
   const pending = allUpTo && this._getPendingMessages(msgIdx);
   let deadLetterExchange;
@@ -197,7 +199,7 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
           messages.splice(msgIdx, 0, new _Message.Message({
             ...message.fields,
             redelivered: true
-          }, message.content, message.properties, this[kOnConsumed]));
+          }, message.content, message.properties, this._onMessageConsumed));
         } else {
           deadLetterExchange = this.options.deadLetterExchange;
         }
@@ -233,6 +235,7 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
       msg[operation](false, requeue);
     }
   }
+  return true;
 };
 Queue.prototype.ackAll = function ackAll() {
   for (const msg of this._getPendingMessages()) {
@@ -269,9 +272,10 @@ Queue.prototype.peek = function peek(ignoreDelivered) {
 Queue.prototype.cancel = function cancel(consumerTag, requeue) {
   const consumers = this[kConsumers];
   const idx = consumers.findIndex(c => c.consumerTag === consumerTag);
-  if (idx === -1) return;
+  if (idx === -1) return false;
   const consumer = consumers[idx];
   this.unbindConsumer(consumer, requeue);
+  return true;
 };
 Queue.prototype.dismiss = function dismiss(onMessage, requeue) {
   const consumers = this[kConsumers];
@@ -295,10 +299,10 @@ Queue.prototype.emit = function emit(eventName, content) {
   if (!eventEmitter) return;
   eventEmitter.emit(`queue.${eventName}`, content);
 };
-Queue.prototype.on = function on(eventName, handler) {
+Queue.prototype.on = function on(eventName, handler, options) {
   const eventEmitter = this.events;
   if (!eventEmitter) return;
-  return eventEmitter.on(`queue.${eventName}`, handler);
+  return eventEmitter.on(`queue.${eventName}`, handler, options);
 };
 Queue.prototype.off = function off(eventName, handler) {
   const eventEmitter = this.events;
@@ -358,7 +362,7 @@ Queue.prototype.recover = function recover(state) {
     continueConsume = true;
   }
   if (!state.messages) return this;
-  const onConsumed = this[kOnConsumed];
+  const onConsumed = this._onMessageConsumed;
   for (const {
     fields,
     content,

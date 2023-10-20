@@ -1,6 +1,14 @@
 Changelog
 =========
 
+# 8.3.0
+
+- export Message, Queue, Consumer, and Exchange
+- allow queue event options `queue.on(event, handler[, options])`
+- cancelling a consumer returns true if consumer was found and false if not
+- `broker.get(queueName, { noAck: true })` not only dequeues message it also marks the actual message as consumed on the, until now, undocumented `message.pending` flag
+- fix other inconsistent message pending stuff
+
 # 8.2.0
 
 - introduce `SmqpError(message, code)` inherited from Error, it is thrown when package specific errors occur. It is also exported so that instance can be checked

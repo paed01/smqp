@@ -60,6 +60,12 @@ export class Broker {
   bindQueue(queueName: string, exchangeName: string, pattern: string, bindOptions?: bindingOptions): Binding;
   unbindQueue(queueName: string, exchangeName: string, pattern: string): void;
   consume(queueName: string, onMessage: onMessage, options?: consumeOptions): Consumer;
+  /**
+   * Cancel consumer
+   * @param consumerTag Consumer tag
+   * @param requeue optional boolean to requeue messages consumed by consumer, defaults to true
+   * @returns true if found, false if not
+   */
   cancel(consumerTag: string, requeue?: boolean): boolean;
   getExchange(exchangeName: string): Exchange;
   getQueue(queueName: string): Queue;
@@ -86,22 +92,33 @@ export class Broker {
   getState(): BrokerState;
   /**
    * Get broker state with durable entities
-   * @param onlyWithContent [boolean] only return state if any durable exchanges or queues that have messages
+   * @param {boolean} onlyWithContent only return state if any durable exchanges or queues that have messages
    */
   getState(onlyWithContent: boolean): BrokerState | undefined;
   recover(state?: BrokerState): Broker;
   publish(exchangeName: string, routingKey: string, content?: any, options?: MessageProperties): number;
   get(queueName: string, { noAck }?: {
     noAck: boolean;
-  }): Message;
+  }): Message | undefined;
   ack(message: Message, allUpTo?: boolean): void;
   ackAll(): void;
   nack(message: Message, allUpTo?: boolean, requeue?: boolean): void;
   nackAll(requeue?: boolean): void;
   reject(message: Message, requeue?: boolean): void;
+  /**
+   * Check if consumer tag is occupied
+   * @param consumerTag
+   * @returns {boolean} true if not occupied, throws SmqpError if it is
+   */
   validateConsumerTag(consumerTag: string): boolean;
-  on(eventName: string, callback: CallableFunction, options?: any): Consumer;
-  off(eventName: string, callbackOrObject: any): void;
+  /**
+   * Listen broker for events
+   * @param eventName event name, e.g. return for undelivered messages, a routing key pattern can be used, e.g. queue.# for all queue events
+   * @param callback event handler function
+   * @param options consume options, consumerTag is probably the most usable option, noAck is ignored and always true
+   */
+  on(eventName: string, callback: CallableFunction, options?: consumeOptions): Consumer;
+  off(eventName: string, callbackOrObject: CallableFunction | consumeOptions): void;
   prefetch(value?: number): void;
   /** DANGER deletes all broker entities and closes broker */
   reset(): void;

@@ -47,4 +47,6 @@ export interface Message extends MessageMessage {
    * @param [requeue=true]: put the message back on the queue
   */
   reject(requeue?: boolean): void;
+  /** Message is pending ack */
+  get pending(): boolean
 }

@@ -174,10 +174,9 @@ ExchangeBase.prototype.close = function close() {
 };
 
 ExchangeBase.prototype.getState = function getState() {
-  let bindings;
+  const bindings = [];
   for (const binding of this[kBindings]) {
     if (!binding.queue.options.durable) continue;
-    if (!bindings) bindings = [];
     bindings.push(binding.getState());
   }
 
@@ -187,7 +186,7 @@ ExchangeBase.prototype.getState = function getState() {
     type: this.type,
     options: { ...this.options },
     ...(deliveryQueue.messageCount ? { deliveryQueue: deliveryQueue.getState() } : undefined),
-    ...(bindings ? { bindings } : undefined),
+    ...(bindings.length ? { bindings } : undefined),
   };
 };
 
