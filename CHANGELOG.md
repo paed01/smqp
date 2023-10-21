@@ -1,7 +1,7 @@
 Changelog
 =========
 
-# 8.3.0
+# 8.2.1
 
 - export Message, Queue, Consumer, and Exchange
 - allow queue event options `queue.on(event, handler[, options])`
