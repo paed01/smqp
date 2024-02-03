@@ -123,6 +123,7 @@ Broker.prototype.getConsumers = function getConsumers() {
     return {
       queue: consumer.queue.name,
       consumerTag: consumer.options.consumerTag,
+      ready: consumer.ready,
       options: {
         ...consumer.options
       }

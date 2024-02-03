@@ -28,6 +28,7 @@ type subscribeOptions = {
 interface ConsumerInfo {
   queue: string;
   consumerTag: string;
+  ready: boolean;
   options: consumeOptions;
 }
 

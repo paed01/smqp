@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 8.2.2
+
+- `broker.getConsumers()` now also returns if the consumer is ready or not. Cannot remember why, but the info is there
+
 # 8.2.1
 
 - export Message, Queue, Consumer, and Exchange

@@ -113,9 +113,7 @@ Queue.prototype._consumeNext = function consumeNext() {
 
 Queue.prototype.consume = function consume(onMessage, consumeOptions = {}, owner) {
   const consumers = this[kConsumers];
-  const noOfConsumers = consumers.length;
-
-  if (noOfConsumers) {
+  if (consumers.length) {
     if (this[kExclusive]) throw new SmqpError(`Queue ${this.name} is exclusively consumed by ${consumers[0].consumerTag}`, ERR_EXCLUSIVE_CONFLICT);
     if (consumeOptions.exclusive) throw new SmqpError(`Queue ${this.name} already has consumers and cannot be exclusively consumed`, ERR_EXCLUSIVE_NOT_ALLOWED);
   }

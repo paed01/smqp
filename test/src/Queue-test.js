@@ -590,7 +590,7 @@ describe('Queue', () => {
     });
   });
 
-  describe('nack()', () => {
+  describe('nack(message, allUpTo, requeue = true)', () => {
     it('requeues message by default', () => {
       const queue = new Queue();
       queue.queueMessage({ routingKey: 'test.1' });

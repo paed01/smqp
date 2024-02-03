@@ -1,5 +1,5 @@
 <!-- version -->
-# 8.2.1 API Reference
+# 8.2.2 API Reference
 <!-- versionstop -->
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
@@ -64,12 +64,12 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`binding.testPattern(routingKey)`](#bindingtestpatternroutingkey)
     - [`binding.close()`](#bindingclose)
   - [Queue](#queue)
-    - [`queue.ack(message)`](#queueackmessage)
+    - [`queue.ack(message[, allUpTo])`](#queueackmessage-allupto)
     - [`queue.ackAll()`](#queueackall)
     - [`queue.assertConsumer(onMessage[, consumeOptions, owner])`](#queueassertconsumeronmessage-consumeoptions-owner)
     - [`queue.cancel(consumerTag[, requeue = true])`](#queuecancelconsumertag-requeue--true)
     - [`queue.close()`](#queueclose)
-    - [`queue.consume(onMessage[, consumeOptions, owner])`](#queueconsumeonmessage-consumeoptions-owner)
+    - [`queue.consume(onMessage[, options, owner])`](#queueconsumeonmessage-options-owner)
     - [`queue.delete([deleteOptions])`](#queuedeletedeleteoptions)
     - [`queue.dismiss(onMessage[, requeue = true])`](#queuedismissonmessage-requeue--true)
     - [`queue.get([consumeOptions])`](#queuegetconsumeoptions)
@@ -104,7 +104,13 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
 # API reference
 
 ## `new Broker([owner])`
+
 Start new broker owned by optional `owner`.
+
+Properties:
+- `exchangeCount`: number of exchanges
+- `queueCount`: number of queues
+- `consumerCount`: number of consumers
 
 ### `broker.subscribe(exchangeName, pattern, queueName, onMessage[, options])`
 Asserts an exchange, a named queue, and returns [consumer](#consumer) to the named queue. The consumer is asserted into existance as well, i.e. message callback and options are matched.
@@ -269,11 +275,14 @@ Consume queue. Returns a [consumer](#consumer). If the message callback is alrea
 
 - `queueName`: queue name
 - `onMessage`: message callback
-- `options`:
-  - `exclusive`: boolean, defaults to `false`, queue is exclusively consumed
+- `options`: optional consume options
+  - `consumerTag`: optional consumer tag, one will be generated for you if you don's supply one, if you do supply one it must be unique
+  - `exclusive`: boolean, consume queue exclusively, defaults to `false`
   - `noAck`: boolean, defaults to `false`
   - `prefetch`: integer, defaults to `1`, number of messages to consume at a time
   - `priority`: integer, defaults to `0`, higher value gets messages first
+
+Returns [consumer](#consumer).
 
 ### `broker.cancel(consumerTag[, requeue = true])`
 
@@ -314,7 +323,7 @@ Return serializable object containing durable exchanges, bindings, and durable q
 - `onlyWithContent`: boolean indicating that only exchanges and queues with undelivered or queued messages will be returned
 
 ### `broker.recover([state])`
-Recovers exchanges, bindings, and queues with messages. A state can be passed, preferably from [`getState()`](#brokergetstate).
+Recovers exchanges, bindings, and queues with messages. A state may be passed, preferably from [`getState()`](#brokergetstate).
 
 ### `broker.purgeQueue(queueName)`
 Purge queue by name if found. Removes all non consumed messages.
@@ -335,16 +344,29 @@ Arguments:
   - `noAck`: optional boolean, defaults to `false`
 
 ### `broker.ack(message[, allUpTo])`
+
+Ack consumed message.
+
+- `allUpTo`: optional boolean, ack all outstanding messages on owning queue
+
 ### `broker.ackAll()`
 
 Acknowledge all outstanding messages.
 
 ### `broker.nack(message[, allUpTo, requeue])`
+
+Nack consumed message.
+
+- `allUpTo`: optional boolean, nack all outstanding messages on owning queue
+- `requeue`: optional boolean, requeue messages, defaults to true
+
 ### `broker.nackAll([requeue])`
 
 Nack all outstanding messages.
 
 ### `broker.reject(message[, requeue])`
+
+Same as `broker.nack(message, false, requeue)`
 
 ### `broker.createShovel(name, source, destination[, options])`
 
@@ -449,7 +471,7 @@ Properties:
 - `type`: exchange type, topic or direct
 - `options`: exchange options
 - `bindingCount`: getter for number of bindings
-- `bindings`: getter for list of bindings
+- `bindings`: getter for list of [bindings](#binding)
 - `stopped`: boolean for if the exchange is stopped
 
 ### `exchange.bindQueue(queue, pattern[, bindOptions])`
@@ -544,9 +566,18 @@ Properties:
 - `capacity`: `maxLength - messageCount`
 - `messageTtl`: expire messages after milliseconds, [see Message Eviction](#message-eviction)
 
-### `queue.ack(message)`
+### `queue.ack(message[, allUpTo])`
+
+Ack message.
+
 ### `queue.ackAll()`
+
+Ack all outstanding messages.
+
 ### `queue.assertConsumer(onMessage[, consumeOptions, owner])`
+
+Upsert consumer.
+
 ### `queue.cancel(consumerTag[, requeue = true])`
 
 Cancel consumer with tag
@@ -557,7 +588,22 @@ Cancel consumer with tag
 Returns true if consumer tag was found, and consequently false if not.
 
 ### `queue.close()`
-### `queue.consume(onMessage[, consumeOptions, owner])`
+
+Closes queue consumers and requeues outstanding messages.
+
+### `queue.consume(onMessage[, options, owner])`
+
+Consume queue messages.
+
+- `onMessage(routingKey, message, owner)`: message callback
+  * `routingKey`: message routing key
+  * [`message`](#message): the message
+  * `owner`: optional owner passed in signature
+- `options`: optional consume options, see [`broker.consume`](#brokerconsumequeuename-onmessage-options)
+- `owner`: optional owner to be passed to message callback, mainly for internal use when consuming by broker but feel free to pass anything here
+
+Returns [consumer](#consumer).
+
 ### `queue.delete([deleteOptions])`
 
 Delete queue.
@@ -578,11 +624,14 @@ Dismiss first consumer with matching `onMessage` handler.
 - `requeue`: optional boolean to requeue messages consumed by consumer
 
 ### `queue.get([consumeOptions])`
+
+Same as [`broker.get`](#brokergetqueuename-options) but you don't have to supply a queue name.
+
 ### `queue.getState()`
 
 Get queue state.
 
-Will throw a TypeError of messages contains circular JSON. The error will be decorated with code `EQUEUE_STATE` and the name of the queue as `queue`.
+Will throw a TypeError if messages contains circular JSON. The error will be decorated with code `EQUEUE_STATE` and the name of the queue as `queue`.
 
 ### `queue.nack(message[, allUpTo, requeue = true])`
 ### `queue.nackAll([requeue = true])`
@@ -687,14 +736,16 @@ Acknowledge message
 
 Reject message.
 
-- `allUpTo`: boolean, consider all messages prior to this one to be rejected as well
-- `requeue`: boolean, requeue messages
+- `allUpTo`: optional boolean, consider all messages prior to this one to be rejected as well
+- `requeue`: optional boolean, requeue messages, defaults to true
 
 > NB! Beware of `requeue` argument since the message will immmediately be returned to queue and consumed, ergo an infinite loop and maximum call stack size exceeded error. Unless! some precautions are taken.
 
 ### `message.reject([requeue])`
 
-Same as `nack(false, true)`
+Same as `nack(false, requeu)`
+
+- `requeue`: optional boolean, requeue message, defaults to true
 
 ## SmqpError
 
@@ -712,15 +763,16 @@ Same as `nack(false, true)`
 - `ERR_SMQP_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND`: shovel destination exchange was not found
 - `ERR_SMQP_SHOVEL_NAME_CONFLICT`: a shovel with the same name already exists, suffix something, e.g. `_new` or come up with another name
 - `ERR_SMQP_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND`: shovel source exchange was not found, a bit self-explanatory
-- `EQUEUE_STATE`: legacy code and acually a `TypeError`, will pop if queue messages has circular JSON when getting state
+- `EQUEUE_STATE`: legacy code and acually a `TypeError`, will pop if queue messages has circular JSON when getting state. The queue culprit name is added to error as property `err.queue`
 
 ## `getRoutingKeyPattern(pattern)`
-Test routing key pattern against routing key.
+
+Get routing key pattern tester. Test routing key pattern against routing key.
 
 ```js
-import {getRoutingKeyPattern} from 'smqp';
+import { getRoutingKeyPattern } from 'smqp';
 
-const {test} = getRoutingKeyPattern('activity.*');
+const { test } = getRoutingKeyPattern('activity.*');
 
 console.log(test('activity.start')); // true
 console.log(test('activity.execution.completed')); // false
@@ -728,4 +780,4 @@ console.log(test('activity.execution.completed')); // false
 
 ## Message eviction
 
-A little about message eviction. There are no timeouts that will automatically evict expired messages. Expired messages will simply not be returned in the message callback when the queue is consumed. Use a dead letter exchange to pick them up.
+About message eviction: There are no timeouts that will automatically evict expired messages. Expired messages will simply not be returned in the message callback when the queue is consumed. Use a dead letter exchange to pick them up.
