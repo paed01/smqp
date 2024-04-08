@@ -34,19 +34,19 @@ export interface Message extends MessageMessage {
   /**
    * Acknowledge message
    * @param [allUpTo=false] all outstanding messages prior to and including the given message shall be considered acknowledged. If false, or omitted, only the message supplied is acknowledged.
-  */
+   */
   ack(allUpTo?: boolean): void;
   /**
    * Reject message
    * @param [allUpTo=false] all outstanding messages prior to and including the given message shall be considered rejected. If false, or omitted, only the message supplied is rejected.
    * @param [requeue=true] put the message or messages back on the queue
-  */
+   */
   nack(allUpTo?: boolean, requeue?: boolean): void;
   /**
    * Reject message
    * @param [requeue=true]: put the message back on the queue
-  */
+   */
   reject(requeue?: boolean): void;
   /** Message is pending ack */
-  get pending(): boolean
+  get pending(): boolean;
 }

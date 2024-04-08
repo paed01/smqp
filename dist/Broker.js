@@ -86,7 +86,7 @@ Broker.prototype.unsubscribe = function unsubscribe(queueName, onMessage) {
 Broker.prototype.assertExchange = function assertExchange(exchangeName, type, options) {
   let exchange = this.getExchange(exchangeName);
   if (exchange) {
-    if (type && exchange.type !== type) throw new _Errors.SmqpError('Type doesn\'t match', _Errors.ERR_EXCHANGE_TYPE_MISMATCH);
+    if (type && exchange.type !== type) throw new _Errors.SmqpError("Type doesn't match", _Errors.ERR_EXCHANGE_TYPE_MISMATCH);
     return exchange;
   }
   exchange = new _Exchange.Exchange(exchangeName, type || 'topic', options);
@@ -294,7 +294,7 @@ Broker.prototype.assertQueue = function assertQueue(queueName, options = {}) {
     ...options
   };
   if (!queue) return this.createQueue(queueName, options);
-  if (queue.options.durable !== options.durable) throw new _Errors.SmqpError('Durable doesn\'t match', _Errors.ERR_QUEUE_DURABLE_MISMATCH);
+  if (queue.options.durable !== options.durable) throw new _Errors.SmqpError("Durable doesn't match", _Errors.ERR_QUEUE_DURABLE_MISMATCH);
   return queue;
 };
 Broker.prototype.deleteQueue = function deleteQueue(queueName, options) {

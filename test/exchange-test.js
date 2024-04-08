@@ -36,12 +36,7 @@ describe('exchange', () => {
 
       broker.consume('testq', onMessage);
 
-      expect(messages).to.eql([
-        'test.1',
-        'test.2',
-        'test.3',
-        'test.4',
-      ]);
+      expect(messages).to.eql(['test.1', 'test.2', 'test.3', 'test.4']);
 
       function onMessage(routingKey, msg) {
         messages.push(routingKey);
@@ -70,15 +65,9 @@ describe('exchange', () => {
       broker.publish('test', 'test.2.1');
       broker.publish('test', 'test.2.2');
 
-      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql([
-        'test.1.1',
-        'test.2.1',
-      ]);
+      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql(['test.1.1', 'test.2.1']);
 
-      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql([
-        'test.1.2',
-        'test.2.2',
-      ]);
+      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql(['test.1.2', 'test.2.2']);
 
       function onMessage1(routingKey, message) {
         messages1.push(message);
@@ -109,12 +98,7 @@ describe('exchange', () => {
 
       broker.consume('testq', onMessage);
 
-      expect(messages).to.eql([
-        'test.1',
-        'test.2',
-        'test.3',
-        'test.4',
-      ]);
+      expect(messages).to.eql(['test.1', 'test.2', 'test.3', 'test.4']);
 
       function onMessage(routingKey, msg) {
         messages.push(routingKey);
@@ -143,19 +127,9 @@ describe('exchange', () => {
       broker.publish('event', 'test.2.1');
       broker.publish('event', 'test.2.2');
 
-      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql([
-        'test.1.1',
-        'test.1.2',
-        'test.2.1',
-        'test.2.2',
-      ]);
+      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql(['test.1.1', 'test.1.2', 'test.2.1', 'test.2.2']);
 
-      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql([
-        'test.1.1',
-        'test.1.2',
-        'test.2.1',
-        'test.2.2',
-      ]);
+      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql(['test.1.1', 'test.1.2', 'test.2.1', 'test.2.2']);
 
       function onMessage1(routingKey, message) {
         messages1.push(message);
@@ -208,15 +182,9 @@ describe('exchange', () => {
       function assertMessages(key, message) {
         if (key !== 'done') return message.ack();
 
-        expect(messages1.map(({ fields }) => fields.routingKey)).to.eql([
-          'test.1',
-          'test.2',
-        ]);
+        expect(messages1.map(({ fields }) => fields.routingKey)).to.eql(['test.1', 'test.2']);
 
-        expect(messages2.map(({ fields }) => fields.routingKey)).to.eql([
-          'test.1',
-          'test.2',
-        ]);
+        expect(messages2.map(({ fields }) => fields.routingKey)).to.eql(['test.1', 'test.2']);
 
         done();
       }
@@ -293,7 +261,7 @@ describe('exchange', () => {
       expect(broker.getState().exchanges).to.have.length(1);
       expect(broker.getState(true).exchanges).to.be.undefined;
 
-      exchange[deliveryQueueSymbol].messages.push((new Message({}, {})));
+      exchange[deliveryQueueSymbol].messages.push(new Message({}, {}));
 
       expect(broker.getState().exchanges).to.have.length(1);
       expect(broker.getState(true).exchanges).to.have.length(1);

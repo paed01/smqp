@@ -22,10 +22,14 @@ describe('Broker', () => {
       const destination = new Broker();
       destination.assertExchange('event', 'topic');
 
-      const shovel = broker.createShovel('shovel-1', { exchange: 'event' }, {
-        broker: destination,
-        exchange: 'event',
-      });
+      const shovel = broker.createShovel(
+        'shovel-1',
+        { exchange: 'event' },
+        {
+          broker: destination,
+          exchange: 'event',
+        },
+      );
 
       shovel.emit('close', shovel);
 

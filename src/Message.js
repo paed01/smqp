@@ -4,12 +4,12 @@ export const kPending = Symbol.for('pending');
 const kOnConsumed = Symbol.for('onConsumed');
 
 export function Message(fields, content, properties, onConsumed) {
-  this[kOnConsumed] = [ null, onConsumed ];
+  this[kOnConsumed] = [null, onConsumed];
   this[kPending] = false;
 
   const mproperties = {
     ...properties,
-    messageId: properties && properties.messageId || `smq.mid-${generateId()}`,
+    messageId: (properties && properties.messageId) || `smq.mid-${generateId()}`,
   };
   const timestamp = (mproperties.timestamp = mproperties.timestamp || Date.now());
   if (mproperties.expiration) {

@@ -1,6 +1,4 @@
-<!-- version -->
-# 8.2.2 API Reference
-<!-- versionstop -->
+# API Reference
 
 The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.node) api reference.
 
@@ -108,11 +106,13 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
 Start new broker owned by optional `owner`.
 
 Properties:
+
 - `exchangeCount`: number of exchanges
 - `queueCount`: number of queues
 - `consumerCount`: number of consumers
 
 ### `broker.subscribe(exchangeName, pattern, queueName, onMessage[, options])`
+
 Asserts an exchange, a named queue, and returns [consumer](#consumer) to the named queue. The consumer is asserted into existance as well, i.e. message callback and options are matched.
 
 To make sure the exchange, and or queue has the desired behaviour, please use [`assertExchange()`](#brokerassertexchangeexchangename-type--topic-options) and [`assertQueue()`](#brokerassertqueuequeuename-options)
@@ -132,15 +132,16 @@ To make sure the exchange, and or queue has the desired behaviour, please use [`
   - `priority`: integer, defaults to `0`, higher value gets messages first
 
 The message callback signature:
-```javascript
-import {Broker} from 'smqp';
 
-const owner = {name: 'me'};
+```javascript
+import { Broker } from 'smqp';
+
+const owner = { name: 'me' };
 const broker = Broker(owner);
 
 broker.subscribe('events', '#', 'event-queue', onMessage);
 
-broker.publish('events', 'start', {arg: 1});
+broker.publish('events', 'start', { arg: 1 });
 
 function onMessage(routingKey, message, brokerOwner) {
   console.log('received:', routingKey);
@@ -151,6 +152,7 @@ function onMessage(routingKey, message, brokerOwner) {
 ```
 
 ### `broker.subscribeTmp(exchangeName, pattern, onMessage[, options])`
+
 Asserts exchange and creates a temporary queue with random name, i.e. not durable, and returns a new [consumer](#consumer).
 
 - `exchangeName`: exchange name
@@ -166,6 +168,7 @@ Asserts exchange and creates a temporary queue with random name, i.e. not durabl
   - `priority`: integer, defaults to `0`, higher value gets messages first
 
 ### `broker.subscribeOnce(exchangeName, pattern, onMessage[, options])`
+
 Same as `subscribeTmp` and will immediately close consumer when first message arrive.
 
 - `exchangeName`: exchange name
@@ -178,12 +181,15 @@ Same as `subscribeTmp` and will immediately close consumer when first message ar
 Oh, btw, option `noAck` will be set to `true` so there is no need to ack message in message callback.
 
 ### `broker.unsubscribe(queueName, onMessage)`
+
 Remove consumer with message callback from queue.
 
 ### `broker.publish(exchangeName, routingKey[, content, options])`
+
 Publish message to exchange.
 
 Arguments:
+
 - `exchangeName`: exchange name
 - `routingKey`: routing key
 - `content`: message content
@@ -194,9 +200,11 @@ Arguments:
   - `confirm`: boolean, confirm message delivered, emits `message.nack`, `message.ack`, or `message.undelivered` on broker
 
 ### `broker.close()`
+
 Close exchanges, queues, and all consumers
 
 ### `broker.assertExchange(exchangeName[, type = topic, options])`
+
 Creates exchange with name.
 
 - `type`: type of exchange, must be one of `topic` or `direct`, defaults to `topic`.
@@ -215,6 +223,7 @@ Delete exchange by name
 Shovel messages between exchanges aka e2e binding.
 
 Arguments:
+
 - `source`: source exchange name
 - `destination`: destination exchange name
 - `pattern`: optional binding pattern, defaults to all (`#`)
@@ -223,6 +232,7 @@ Arguments:
   - `cloneMessage`: clone message function called with shoveled message
 
 Returns:
+
 - `name`: name of e2e binding
 - `source`: source exchange name
 - `destination`: destination exchange name
@@ -237,11 +247,13 @@ Returns:
 Close e2e binding.
 
 Arguments:
+
 - `source`: source exchange name
 - `destination`: destination exchange name
 - `pattern`: optional binding pattern, defaults to all (`#`)
 
 ### `broker.assertQueue(queueName[, options])`
+
 Assert a queue into existence.
 
 - `options`: optional queue options
@@ -271,6 +283,7 @@ Unbind queue from exchange that match routing key pattern.
 - `pattern`: queue binding pattern
 
 ### `broker.consume(queueName, onMessage[, options])`
+
 Consume queue. Returns a [consumer](#consumer). If the message callback is already used for consumption, the existing consumer will be returned.
 
 - `queueName`: queue name
@@ -298,6 +311,7 @@ Returns true if consumer tag was found, and consequently false if not.
 Create queue with name. Throws if queue already exists.
 
 ### `broker.deleteQueue(queueName[, {ifUnused, ifEmpty}])`
+
 Delete queue by name.
 
 - options
@@ -305,15 +319,19 @@ Delete queue by name.
   - `ifEmpty`: delete if no messages, defaults to false
 
 ### `broker.getExchange(exchangeName)`
+
 Get [exchange](#exchange) by name.
 
 ### `broker.getQueue(queueName)`
+
 Get [queue](#queue) by name. Returns existing queue or nothing
 
 ### `broker.getConsumers()`
+
 Returns a list of consumer properties, i.e. queue name, consumer tag, and options.
 
 ### `broker.getConsumer(consumerTag)`
+
 Get [consumer](#consumer) by consumer tag. Returns existing consumer or nothing
 
 ### `broker.getState([onlyWithContent])`
@@ -323,15 +341,19 @@ Return serializable object containing durable exchanges, bindings, and durable q
 - `onlyWithContent`: boolean indicating that only exchanges and queues with undelivered or queued messages will be returned
 
 ### `broker.recover([state])`
+
 Recovers exchanges, bindings, and queues with messages. A state may be passed, preferably from [`getState()`](#brokergetstate).
 
 ### `broker.purgeQueue(queueName)`
+
 Purge queue by name if found. Removes all non consumed messages.
 
 ### `broker.sendToQueue(queueName, content[, options])`
+
 Send message directly to queue, bypassing routing key patterns etc.
 
 ### `broker.stop()`
+
 No more messages through this broker, i.e. publish will be ignored. Use [`broker.recover()`](#brokerrecoverstate) to resume.
 
 ### `broker.get(queueName[, options])`
@@ -339,6 +361,7 @@ No more messages through this broker, i.e. publish will be ignored. Use [`broker
 Get message from queue. Returns false if there are no messages to be retrieved. Returns undefined if the queue is not found.
 
 Arguments:
+
 - `queueName`: name of queue
 - `options`: optional object with options
   - `noAck`: optional boolean, defaults to `false`
@@ -376,6 +399,7 @@ Shovel messages from exchange to another broker exchange.
 > Messages are ignored if the destination exchange lacks bound queues, to save cpu etc.
 
 Arguments:
+
 - `name`: mandatory name of shovel
 - `source`: source options
   - `exchange`: source exchange name
@@ -392,6 +416,7 @@ Arguments:
   - `cloneMessage(message) => message`: clone message function called with shoveled message, must return new [message](#message), altough fields are ignored completely. Known to be used to clone the message content to make sure no references to the old message is traversed.
 
 Returns Shovel:
+
 - `name`: name of shovel
 - `source`: input source options
 - `destination`: input destination broker options
@@ -415,6 +440,7 @@ Close shovel by name.
 Listen for events from Broker.
 
 Arguments:
+
 - `eventName`: name of event or a "routingKey" pattern
 - `callback`: event callback
 - `options`: optional consume options
@@ -425,9 +451,13 @@ Returns [consumer](#consumer) - that can be canceled.
 Callback is called with the event and the name of the event, in the same object.
 
 ```js
-broker.on('message.*', (event) => {
-  console.log(event.name, 'fired');
-}, {consumerTag: 'my-event-consumertag'});
+broker.on(
+  'message.*',
+  (event) => {
+    console.log(event.name, 'fired');
+  },
+  { consumerTag: 'my-event-consumertag' },
+);
 ```
 
 ### `broker.off(eventName, callbackOrObject)`
@@ -435,12 +465,13 @@ broker.on('message.*', (event) => {
 Turn off event listener(s) associated with event callback.
 
 Arguments:
+
 - `eventName`: name of event
 - `callbackOrObject`: event callback function to off or object with basically one property:
   - `consumerTag`: optional event consumer tag to off
 
 ```js
-broker.on('return', onMessageEvent, {consumerTag: 'my-event-consumertag'});
+broker.on('return', onMessageEvent, { consumerTag: 'my-event-consumertag' });
 
 function onMessageEvent(event) {
   console.log(event.name, 'fired');
@@ -452,7 +483,7 @@ broker.off('return', onMessageEvent);
 
 /* or */
 
-broker.off('return', {consumerTag: 'my-event-consumertag'});
+broker.off('return', { consumerTag: 'my-event-consumertag' });
 ```
 
 ### `broker.prefetch(count)`
@@ -464,9 +495,11 @@ Noop, only placeholder.
 Reset everything. Deletes exchanges, queues, consumers, and bindings.
 
 ## Exchange
+
 Exchange
 
 Properties:
+
 - `name`: exchange name
 - `type`: exchange type, topic or direct
 - `options`: exchange options
@@ -475,22 +508,28 @@ Properties:
 - `stopped`: boolean for if the exchange is stopped
 
 ### `exchange.bindQueue(queue, pattern[, bindOptions])`
+
 Bind queue to exchange.
 
 Arguments:
+
 - `queue`: queue instance
 - `pattern`: binding pattern
 - `bindOptions`: optional binding options
   - `priority`: defaults to 0
 
 ### `exchange.close()`
+
 Close exchange and all bindings.
 
 ### `exchange.emit(eventName[, content])`
+
 ### `exchange.getBinding(queueName, pattern)`
+
 Get binding to queue by name and with pattern.
 
 ### `exchange.getState()`
+
 Get recoverable exchange state.
 
 ### `exchange.on(pattern, handler[, consumeOptions])`
@@ -498,6 +537,7 @@ Get recoverable exchange state.
 Listen for exchange events.
 
 Arguments:
+
 - `pattern`: event pattern
 - `handler`: event handler function
 - `consumeOptions`: optional consume options
@@ -512,6 +552,7 @@ Stop consuming events from exchange.
   - `consumerTag`: optional event consumer tag to off
 
 ### `exchange.publish(routingKey[, content, properties])`
+
 Publish message on exchange.
 
 ### `exchange.recover([state, getQueue])`
@@ -522,14 +563,18 @@ Recover exchange.
 - `getQueue`: mandatory function if state.binding is passed, to recover bindings a queue is required, this function should return such by name
 
 ### `exchange.stop()`
+
 ### `exchange.unbindQueue(queue, pattern)`
+
 Unbind queue from exchange.
 
 Arguments:
+
 - `queue`: queue instance
 - `pattern`: binding pattern
 
 ### `exchange.unbindQueueByName(queueName)`
+
 Remove all bindings to queue by queue name.
 
 ## Binding
@@ -537,6 +582,7 @@ Remove all bindings to queue by queue name.
 Exchange to queue binding
 
 Properties:
+
 - `id`: exchange binding id
 - `options`: binding options
 - `pattern`: binding pattern
@@ -552,9 +598,11 @@ Test routing key against binding pattern
 Close binding
 
 ## Queue
+
 Queue
 
 Properties:
+
 - `name`: queue name
 - `options`: queue options
 - `messages`: actual messages array, probably a good idea to not mess with, but it's there
@@ -596,9 +644,9 @@ Closes queue consumers and requeues outstanding messages.
 Consume queue messages.
 
 - `onMessage(routingKey, message, owner)`: message callback
-  * `routingKey`: message routing key
-  * [`message`](#message): the message
-  * `owner`: optional owner passed in signature
+  - `routingKey`: message routing key
+  - [`message`](#message): the message
+  - `owner`: optional owner passed in signature
 - `options`: optional consume options, see [`broker.consume`](#brokerconsumequeuename-onmessage-options)
 - `owner`: optional owner to be passed to message callback, mainly for internal use when consuming by broker but feel free to pass anything here
 
@@ -609,11 +657,13 @@ Returns [consumer](#consumer).
 Delete queue.
 
 Arguments:
+
 - `deleteOptions`: Object with options
   - `ifUnused`: boolean, delete if unused
   - `ifEmpty`: boolean, delete if empty
 
 Returns:
+
 - `messageCount`: number of messages deleted
 
 ### `queue.dismiss(onMessage[, requeue = true])`
@@ -634,14 +684,19 @@ Get queue state.
 Will throw a TypeError if messages contains circular JSON. The error will be decorated with code `EQUEUE_STATE` and the name of the queue as `queue`.
 
 ### `queue.nack(message[, allUpTo, requeue = true])`
+
 ### `queue.nackAll([requeue = true])`
+
 ### `queue.off(eventName, handler)`
+
 Stop listening for events from queue.
 
 ### `queue.on(eventName, handler)`
+
 Listen for events from queue.
 
 Events:
+
 - `queue.consumer.cancel`: consumer was cancelled
 - `queue.consume`: consumer was added
 - `queue.dead-letter`: message was dead-lettered, sends `deadLetterExchange` name and message
@@ -652,14 +707,17 @@ Events:
 - `queue.saturated`: queue is saturated, i.e. max capacity was reached
 
 ### `queue.peek([ignoreDelivered])`
+
 Peek into queue.
 
 - `ignoreDelivered`: ignore if message was delivered or not
 
 ### `queue.purge()`
+
 Removes all non consumed messages from queue.
 
 ### `queue.queueMessage(fields[, content, properties])`
+
 Queue message.
 
 - `fields`: object with fields, proposal:
@@ -670,8 +728,11 @@ Queue message.
   - `persistent`: boolean indicating if message is persistent, defaults to undef (true). Value `false` ignores the message when queue is recovered from state
 
 ### `queue.recover([state])`
+
 ### `queue.reject(message[, requeue = true])`
+
 ### `queue.stop()`
+
 ### `queue.unbindConsumer(consumer[, requeue = true])`
 
 Unbind consumer instance.
@@ -680,9 +741,11 @@ Unbind consumer instance.
 - `requeue`: optional boolean to requeue messages consumed by consumer
 
 ## Consumer
+
 Queue consumer
 
 **Properties**:
+
 - `options`: returns passed options
 - `capacity`: consumer message capacity
 - `consumerTag`: consumer tag
@@ -713,6 +776,7 @@ Cancel consumption and unsubscribe from queue
 What it is all about - convey messages.
 
 **Properties**:
+
 - `fields`: message fields
   - `routingKey`: routing key if any
   - `redelivered`: message is redelivered

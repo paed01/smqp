@@ -7,7 +7,7 @@ const kStopped = Symbol.for('stopped');
 const kBindings = Symbol.for('bindings');
 const kDeliveryQueue = Symbol.for('deliveryQueue');
 
-const exchangeTypes = [ 'topic', 'direct' ];
+const exchangeTypes = ['topic', 'direct'];
 
 export function Exchange(name, type = 'topic', options) {
   if (!name || typeof name !== 'string') throw new TypeError('Exchange name is required and must be a string');
@@ -30,7 +30,7 @@ function ExchangeBase(name, type, options, eventExchange) {
   this.options = { durable: true, autoDelete: true, ...options };
   this.events = eventExchange;
 
-  const deliveryQueue = this[kDeliveryQueue] = new Queue('delivery-q', { autoDelete: false });
+  const deliveryQueue = (this[kDeliveryQueue] = new Queue('delivery-q', { autoDelete: false }));
   const onMessage = (type === 'topic' ? this._onTopicMessage : this._onDirectMessage).bind(this);
   deliveryQueue.consume(onMessage, { exclusive: true, consumerTag: '_exchange-tag' });
 }
@@ -67,10 +67,13 @@ ExchangeBase.prototype.publish = function publish(routingKey, content, propertie
   if (this[kStopped]) return;
   if (!this.bindingCount) return this._emitReturn(routingKey, content, properties);
 
-  return this[kDeliveryQueue].queueMessage({ routingKey }, {
-    content,
-    properties,
-  });
+  return this[kDeliveryQueue].queueMessage(
+    { routingKey },
+    {
+      content,
+      properties,
+    },
+  );
 };
 
 ExchangeBase.prototype._onTopicMessage = function topic(routingKey, message) {
@@ -149,7 +152,7 @@ ExchangeBase.prototype.unbindQueue = function unbindQueue(queue, pattern) {
   const idx = bindings.findIndex((bq) => bq.queue === queue && bq.pattern === pattern);
   if (idx === -1) return;
 
-  const [ binding ] = bindings.splice(idx, 1);
+  const [binding] = bindings.splice(idx, 1);
   binding.close();
 
   this.emit('unbind', binding);

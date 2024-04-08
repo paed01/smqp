@@ -1,5 +1,9 @@
-Changelog
-=========
+# Changelog
+
+# 8.2.3
+
+- major update of eslint
+- use prettier for formatting rules, touched basically ALL files
 
 # 8.2.2
 
@@ -78,9 +82,11 @@ Changelog
 - `broker.cancel(consumerTag)` signature changed to `broker.cancel(consumerTag[, requeue = true])`. This breaks current behaviour for ack consumers, i.e. messages waiting for ack will be requeued by default if the consumer is cancelled. For some reason they were requeued in the previous version, even though nackAll was called? For no-ack consumers this won't have an affect at all
 
 ## Additions
+
 - `*.get()` returns `false` if no message was retrieved
 
 ## Fixes
+
 - Fix inconsistent cancel consumer behaviour between broker, queue, and consumer
 
 # 5.1.3
@@ -145,9 +151,11 @@ Coverage hunting.
 Confirm messages and node 10 and above.
 
 ## Breaking changes
+
 - Drop nodejs 8 support, or at least for tests due to mocha
 
 ## Additions
+
 - New message confirm option, will emit `message.nack`, `message.ack`, or `message.undelivered` on broker
 - Support offing broker events by consumerTag
 - Support offing exchange events by consumerTag
@@ -166,14 +174,17 @@ Confirm messages and node 10 and above.
 - Support overwriting shoveled message properties
 
 # 2.0.1
+
 - Support passing source binding priority to shovel or bound exchange
 
 # 2.0.0
 
 ## Breaking changes
+
 - `createShovel` has changed signature: last argument `cloneMessage` is converted to an `args` object, and `cloneMessage` moved to a property of `args`
 
 ## Additions
+
 - Introduce e2e by `bindExchange` and consequentaly `unbindExchange`, shoveling messages between exchanges
 
 # 1.11.1
@@ -184,14 +195,17 @@ Confirm messages and node 10 and above.
 # 1.11.0
 
 ## Additions
+
 - Introduce shovel, shoveling messages between brokers
 
 # 1.10.0
 
 ## Additions
+
 - Support message expiration and queue `messageTtl`
 
 ## Fixes
+
 - Acked messages were sent to dead letter exchange, they shouldn't, and are not anymore
 
 # 1.9.0
@@ -229,6 +243,7 @@ Confirm messages and node 10 and above.
 # 1.0.0
 
 ## Breaking changes
+
 - `sendToQueue` has changed signature: argument `routingKey` is omitted, since it had nothing to do there anyhow
 - Message in message callback has changed:
   - introduced new property named `fields`

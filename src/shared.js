@@ -32,10 +32,7 @@ export function getRoutingKeyPattern(pattern) {
     return new EndMatchRoutingKeyPattern(pattern);
   }
 
-  const rpattern = pattern
-    .replace(allDots, '\\.')
-    .replace(allAstx, '[^.]+?')
-    .replace(allHashs, '.*?');
+  const rpattern = pattern.replace(allDots, '\\.').replace(allAstx, '[^.]+?').replace(allHashs, '.*?');
 
   return new RegExp(`^${rpattern}$`);
 }

@@ -24,7 +24,10 @@ export function Shovel(name, source, destination, options = {}) {
 
   const destinationExchange = destinationBroker.getExchange(destinationExchangeName);
   if (!destinationExchange) {
-    throw new SmqpError(`shovel ${name} destination exchange <${destinationExchangeName}> not found`, ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND);
+    throw new SmqpError(
+      `shovel ${name} destination exchange <${destinationExchangeName}> not found`,
+      ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND,
+    );
   }
 
   if (!(this instanceof Shovel)) {
@@ -39,7 +42,7 @@ export function Shovel(name, source, destination, options = {}) {
   this.destination = { ...destination };
   this.events = new EventExchange('shovel__events');
 
-  const consumerTag = this[kConsumerTag] = source.consumerTag || `smq.shoveltag-${name}`;
+  const consumerTag = (this[kConsumerTag] = source.consumerTag || `smq.shoveltag-${name}`);
   this[kClosed] = false;
   this[kSourceBroker] = sourceBroker;
   this[kSourceExchange] = sourceExchange;
@@ -48,10 +51,7 @@ export function Shovel(name, source, destination, options = {}) {
 
   const boundClose = this.close.bind(this);
 
-  const eventHandlers = this[kEventHandlers] = [
-    sourceExchange.on('delete', boundClose),
-    destinationExchange.on('delete', boundClose),
-  ];
+  const eventHandlers = (this[kEventHandlers] = [sourceExchange.on('delete', boundClose), destinationExchange.on('delete', boundClose)]);
 
   let consumer;
   const shovelHandler = this._onShovelMessage.bind(this);

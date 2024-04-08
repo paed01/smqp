@@ -1,6 +1,0 @@
-{
-  "extends": [ "exp/test" ],
-  "rules": {
-    "new-cap": "off"
-  }
-}

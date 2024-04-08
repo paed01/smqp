@@ -213,7 +213,9 @@ describe('Queue', () => {
 
         expect(() => {
           queue.consume(() => {});
-        }).to.throw(SmqpError, /is exclusively consumed/).with.property('code', 'ERR_SMQP_EXCLUSIVE_CONFLICT');
+        })
+          .to.throw(SmqpError, /is exclusively consumed/)
+          .with.property('code', 'ERR_SMQP_EXCLUSIVE_CONFLICT');
       });
 
       it('exclusively consume on queue with consumer throws error', () => {
@@ -222,7 +224,9 @@ describe('Queue', () => {
 
         expect(() => {
           queue.consume(() => {}, { exclusive: true });
-        }).to.throw(SmqpError, /already has consumers/).with.property('code', 'ERR_SMQP_EXCLUSIVE_NOT_ALLOWED');
+        })
+          .to.throw(SmqpError, /already has consumers/)
+          .with.property('code', 'ERR_SMQP_EXCLUSIVE_NOT_ALLOWED');
       });
 
       it('releases exclusive consumed queue when consumer is canceled', () => {
@@ -772,7 +776,7 @@ describe('Queue', () => {
 
       queue.queueMessage({ routingKey: 'test.3' });
 
-      expect(messages).to.eql([ 'test.1', 'test.2', 'test.3' ]);
+      expect(messages).to.eql(['test.1', 'test.2', 'test.3']);
 
       function onMessage(routingKey) {
         messages.push(routingKey);
@@ -1396,7 +1400,9 @@ describe('Queue', () => {
       expect(queue.messageCount).to.equal(2);
 
       let msg = queue.get({ consumerTag: 'me-again' });
-      expect(msg).to.have.property('fields').that.include({ routingKey: 'test.1', exchange: 'event', redelivered: true, consumerTag: 'me-again' });
+      expect(msg)
+        .to.have.property('fields')
+        .that.include({ routingKey: 'test.1', exchange: 'event', redelivered: true, consumerTag: 'me-again' });
       expect(msg).to.have.property('properties').that.have.property('contentType', 'text/plain');
       expect(msg).to.have.property('content').that.equal('data');
 
@@ -1652,7 +1658,9 @@ describe('Consumer', () => {
       const messages = [];
 
       const queue = new Queue('max-q');
-      Array(11).fill().map((_, idx) => queue.queueMessage({ routingKey: `test.${idx}` }));
+      Array(11)
+        .fill()
+        .map((_, idx) => queue.queueMessage({ routingKey: `test.${idx}` }));
 
       queue.consume(onMessage, { prefetch: 10 });
 
@@ -1723,7 +1731,7 @@ describe('Consumer', () => {
 
       expect(queue.messageCount).to.equal(0);
 
-      expect(messages).to.eql([ 'test2', 'test3' ]);
+      expect(messages).to.eql(['test2', 'test3']);
 
       function onMessage(routingKey, message) {
         if (routingKey === 'test1') return;
@@ -1734,7 +1742,8 @@ describe('Consumer', () => {
 
     it('allUpTo = true only acks messages above message', () => {
       const queue = new Queue('event-q');
-      const messages1 = [], messages2 = [];
+      const messages1 = [],
+        messages2 = [];
 
       queue.queueMessage({ routingKey: 'test1' });
       queue.queueMessage({ routingKey: 'test2' });
@@ -1745,8 +1754,8 @@ describe('Consumer', () => {
       queue.consume(onMessage1);
       queue.consume(onMessage2, { prefetch: 2 });
 
-      expect(messages1, '#1 consumer').to.eql([ 'test1', 'test4' ]);
-      expect(messages2, '#2 consumer').to.eql([ 'test2', 'test3', 'test5' ]);
+      expect(messages1, '#1 consumer').to.eql(['test1', 'test4']);
+      expect(messages2, '#2 consumer').to.eql(['test2', 'test3', 'test5']);
 
       function onMessage1(routingKey) {
         messages1.push(routingKey);
@@ -1760,7 +1769,8 @@ describe('Consumer', () => {
 
     it('allUpTo = true only acks messages above message', () => {
       const queue = new Queue('event-q');
-      const messages1 = [], messages2 = [];
+      const messages1 = [],
+        messages2 = [];
 
       queue.queueMessage({ routingKey: 'test.1' });
       queue.queueMessage({ routingKey: 'test.2' });
@@ -1779,8 +1789,14 @@ describe('Consumer', () => {
       expect(messages2).to.have.length(1);
       expect(messages1).to.have.length(4);
 
-      expect(messages1.map(({ fields }) => fields.routingKey), '#1 consumer').to.eql([ 'test.1', 'test.2', 'test.4', 'test.5' ]);
-      expect(messages2.map(({ fields }) => fields.routingKey), '#2 consumer').to.eql([ 'test.3' ]);
+      expect(
+        messages1.map(({ fields }) => fields.routingKey),
+        '#1 consumer',
+      ).to.eql(['test.1', 'test.2', 'test.4', 'test.5']);
+      expect(
+        messages2.map(({ fields }) => fields.routingKey),
+        '#2 consumer',
+      ).to.eql(['test.3']);
 
       function onMessage1(routingKey, message) {
         messages1.push(message);
@@ -1954,7 +1970,7 @@ describe('Consumer', () => {
 
       queue.queueMessage({ routingKey: 'test.3' });
 
-      expect(messages).to.eql([ 'test.1', 'test.2', 'test.3' ]);
+      expect(messages).to.eql(['test.1', 'test.2', 'test.3']);
 
       function onMessage(routingKey) {
         messages.push(routingKey);

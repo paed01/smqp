@@ -2,7 +2,15 @@ import { Exchange, EventExchange } from './Exchange.js';
 import { Queue } from './Queue.js';
 import { Shovel, Exchange2Exchange } from './Shovel.js';
 import { generateId } from './shared.js';
-import { SmqpError, ERR_EXCHANGE_TYPE_MISMATCH, ERR_QUEUE_DURABLE_MISMATCH, ERR_CONSUMER_TAG_CONFLICT, ERR_QUEUE_NAME_CONFLICT, ERR_SHOVEL_NAME_CONFLICT, ERR_QUEUE_NOT_FOUND } from './Errors.js';
+import {
+  SmqpError,
+  ERR_EXCHANGE_TYPE_MISMATCH,
+  ERR_QUEUE_DURABLE_MISMATCH,
+  ERR_CONSUMER_TAG_CONFLICT,
+  ERR_QUEUE_NAME_CONFLICT,
+  ERR_SHOVEL_NAME_CONFLICT,
+  ERR_QUEUE_NOT_FOUND,
+} from './Errors.js';
 
 const kEntities = Symbol.for('entities');
 const kEventHandler = Symbol.for('eventHandler');
@@ -13,12 +21,12 @@ export function Broker(owner) {
   }
   this.owner = owner;
   this.events = new EventExchange('broker__events');
-  const entities = this[kEntities] = {
+  const entities = (this[kEntities] = {
     exchanges: [],
     queues: [],
     consumers: [],
     shovels: [],
-  };
+  });
   this[kEventHandler] = new EventHandler(this, entities);
 }
 
@@ -41,7 +49,8 @@ Object.defineProperties(Broker.prototype, {
 });
 
 Broker.prototype.subscribe = function subscribe(exchangeName, pattern, queueName, onMessage, options = { durable: true }) {
-  if (!exchangeName || !pattern || typeof onMessage !== 'function') throw new TypeError('exchange name, pattern, and message callback are required');
+  if (!exchangeName || !pattern || typeof onMessage !== 'function')
+    throw new TypeError('exchange name, pattern, and message callback are required');
   if (options && options.consumerTag) this.validateConsumerTag(options.consumerTag);
 
   const exchange = this.assertExchange(exchangeName);
@@ -83,7 +92,7 @@ Broker.prototype.unsubscribe = function unsubscribe(queueName, onMessage) {
 Broker.prototype.assertExchange = function assertExchange(exchangeName, type, options) {
   let exchange = this.getExchange(exchangeName);
   if (exchange) {
-    if (type && exchange.type !== type) throw new SmqpError('Type doesn\'t match', ERR_EXCHANGE_TYPE_MISMATCH);
+    if (type && exchange.type !== type) throw new SmqpError("Type doesn't match", ERR_EXCHANGE_TYPE_MISMATCH);
     return exchange;
   }
 
@@ -199,7 +208,8 @@ Broker.prototype.recover = function recover(state) {
     if (state.queues) {
       for (const qState of state.queues) this.assertQueue(qState.name, qState.options).recover(qState);
     }
-    if (state.exchanges) for (const eState of state.exchanges) this.assertExchange(eState.name, eState.type, eState.options).recover(eState, boundGetQueue);
+    if (state.exchanges)
+      for (const eState of state.exchanges) this.assertExchange(eState.name, eState.type, eState.options).recover(eState, boundGetQueue);
   } else {
     const { queues, exchanges } = this[kEntities];
     for (const queue of queues) {
@@ -216,16 +226,21 @@ Broker.prototype.recover = function recover(state) {
 Broker.prototype.bindExchange = function bindExchange(source, destination, pattern = '#', args = {}) {
   const name = `e2e-${source}2${destination}-${pattern}`;
   const { priority } = args;
-  const shovel = this.createShovel(name, {
-    broker: this,
-    exchange: source,
-    pattern,
-    priority,
-    consumerTag: `smq.ctag-${name}`,
-  }, {
-    broker: this,
-    exchange: destination,
-  }, { ...args });
+  const shovel = this.createShovel(
+    name,
+    {
+      broker: this,
+      exchange: source,
+      pattern,
+      priority,
+      consumerTag: `smq.ctag-${name}`,
+    },
+    {
+      broker: this,
+      exchange: destination,
+    },
+    { ...args },
+  );
 
   return new Exchange2Exchange(shovel);
 };
@@ -303,7 +318,7 @@ Broker.prototype.assertQueue = function assertQueue(queueName, options = {}) {
   options = { durable: true, ...options };
   if (!queue) return this.createQueue(queueName, options);
 
-  if (queue.options.durable !== options.durable) throw new SmqpError('Durable doesn\'t match', ERR_QUEUE_DURABLE_MISMATCH);
+  if (queue.options.durable !== options.durable) throw new SmqpError("Durable doesn't match", ERR_QUEUE_DURABLE_MISMATCH);
   return queue;
 };
 

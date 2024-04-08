@@ -54,12 +54,7 @@ describe('Exchange', () => {
 
       queue.consume(onMessage);
 
-      expect(messages).to.eql([
-        'test.1',
-        'test.2',
-        'test.3',
-        'test.4',
-      ]);
+      expect(messages).to.eql(['test.1', 'test.2', 'test.3', 'test.4']);
 
       function onMessage(routingKey, msg) {
         messages.push(routingKey);
@@ -88,15 +83,9 @@ describe('Exchange', () => {
       exchange.publish('test.2.1');
       exchange.publish('test.2.2');
 
-      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql([
-        'test.1.1',
-        'test.2.1',
-      ]);
+      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql(['test.1.1', 'test.2.1']);
 
-      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql([
-        'test.1.2',
-        'test.2.2',
-      ]);
+      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql(['test.1.2', 'test.2.2']);
 
       function onMessage1(routingKey, message) {
         messages1.push(message);
@@ -126,12 +115,7 @@ describe('Exchange', () => {
 
       queue.consume(onMessage);
 
-      expect(messages).to.eql([
-        'test.1',
-        'test.2',
-        'test.3',
-        'test.4',
-      ]);
+      expect(messages).to.eql(['test.1', 'test.2', 'test.3', 'test.4']);
 
       function onMessage(routingKey, msg) {
         messages.push(routingKey);
@@ -159,19 +143,9 @@ describe('Exchange', () => {
       exchange.publish('test.2.1');
       exchange.publish('test.2.2');
 
-      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql([
-        'test.1.1',
-        'test.1.2',
-        'test.2.1',
-        'test.2.2',
-      ]);
+      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql(['test.1.1', 'test.1.2', 'test.2.1', 'test.2.2']);
 
-      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql([
-        'test.1.1',
-        'test.1.2',
-        'test.2.1',
-        'test.2.2',
-      ]);
+      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql(['test.1.1', 'test.1.2', 'test.2.1', 'test.2.2']);
 
       function onMessage1(routingKey, message) {
         messages1.push(message);
@@ -220,15 +194,9 @@ describe('Exchange', () => {
 
       function assertMessages(key, message) {
         if (key !== 'done') return message.ack();
-        expect(messages1.map(({ fields }) => fields.routingKey)).to.eql([
-          'test.1',
-          'test.2',
-        ]);
+        expect(messages1.map(({ fields }) => fields.routingKey)).to.eql(['test.1', 'test.2']);
 
-        expect(messages2.map(({ fields }) => fields.routingKey)).to.eql([
-          'test.1',
-          'test.2',
-        ]);
+        expect(messages2.map(({ fields }) => fields.routingKey)).to.eql(['test.1', 'test.2']);
 
         done();
       }
@@ -596,7 +564,7 @@ describe('Exchange', () => {
 
       exchange.publish('test.1');
 
-      expect(queue.messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1', 'test.2' ]);
+      expect(queue.messages.map(({ fields }) => fields.routingKey)).to.eql(['test.1', 'test.2']);
     });
 
     it('recover multiple bindings in message callback continues publishing messages to topic exchange', () => {
@@ -617,8 +585,8 @@ describe('Exchange', () => {
 
       exchange.publish('test.1');
 
-      expect(queue1.messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1', 'test.2' ]);
-      expect(queue2.messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1', 'test.2' ]);
+      expect(queue1.messages.map(({ fields }) => fields.routingKey)).to.eql(['test.1', 'test.2']);
+      expect(queue2.messages.map(({ fields }) => fields.routingKey)).to.eql(['test.1', 'test.2']);
     });
 
     it('recover in message callback continues publishing messages to direct exchange', () => {
@@ -636,7 +604,7 @@ describe('Exchange', () => {
       });
 
       exchange.publish('test.1');
-      expect(queue.messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1', 'test.2' ]);
+      expect(queue.messages.map(({ fields }) => fields.routingKey)).to.eql(['test.1', 'test.2']);
     });
 
     it('recover multiple bindings in message callback continues publishing messages to direct exchange', () => {
@@ -659,8 +627,8 @@ describe('Exchange', () => {
 
       exchange.publish('test.1');
 
-      expect(queue1.messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1', 'test.3' ]);
-      expect(queue2.messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.2', 'test.4' ]);
+      expect(queue1.messages.map(({ fields }) => fields.routingKey)).to.eql(['test.1', 'test.3']);
+      expect(queue2.messages.map(({ fields }) => fields.routingKey)).to.eql(['test.2', 'test.4']);
     });
 
     it('recovers closed direct exchange with state', () => {

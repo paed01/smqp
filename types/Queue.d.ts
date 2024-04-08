@@ -1,10 +1,6 @@
 import { Message, MessageFields, MessageProperties, MessageMessage } from './Message.js';
 
-type onMessage = (
-  routingKey: string,
-  message: Message,
-  owner: any
-) => void
+type onMessage = (routingKey: string, message: Message, owner: any) => void;
 
 type queueOptions = {
   autoDelete?: boolean;
@@ -28,7 +24,7 @@ type consumeOptions = {
 type deleteQueueOptions = {
   ifUnused?: boolean;
   ifEmpty?: boolean;
-}
+};
 
 export interface QueueState {
   name: string;

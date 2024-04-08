@@ -279,7 +279,7 @@ describe('consumer', () => {
       broker.publish('test', 'test.message', 'test.1.3');
 
       expect(messages).to.have.length(5);
-      expect(messages.map(({ content }) => content)).to.eql([ 'test.1.1', 'test.2.1', 'test.1.2', 'test.2.2', 'test.1.3' ]);
+      expect(messages.map(({ content }) => content)).to.eql(['test.1.1', 'test.2.1', 'test.1.2', 'test.2.2', 'test.1.3']);
 
       function onMessage(_, message) {
         messages.push(message);
@@ -306,7 +306,7 @@ describe('consumer', () => {
 
       function cb() {
         expect(messages).to.have.length(5);
-        expect(messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1.1', 'test.2.1', 'test.1.2', 'test.2.2', 'test.1.3' ]);
+        expect(messages.map(({ fields }) => fields.routingKey)).to.eql(['test.1.1', 'test.2.1', 'test.1.2', 'test.2.2', 'test.1.3']);
         done();
       }
 
@@ -338,7 +338,7 @@ describe('consumer', () => {
 
       function cb() {
         expect(messages).to.have.length(5);
-        expect(messages.map(({ fields }) => fields.routingKey)).to.eql([ 'test.1.1', 'test.2.1', 'test.1.2', 'test.2.2', 'test.1.3' ]);
+        expect(messages.map(({ fields }) => fields.routingKey)).to.eql(['test.1.1', 'test.2.1', 'test.1.2', 'test.2.2', 'test.1.3']);
         done();
       }
 
@@ -366,11 +366,7 @@ describe('consumer', () => {
       const messages = [];
       broker.consume('event-q', onMessage, { prefetch: 10, consumerTag: 'test-prefetch' });
 
-      expect(messages).to.eql([
-        'event.1',
-        'event.2',
-        'event.3',
-      ]);
+      expect(messages).to.eql(['event.1', 'event.2', 'event.3']);
 
       function onMessage(routingKey, message) {
         messages.push(routingKey);

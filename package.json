@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "8.2.2",
+  "version": "8.2.3",
   "type": "module",
   "description": "Synchronous message queueing package",
   "author": {
@@ -37,8 +37,8 @@
     "cov:html": "c8 -r html -r text mocha",
     "dist": "babel src/**.js -d dist",
     "prepack": "npm run dist",
-    "toc": "node ./scripts/generate-api-toc.cjs",
-    "lint": "eslint . --cache"
+    "toc": "node ./scripts/generate-api-toc.js",
+    "lint": "eslint . --cache && prettier . -c --cache"
   },
   "keywords": [
     "messaging",
@@ -58,15 +58,17 @@
     "shovel"
   ],
   "devDependencies": {
-    "@babel/cli": "^7.23.9",
-    "@babel/core": "^7.23.9",
-    "@babel/preset-env": "^7.23.9",
+    "@babel/cli": "^7.24.1",
+    "@babel/core": "^7.24.4",
+    "@babel/preset-env": "^7.24.4",
     "c8": "^9.1.0",
-    "chai": "^5.0.3",
+    "chai": "^5.1.0",
     "chronokinesis": "^6.0.0",
-    "eslint": "^8.56.0",
-    "eslint-config-exp": "^0.6.2",
+    "eslint": "^9.0.0",
     "markdown-toc": "^1.2.0",
-    "mocha": "^10.2.0"
+    "mocha": "^10.4.0"
+  },
+  "dependencies": {
+    "prettier": "^3.2.5"
   }
 }

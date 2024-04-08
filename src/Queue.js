@@ -114,8 +114,10 @@ Queue.prototype._consumeNext = function consumeNext() {
 Queue.prototype.consume = function consume(onMessage, consumeOptions = {}, owner) {
   const consumers = this[kConsumers];
   if (consumers.length) {
-    if (this[kExclusive]) throw new SmqpError(`Queue ${this.name} is exclusively consumed by ${consumers[0].consumerTag}`, ERR_EXCLUSIVE_CONFLICT);
-    if (consumeOptions.exclusive) throw new SmqpError(`Queue ${this.name} already has consumers and cannot be exclusively consumed`, ERR_EXCLUSIVE_NOT_ALLOWED);
+    if (this[kExclusive])
+      throw new SmqpError(`Queue ${this.name} is exclusively consumed by ${consumers[0].consumerTag}`, ERR_EXCLUSIVE_CONFLICT);
+    if (consumeOptions.exclusive)
+      throw new SmqpError(`Queue ${this.name} already has consumers and cannot be exclusively consumed`, ERR_EXCLUSIVE_NOT_ALLOWED);
   }
 
   const consumer = new Consumer(this, onMessage, consumeOptions, owner, new ConsumerEmitter(this));
@@ -218,7 +220,11 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
     case 'nack': {
       if (requeue) {
         this[kAvailableCount]++;
-        messages.splice(msgIdx, 0, new Message({ ...message.fields, redelivered: true }, message.content, message.properties, this._onMessageConsumed));
+        messages.splice(
+          msgIdx,
+          0,
+          new Message({ ...message.fields, redelivered: true }, message.content, message.properties, this._onMessageConsumed),
+        );
       } else {
         deadLetterExchange = this.options.deadLetterExchange;
       }
@@ -466,7 +472,7 @@ Queue.prototype._getCapacity = function getCapacity() {
 export function Consumer(queue, onMessage, options, owner, eventEmitter) {
   if (typeof onMessage !== 'function') throw new TypeError('message callback is required and must be a function');
 
-  const { consumerTag } = this.options = { prefetch: 1, priority: 0, noAck: false, ...options };
+  const { consumerTag } = (this.options = { prefetch: 1, priority: 0, noAck: false, ...options });
   if (!consumerTag) this.options.consumerTag = `smq.ctag-${generateId()}`;
   else if (typeof consumerTag !== 'string') throw new TypeError('consumerTag must be a string');
 
@@ -478,10 +484,14 @@ export function Consumer(queue, onMessage, options, owner, eventEmitter) {
   this[kStopped] = false;
   this[kConsuming] = false;
 
-  this[kInternalQueue] = new Queue(`${this.options.consumerTag}-q`, {
-    autoDelete: false,
-    maxLength: this.options.prefetch,
-  }, new ConsumerQueueEvents(this));
+  this[kInternalQueue] = new Queue(
+    `${this.options.consumerTag}-q`,
+    {
+      autoDelete: false,
+      maxLength: this.options.prefetch,
+    },
+    new ConsumerQueueEvents(this),
+  );
 }
 
 Object.defineProperties(Consumer.prototype, {

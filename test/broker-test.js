@@ -111,7 +111,9 @@ describe('Broker', () => {
 
       expect(() => {
         broker.subscribe('test', 'test.#', 'durableQueue', onMessage2, { durable: false, memem: 1 });
-      }).to.throw(SmqpError).that.have.property('code', 'ERR_SMQP_QUEUE_DURABLE_MISMATCH');
+      })
+        .to.throw(SmqpError)
+        .that.have.property('code', 'ERR_SMQP_QUEUE_DURABLE_MISMATCH');
 
       function onMessage1() {}
       function onMessage2() {}
@@ -148,7 +150,9 @@ describe('Broker', () => {
 
       expect(() => {
         broker.subscribe('test', 'test.#', 'exclusive-q', onMessage2);
-      }).to.throw(SmqpError).with.property('code', 'ERR_SMQP_EXCLUSIVE_CONFLICT');
+      })
+        .to.throw(SmqpError)
+        .with.property('code', 'ERR_SMQP_EXCLUSIVE_CONFLICT');
 
       function onMessage1() {}
       function onMessage2() {}
@@ -161,7 +165,9 @@ describe('Broker', () => {
 
       expect(() => {
         broker.subscribe('test', 'test.#', 'exclusive-q', onMessage2, { exclusive: true });
-      }).to.throw(SmqpError).with.property('code', 'ERR_SMQP_EXCLUSIVE_NOT_ALLOWED');
+      })
+        .to.throw(SmqpError)
+        .with.property('code', 'ERR_SMQP_EXCLUSIVE_NOT_ALLOWED');
 
       function onMessage1() {}
       function onMessage2() {}
@@ -356,7 +362,7 @@ describe('Broker', () => {
 
       expect(exchange).to.have.property('bindingCount', 0);
 
-      expect(messages).to.eql([ 'once' ]);
+      expect(messages).to.eql(['once']);
 
       function onMessage(routingKey) {
         messages.push(routingKey);
@@ -452,7 +458,7 @@ describe('Broker', () => {
       broker.publish('test', 'test.2');
       broker.publish('test', 'test.3');
 
-      expect(messages).to.eql([ 'test.1' ]);
+      expect(messages).to.eql(['test.1']);
       expect(queue.messageCount).to.equal(2);
 
       function onMessage(routingKey, message) {
@@ -517,7 +523,9 @@ describe('Broker', () => {
 
       expect(() => {
         broker.consume('test-q', () => {});
-      }).to.throw(SmqpError, /exclusively/).with.property('code', 'ERR_SMQP_EXCLUSIVE_CONFLICT');
+      })
+        .to.throw(SmqpError, /exclusively/)
+        .with.property('code', 'ERR_SMQP_EXCLUSIVE_CONFLICT');
     });
 
     it('exclusive consumption is released when consumer is cancelled', () => {
@@ -528,7 +536,9 @@ describe('Broker', () => {
 
       expect(() => {
         broker.consume('test-q', () => {});
-      }).to.throw(SmqpError, /exclusively/).with.property('code', 'ERR_SMQP_EXCLUSIVE_CONFLICT');
+      })
+        .to.throw(SmqpError, /exclusively/)
+        .with.property('code', 'ERR_SMQP_EXCLUSIVE_CONFLICT');
 
       exclusive.cancel();
       broker.consume('test-q', () => {});
@@ -542,7 +552,9 @@ describe('Broker', () => {
 
       expect(() => {
         broker.consume('test', () => {}, { consumerTag: 'guid' });
-      }).to.throw(SmqpError, /guid/).with.property('code', 'ERR_SMQP_CONSUMER_TAG_CONFLICT');
+      })
+        .to.throw(SmqpError, /guid/)
+        .with.property('code', 'ERR_SMQP_CONSUMER_TAG_CONFLICT');
 
       function onMessage() {}
     });
@@ -560,7 +572,9 @@ describe('Broker', () => {
       const broker = Broker();
       expect(() => {
         broker.consume('non-q', () => {}, { exclusive: true, consumerTag: 'guid' });
-      }).to.throw(SmqpError, /not found/).with.property('code', 'ERR_SMQP_QUEUE_NOT_FOUND');
+      })
+        .to.throw(SmqpError, /not found/)
+        .with.property('code', 'ERR_SMQP_QUEUE_NOT_FOUND');
     });
   });
 
@@ -602,7 +616,9 @@ describe('Broker', () => {
       broker.assertExchange('test', 'direct');
       expect(() => {
         broker.assertExchange('test', 'fanout');
-      }).to.throw(SmqpError, /match/).with.property('code', 'ERR_SMQP_EXCHANGE_TYPE_MISMATCH');
+      })
+        .to.throw(SmqpError, /match/)
+        .with.property('code', 'ERR_SMQP_EXCHANGE_TYPE_MISMATCH');
     });
   });
 
@@ -751,10 +767,7 @@ describe('Broker', () => {
       broker.getQueue('events').queueMessage({ routingKey: 'event.stopped' });
       broker.getQueue('loads').queueMessage({ routingKey: 'load.stopped' });
 
-      expect(messages).to.eql([
-        'event.1',
-        'load.1',
-      ]);
+      expect(messages).to.eql(['event.1', 'load.1']);
 
       function onMessage(routingKey, message) {
         messages.push(routingKey);
@@ -783,10 +796,7 @@ describe('Broker', () => {
 
       tmpQueue.queueMessage({ routingKey: 'event.queued' });
 
-      expect(messages).to.eql([
-        'event.1',
-        'event.2',
-      ]);
+      expect(messages).to.eql(['event.1', 'event.2']);
 
       function onMessage(routingKey, message) {
         messages.push(routingKey);
@@ -847,10 +857,7 @@ describe('Broker', () => {
       broker.getQueue('events').queueMessage({ routingKey: 'event.stopped' });
       broker.getQueue('loads').queueMessage({ routingKey: 'load.stopped' });
 
-      expect(messages).to.eql([
-        'event.1',
-        'load.1',
-      ]);
+      expect(messages).to.eql(['event.1', 'load.1']);
 
       function onMessage(routingKey, message) {
         messages.push(routingKey);
@@ -876,10 +883,7 @@ describe('Broker', () => {
 
       tmpQueue.queueMessage({ routingKey: 'event.queued' });
 
-      expect(messages).to.eql([
-        'event.1',
-        'event.2',
-      ]);
+      expect(messages).to.eql(['event.1', 'event.2']);
 
       function onMessage(routingKey, message) {
         messages.push(routingKey);
@@ -997,11 +1001,7 @@ describe('Broker', () => {
 
         broker.consume('event-q', onRecoveredMessage);
 
-        expect(messages).to.eql([
-          'event.0',
-          'event.1',
-          'event.2',
-        ]);
+        expect(messages).to.eql(['event.0', 'event.1', 'event.2']);
       }
 
       function onRecoveredMessage() {
@@ -1030,19 +1030,14 @@ describe('Broker', () => {
 
       recovered.publish('event', 'event.1');
 
-      expect(messages).to.eql([
-        'prio-event.0',
-        'event.0',
-        'prio-event.1',
-        'event.1',
-      ]);
+      expect(messages).to.eql(['prio-event.0', 'event.0', 'prio-event.1', 'event.1']);
 
       function onMessage(routingKey, message) {
         messages.push(routingKey);
         message.ack();
       }
       function onPrioMessage(routingKey, message) {
-        messages.push([ 'prio', routingKey ].join('-'));
+        messages.push(['prio', routingKey].join('-'));
         message.ack();
       }
     });
@@ -1051,7 +1046,7 @@ describe('Broker', () => {
       const messages = [];
 
       broker.subscribeOnce('event', '#', (routingKey) => {
-        messages.push([ 'once', routingKey ].join('-'));
+        messages.push(['once', routingKey].join('-'));
       });
 
       broker.assertQueue('event-prio-q');
@@ -1072,20 +1067,14 @@ describe('Broker', () => {
 
       broker.publish('event', 'event.1');
 
-      expect(messages).to.eql([
-        'prio-event.0',
-        'event.0',
-        'once-event.0',
-        'prio-event.1',
-        'event.1',
-      ]);
+      expect(messages).to.eql(['prio-event.0', 'event.0', 'once-event.0', 'prio-event.1', 'event.1']);
 
       function onMessage(routingKey, message) {
         messages.push(routingKey);
         message.ack();
       }
       function onPrioMessage(routingKey, message) {
-        messages.push([ 'prio', routingKey ].join('-'));
+        messages.push(['prio', routingKey].join('-'));
         message.ack();
       }
     });
@@ -1110,11 +1099,7 @@ describe('Broker', () => {
 
       broker.publish('event', 'event.4');
 
-      expect(messages).to.eql([
-        'event.1',
-        'event.2',
-        'event.4',
-      ]);
+      expect(messages).to.eql(['event.1', 'event.2', 'event.4']);
 
       function onMessage(routingKey, message) {
         messages.push(routingKey);
@@ -1250,11 +1235,16 @@ describe('Broker', () => {
       broker.assertExchange('event');
       const messages = [];
 
-      broker.subscribeTmp('event', '#', (routingKey) => {
-        messages.push(routingKey);
-        broker.cancel('cancel-me');
-        broker.publish('event', 'test.3');
-      }, { consumerTag: 'cancel-me', noAck: true });
+      broker.subscribeTmp(
+        'event',
+        '#',
+        (routingKey) => {
+          messages.push(routingKey);
+          broker.cancel('cancel-me');
+          broker.publish('event', 'test.3');
+        },
+        { consumerTag: 'cancel-me', noAck: true },
+      );
 
       broker.publish('event', 'test.1');
       broker.publish('event', 'test.2');
@@ -1267,11 +1257,17 @@ describe('Broker', () => {
       const queue = broker.assertQueue('event-q', { autoDelete: false });
       const messages = [];
 
-      broker.subscribe('event', '#', 'event-q', (routingKey) => {
-        messages.push(routingKey);
-        broker.cancel('cancel-me');
-        broker.publish('event', 'test.3');
-      }, { consumerTag: 'cancel-me' });
+      broker.subscribe(
+        'event',
+        '#',
+        'event-q',
+        (routingKey) => {
+          messages.push(routingKey);
+          broker.cancel('cancel-me');
+          broker.publish('event', 'test.3');
+        },
+        { consumerTag: 'cancel-me' },
+      );
 
       broker.publish('event', 'test.1');
       broker.publish('event', 'test.2');
@@ -1287,11 +1283,17 @@ describe('Broker', () => {
       const queue = broker.assertQueue('event-q', { autoDelete: false });
       const messages = [];
 
-      broker.subscribe('event', '#', 'event-q', (routingKey) => {
-        messages.push(routingKey);
-        broker.cancel('cancel-me', false);
-        broker.publish('event', 'test.3');
-      }, { consumerTag: 'cancel-me' });
+      broker.subscribe(
+        'event',
+        '#',
+        'event-q',
+        (routingKey) => {
+          messages.push(routingKey);
+          broker.cancel('cancel-me', false);
+          broker.publish('event', 'test.3');
+        },
+        { consumerTag: 'cancel-me' },
+      );
 
       broker.publish('event', 'test.1');
       broker.publish('event', 'test.2');
@@ -1307,11 +1309,17 @@ describe('Broker', () => {
       const queue = broker.assertQueue('event-q', { autoDelete: false });
       const messages = [];
 
-      broker.subscribe('event', '#', 'event-q', (routingKey, msg) => {
-        messages.push(routingKey);
-        broker.cancel(msg.fields.consumerTag, false);
-        broker.publish('event', 'test.3');
-      }, { consumerTag: 'cancel-me', noAck: true });
+      broker.subscribe(
+        'event',
+        '#',
+        'event-q',
+        (routingKey, msg) => {
+          messages.push(routingKey);
+          broker.cancel(msg.fields.consumerTag, false);
+          broker.publish('event', 'test.3');
+        },
+        { consumerTag: 'cancel-me', noAck: true },
+      );
 
       broker.publish('event', 'test.1');
       broker.publish('event', 'test.2');
@@ -1348,7 +1356,7 @@ describe('Broker', () => {
       }
     });
 
-    it('doesn\'t send acked message to dead letter exchange', () => {
+    it("doesn't send acked message to dead letter exchange", () => {
       const broker = Broker();
 
       broker.assertExchange('event');
@@ -1619,7 +1627,7 @@ describe('Broker', () => {
       expect(queue.events.name, 'queue event exchange name').to.contain(queue.name);
     });
 
-    it('createQueue(\'\') creates queue with random name', () => {
+    it("createQueue('') creates queue with random name", () => {
       const broker = Broker();
       const queue = broker.createQueue('');
       expect(broker.queueCount).to.equal(1);
@@ -1639,7 +1647,9 @@ describe('Broker', () => {
 
       expect(() => {
         broker.createQueue('test-q');
-      }).to.throw(SmqpError, /test-q already exists/).with.property('code', 'ERR_SMQP_QUEUE_NAME_CONFLICT');
+      })
+        .to.throw(SmqpError, /test-q already exists/)
+        .with.property('code', 'ERR_SMQP_QUEUE_NAME_CONFLICT');
     });
 
     it('deleteQueue throws if queueName is empty', () => {
@@ -1695,7 +1705,7 @@ describe('Broker', () => {
       broker.publish('event', 'test.2');
       broker.publish('event', 'test.3');
 
-      expect(messages).to.eql([ 'vip', 'first', 'third' ]);
+      expect(messages).to.eql(['vip', 'first', 'third']);
 
       function onMessageFirst() {
         messages.push('first');
@@ -1762,7 +1772,7 @@ describe('Broker', () => {
 
       expect(messages).to.have.length(1);
 
-      const [ message1 ] = messages;
+      const [message1] = messages;
 
       message1.nack();
 
@@ -1785,7 +1795,7 @@ describe('Broker', () => {
 
       expect(messages).to.have.length(1);
 
-      const [ message1 ] = messages;
+      const [message1] = messages;
 
       broker.unsubscribe('#', onMessage);
 
@@ -1809,7 +1819,7 @@ describe('Broker', () => {
       broker.publish('test', 'test2');
       broker.publish('test', 'test3');
 
-      expect(messages).to.eql([ 'test2', 'test3' ]);
+      expect(messages).to.eql(['test2', 'test3']);
       expect(broker.getQueue('testq').messageCount).to.equal(0);
 
       function onMessage(routingKey, message) {
@@ -1830,7 +1840,7 @@ describe('Broker', () => {
       broker.publish('test', 'test2');
       broker.publish('test', 'test3');
 
-      expect(messages).to.eql([ 'test2', 'test3' ]);
+      expect(messages).to.eql(['test2', 'test3']);
       expect(broker.getQueue('test-q').messageCount).to.equal(0);
 
       function onMessage(routingKey, message) {
@@ -1916,7 +1926,9 @@ describe('Broker', () => {
       const broker = Broker();
       expect(() => {
         broker.sendToQueue('not-found-q');
-      }).to.throw(SmqpError, /not-found-q/).with.property('code', 'ERR_SMQP_QUEUE_NOT_FOUND');
+      })
+        .to.throw(SmqpError, /not-found-q/)
+        .with.property('code', 'ERR_SMQP_QUEUE_NOT_FOUND');
     });
   });
 
@@ -2216,14 +2228,19 @@ describe('Broker', () => {
       broker.bindExchange('source-events', 'dest-events');
 
       const messages = [];
-      broker.subscribeTmp('dest-events', '#', (routingKey) => {
-        messages.push(routingKey);
-      }, { noAck: true });
+      broker.subscribeTmp(
+        'dest-events',
+        '#',
+        (routingKey) => {
+          messages.push(routingKey);
+        },
+        { noAck: true },
+      );
 
       broker.publish('source-events', 'test.1');
       broker.publish('source-events', 'test.2');
 
-      expect(messages).to.eql([ 'test.1', 'test.2' ]);
+      expect(messages).to.eql(['test.1', 'test.2']);
     });
 
     it('shovels messages meeting pattern', () => {
@@ -2234,14 +2251,19 @@ describe('Broker', () => {
       broker.bindExchange('source-events', 'dest-events', 'event.#');
 
       const messages = [];
-      broker.subscribeTmp('dest-events', '#', (routingKey) => {
-        messages.push(routingKey);
-      }, { noAck: true });
+      broker.subscribeTmp(
+        'dest-events',
+        '#',
+        (routingKey) => {
+          messages.push(routingKey);
+        },
+        { noAck: true },
+      );
 
       broker.publish('source-events', 'test.1');
       broker.publish('source-events', 'event.1');
 
-      expect(messages).to.eql([ 'event.1' ]);
+      expect(messages).to.eql(['event.1']);
     });
 
     it('takes cloneMessage function as option', () => {
@@ -2256,9 +2278,14 @@ describe('Broker', () => {
       });
 
       const messages = [];
-      broker.subscribeTmp('dest-events', '#', (_, msg) => {
-        messages.push(msg.content);
-      }, { noAck: true });
+      broker.subscribeTmp(
+        'dest-events',
+        '#',
+        (_, msg) => {
+          messages.push(msg.content);
+        },
+        { noAck: true },
+      );
 
       const content = { data: 1 };
       broker.publish('source-events', 'event.1', content);
@@ -2266,7 +2293,7 @@ describe('Broker', () => {
 
       content.data = 3;
 
-      expect(messages).to.eql([ { data: 1 } ]);
+      expect(messages).to.eql([{ data: 1 }]);
     });
 
     it('takes binding priority as option', () => {
@@ -2275,15 +2302,25 @@ describe('Broker', () => {
       broker.assertExchange('dest-events');
 
       const messages = [];
-      broker.subscribeTmp('source-events', '#', (_, msg) => {
-        messages.push(msg);
-      }, { noAck: true });
+      broker.subscribeTmp(
+        'source-events',
+        '#',
+        (_, msg) => {
+          messages.push(msg);
+        },
+        { noAck: true },
+      );
 
       broker.bindExchange('source-events', 'dest-events', 'event.#', { priority: 1000 });
 
-      broker.subscribeTmp('dest-events', '#', (_, msg) => {
-        messages.push(msg);
-      }, { noAck: true });
+      broker.subscribeTmp(
+        'dest-events',
+        '#',
+        (_, msg) => {
+          messages.push(msg);
+        },
+        { noAck: true },
+      );
 
       broker.publish('source-events', 'event.1');
       broker.publish('source-events', 'event.2');
@@ -2307,9 +2344,14 @@ describe('Broker', () => {
       });
 
       const messages = [];
-      broker.subscribeTmp('dest-events', '#', (_, msg) => {
-        messages.push(msg.properties);
-      }, { noAck: true });
+      broker.subscribeTmp(
+        'dest-events',
+        '#',
+        (_, msg) => {
+          messages.push(msg.properties);
+        },
+        { noAck: true },
+      );
 
       const content = { data: 1 };
       broker.publish('source-events', 'event.1', content, { type: 'event' });
@@ -2318,7 +2360,7 @@ describe('Broker', () => {
       content.data = 3;
       expect(messages).to.have.length(1);
       expect(messages[0]).to.have.property('source-exchange', 'source-events');
-      expect(Object.keys(messages[0])).to.have.same.members([ 'messageId', 'timestamp', 'type', 'source-exchange' ]);
+      expect(Object.keys(messages[0])).to.have.same.members(['messageId', 'timestamp', 'type', 'source-exchange']);
     });
 
     it('calling e2e binding close function stops shoveling', () => {
@@ -2329,9 +2371,14 @@ describe('Broker', () => {
       const e2e = broker.bindExchange('source-events', 'dest-events');
 
       const messages = [];
-      broker.subscribeTmp('dest-events', '#', (routingKey) => {
-        messages.push(routingKey);
-      }, { noAck: true });
+      broker.subscribeTmp(
+        'dest-events',
+        '#',
+        (routingKey) => {
+          messages.push(routingKey);
+        },
+        { noAck: true },
+      );
 
       broker.publish('source-events', 'test.1');
       broker.publish('source-events', 'test.2');
@@ -2341,7 +2388,7 @@ describe('Broker', () => {
       broker.publish('source-events', 'test.2');
       broker.publish('source-events', 'test.3');
 
-      expect(messages).to.eql([ 'test.1', 'test.2' ]);
+      expect(messages).to.eql(['test.1', 'test.2']);
     });
 
     it('emits close if exchange is closed', () => {
@@ -2358,9 +2405,14 @@ describe('Broker', () => {
 
       expect(consumer).to.be.instanceof(Consumer);
 
-      broker.subscribeTmp('dest-events', '#', (routingKey) => {
-        messages.push(routingKey);
-      }, { noAck: true });
+      broker.subscribeTmp(
+        'dest-events',
+        '#',
+        (routingKey) => {
+          messages.push(routingKey);
+        },
+        { noAck: true },
+      );
 
       broker.publish('source-events', 'test.1');
       broker.publish('source-events', 'test.2');
@@ -2370,7 +2422,7 @@ describe('Broker', () => {
       broker.publish('source-events', 'test.2');
       broker.publish('source-events', 'test.3');
 
-      expect(messages).to.eql([ 'test.1', 'test.2', 'closed' ]);
+      expect(messages).to.eql(['test.1', 'test.2', 'closed']);
     });
   });
 
@@ -2383,9 +2435,14 @@ describe('Broker', () => {
       broker.bindExchange('source-events', 'dest-events');
 
       const messages = [];
-      broker.subscribeTmp('dest-events', '#', (routingKey) => {
-        messages.push(routingKey);
-      }, { noAck: true });
+      broker.subscribeTmp(
+        'dest-events',
+        '#',
+        (routingKey) => {
+          messages.push(routingKey);
+        },
+        { noAck: true },
+      );
 
       broker.publish('source-events', 'test.1');
       broker.publish('source-events', 'test.2');
@@ -2395,7 +2452,7 @@ describe('Broker', () => {
       broker.publish('source-events', 'test.2');
       broker.publish('source-events', 'test.3');
 
-      expect(messages).to.eql([ 'test.1', 'test.2' ]);
+      expect(messages).to.eql(['test.1', 'test.2']);
     });
 
     it('shovels messages meeting pattern', () => {
@@ -2406,14 +2463,19 @@ describe('Broker', () => {
       broker.bindExchange('source-events', 'dest-events', 'event.#');
 
       const messages = [];
-      broker.subscribeTmp('dest-events', '#', (routingKey) => {
-        messages.push(routingKey);
-      }, { noAck: true });
+      broker.subscribeTmp(
+        'dest-events',
+        '#',
+        (routingKey) => {
+          messages.push(routingKey);
+        },
+        { noAck: true },
+      );
 
       broker.publish('source-events', 'test.1');
       broker.publish('source-events', 'event.1');
 
-      expect(messages).to.eql([ 'event.1' ]);
+      expect(messages).to.eql(['event.1']);
     });
 
     it('takes cloneMessage function as option', () => {
@@ -2428,9 +2490,14 @@ describe('Broker', () => {
       });
 
       const messages = [];
-      broker.subscribeTmp('dest-events', '#', (_, msg) => {
-        messages.push(msg.content);
-      }, { noAck: true });
+      broker.subscribeTmp(
+        'dest-events',
+        '#',
+        (_, msg) => {
+          messages.push(msg.content);
+        },
+        { noAck: true },
+      );
 
       const content = { data: 1 };
       broker.publish('source-events', 'event.1', content);
@@ -2438,7 +2505,7 @@ describe('Broker', () => {
 
       content.data = 3;
 
-      expect(messages).to.eql([ { data: 1 } ]);
+      expect(messages).to.eql([{ data: 1 }]);
     });
 
     it('forwards message properties', () => {
@@ -2453,9 +2520,14 @@ describe('Broker', () => {
       });
 
       const messages = [];
-      broker.subscribeTmp('dest-events', '#', (_, msg) => {
-        messages.push(msg.properties);
-      }, { noAck: true });
+      broker.subscribeTmp(
+        'dest-events',
+        '#',
+        (_, msg) => {
+          messages.push(msg.properties);
+        },
+        { noAck: true },
+      );
 
       const content = { data: 1 };
       broker.publish('source-events', 'event.1', content, { type: 'event' });
@@ -2464,7 +2536,7 @@ describe('Broker', () => {
       content.data = 3;
       expect(messages).to.have.length(1);
       expect(messages[0]).to.have.property('source-exchange', 'source-events');
-      expect(Object.keys(messages[0])).to.have.same.members([ 'messageId', 'timestamp', 'type', 'source-exchange' ]);
+      expect(Object.keys(messages[0])).to.have.same.members(['messageId', 'timestamp', 'type', 'source-exchange']);
     });
   });
 
@@ -2518,10 +2590,14 @@ describe('Broker', () => {
       broker.bindQueue('event-q', 'event', '#');
 
       const messages = [];
-      broker.consume('event-q', (_, msg) => {
-        messages.push(msg);
-        broker.ack(msg);
-      }, { consumerTag: 'ct-test-1' });
+      broker.consume(
+        'event-q',
+        (_, msg) => {
+          messages.push(msg);
+          broker.ack(msg);
+        },
+        { consumerTag: 'ct-test-1' },
+      );
 
       broker.publish('event', 'event.1', 'MSG');
 
@@ -2537,11 +2613,15 @@ describe('Broker', () => {
       broker.bindQueue('event-q', 'event', '#');
 
       const messages = [];
-      broker.consume('event-q', (_, msg) => {
-        messages.push(msg);
-        broker.ack(msg);
-        broker.ack(msg);
-      }, { consumerTag: 'ct-test-1' });
+      broker.consume(
+        'event-q',
+        (_, msg) => {
+          messages.push(msg);
+          broker.ack(msg);
+          broker.ack(msg);
+        },
+        { consumerTag: 'ct-test-1' },
+      );
 
       broker.publish('event', 'event.1', 'MSG');
 

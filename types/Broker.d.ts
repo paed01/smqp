@@ -1,28 +1,28 @@
-import { Queue, Consumer, queueOptions, onMessage, consumeOptions, deleteQueueOptions, QueueState } from "./Queue.js";
-import { Shovel, Exchange2Exchange, ShovelDestination, shovelOptions } from "./Shovel.js";
-import { Message, MessageProperties } from "./Message.js";
-import { Exchange, exchangeType, Binding, exchangeOptions, bindingOptions, ExchangeState } from "./Exchange.js";
+import { Queue, Consumer, queueOptions, onMessage, consumeOptions, deleteQueueOptions, QueueState } from './Queue.js';
+import { Shovel, Exchange2Exchange, ShovelDestination, shovelOptions } from './Shovel.js';
+import { Message, MessageProperties } from './Message.js';
+import { Exchange, exchangeType, Binding, exchangeOptions, bindingOptions, ExchangeState } from './Exchange.js';
 
 type subscribeOptions = {
   /** defaults to true, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down */
-  autoDelete?: boolean,
+  autoDelete?: boolean;
   /** defaults to true, makes exchange and queue durable, i.e. will be returned when getting state */
-  durable?: boolean,
+  durable?: boolean;
   /** unique consumer tag */
-  consumerTag?: string,
+  consumerTag?: string;
   /** dead letter exchange */
-  deadLetterExchange?: string,
+  deadLetterExchange?: string;
   /** publish dead letter with routing key */
   deadLetterRoutingKey?: string;
   /** queue is exclusively consumed */
-  exclusive?: boolean,
+  exclusive?: boolean;
   /** set to true if there is no need to acknowledge message */
-  noAck?: boolean,
+  noAck?: boolean;
   /** defaults to 1, number of messages to consume at a time */
-  prefetch?: number,
+  prefetch?: number;
   /** defaults to 0, higher value gets messages first */
-  priority?: number,
-  [x: string]: any,
+  priority?: number;
+  [x: string]: any;
 };
 
 interface ConsumerInfo {
@@ -71,12 +71,17 @@ export class Broker {
   getExchange(exchangeName: string): Exchange;
   getQueue(queueName: string): Queue;
   createQueue(queueName: string, options: any): Queue;
-  deleteExchange(exchangeName: string, { ifUnused }?: {
-    ifUnused?: boolean;
-  }): boolean;
+  deleteExchange(
+    exchangeName: string,
+    {
+      ifUnused,
+    }?: {
+      ifUnused?: boolean;
+    },
+  ): boolean;
   purgeQueue(queueName: string): number;
   sendToQueue(queueName: string, content: any, options?: MessageProperties): number;
-  deleteQueue(queueName: string, options?: deleteQueueOptions):  { messageCount: number };
+  deleteQueue(queueName: string, options?: deleteQueueOptions): { messageCount: number };
   bindExchange(source: string, destination: string, pattern?: string, options?: shovelOptions): Exchange2Exchange;
   unbindExchange(source: string, destination: string, pattern?: string): boolean;
   createShovel(name: string, source: BrokerShovelSource, destination: ShovelDestination, options?: shovelOptions): Shovel;
@@ -98,9 +103,14 @@ export class Broker {
   getState(onlyWithContent: boolean): BrokerState | undefined;
   recover(state?: BrokerState): Broker;
   publish(exchangeName: string, routingKey: string, content?: any, options?: MessageProperties): number;
-  get(queueName: string, { noAck }?: {
-    noAck: boolean;
-  }): Message | undefined;
+  get(
+    queueName: string,
+    {
+      noAck,
+    }?: {
+      noAck: boolean;
+    },
+  ): Message | undefined;
   ack(message: Message, allUpTo?: boolean): void;
   ackAll(): void;
   nack(message: Message, allUpTo?: boolean, requeue?: boolean): void;
