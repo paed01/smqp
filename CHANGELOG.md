@@ -1,5 +1,9 @@
 # Changelog
 
+# 8.2.4
+
+- using prettier for formatting rules was mistakenly considered a production dependency. Now it is back where it belong.
+
 # 8.2.3
 
 - major update of eslint
