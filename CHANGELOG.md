@@ -1,19 +1,24 @@
 # Changelog
 
-# 8.2.4
+## Unreleased
+
+- fix API.md `getRoutingKeyPattern` example, destructing a method from an prototyped instance doesn't work
+- run through markdown examples with [texample](https://www.npmjs.com/package/texample)
+
+## [8.2.4] - 2024-04-19
 
 - using prettier for formatting rules was mistakenly considered a production dependency. Now it is back where it belong.
 
-# 8.2.3
+## [8.2.3] - 2024-04-08
 
 - major update of eslint
 - use prettier for formatting rules, touched basically ALL files
 
-# 8.2.2
+## [8.2.2] - 2024-02-03
 
 - `broker.getConsumers()` now also returns if the consumer is ready or not. Cannot remember why, but the info is there
 
-# 8.2.1
+## [8.2.1] - 2023-10-21
 
 - export Message, Queue, Consumer, and Exchange
 - allow queue event options `queue.on(event, handler[, options])`
@@ -21,62 +26,62 @@
 - `broker.get(queueName, { noAck: true })` not only dequeues message it also marks the actual message as consumed on the, until now, undocumented `message.pending` flag
 - fix other inconsistent message pending stuff
 
-# 8.2.0
+## [8.2.0] - 2023-09-03
 
 - introduce `SmqpError(message, code)` inherited from Error, it is thrown when package specific errors occur. It is also exported so that instance can be checked
 - no more general errors, either it is a `TypeError` or `SmqpError`
 - fix inconsistent cancel consumer implementations in queue, add requeue argument when applicable
 
-# 8.1.0
+## [8.1.0] - 2023-08-26
 
 - noAck consumer continues consuming if error is thrown in message callback, the error is, hopefully, caught somewhere else
 - ack consumer continues consuming if error is thrown in message callback after message was acked
 - add some Broker, Queue, Exchange, Shovel, and Consumer argument constraints
 - fix exchange to exchange binding type
 
-# 8.0.0
+## [8.0.0] - 2023-06-22
 
 - shovel ignores shoveling if destination exchange lacks bindings, could be breaking if cloneMessage function option was used to make things happen
 - abide to new lint rules
 - bump all dev dependencies
 
-# 7.1.4
+## [7.1.4] - 2023-04-05
 
 - type declare broker state from `getState()`
 
-# 7.1.3
+## 7.1.3
 
 - no need to type declare that a function can return undefined, prevents assigning a typed variable
 - return undefined instead of false if deleting non-existing queue
 - return undefined instead of false if no message on queue.get
 
-# 7.1.2
+## 7.1.2
 
 - Fix queue recover not returning instance of Queue when recovering without state
 - and some typing blunders
 
-# 7.1.1
+## 7.1.1
 
 - Fix type declaration forbidden override and boolean typo. Introduce circular type import in Shovel, which apparently is ok!?
 
-# 7.1.0
+## 7.1.0
 
 - Add type declarations
 
-# 7.0.0
+## 7.0.0
 
 - Turn into module with exports for node
 - Rename symbol declarations for no reason at all
 
-# 6.1.0
+## 6.1.0
 
 - Minor performance tweek by prototyping routing key patterns
 - Stop building node 12
 - Lint some
 
-# 6.0.0
+## 6.0.0
 
-## Breaking
+### Breaking
 
 - Message functions `ack`, `nack`, and `reject`, if deconstructed, must be called with call or apply since they are no longer bound to instance. Sacrificed in the name of performance, sorry about that
 - Internal Message function `consume` is renamed to `_consume`
@@ -85,37 +90,37 @@
 - consequentely the `exchange.unbind` function is renamed to `exchange.unbindQueue`
 - `broker.cancel(consumerTag)` signature changed to `broker.cancel(consumerTag[, requeue = true])`. This breaks current behaviour for ack consumers, i.e. messages waiting for ack will be requeued by default if the consumer is cancelled. For some reason they were requeued in the previous version, even though nackAll was called? For no-ack consumers this won't have an affect at all
 
-## Additions
+### Additions
 
 - `*.get()` returns `false` if no message was retrieved
 
-## Fixes
+### Fixes
 
 - Fix inconsistent cancel consumer behaviour between broker, queue, and consumer
 
-# 5.1.3
+## 5.1.3
 
 - minor, probably futile, tweaks
 
-# 5.1.2
+## 5.1.2
 
 - give a hint of which Queue throws circular JSON when getting state
 
-# 5.1.1
+## 5.1.1
 
 - no side effects
 
-# 5.1.0
+## 5.1.0
 
 Slimmer state
 
 - Add argument to `getState` that tells the broker to only return stuff that actually has content, i.e. messages and undelivered exchange messages
 
-# 5.0.0
+## 5.0.0
 
 Attempt to tweak performance by removing stuff. Consequently some things broke.
 
-## Breaking
+### Breaking
 
 - Remove support for node 10 (mochas fault)
 - Message property `consumerTag` is removed, can be found by `message.fields.consumerTag`
@@ -124,129 +129,129 @@ Attempt to tweak performance by removing stuff. Consequently some things broke.
 - Remove `queue.dequeueMessage(message)` function
 - Change routing key pattern hash (#) handling to `/.*?/` from `/.+?/`
 
-## Fixes
+### Fixes
 
 - Fix pattern matching bug if more than one wildcard
 
-# 4.0.0
+## 4.0.0
 
 For performance reasons the Broker has been prototyped. Thank you @roberto-naharro and co for discovering and resolving this (#5). This means that functions cannot be deconstructed and called without binding or using call/apply.
 
-# 3.2.0
+## 3.2.0
 
 Slimmer and swifter state.
 
 - `getState`: Only use JSON-fns when really necessary (= messages)
 - Stop dead lettering messages when queue is deleted. Did some deep forrest coverage hunting and found no scenario when this has ever worked, maybe since it isn't part of RabbitMQ behaviour
 
-# 3.1.0
+## 3.1.0
 
 Coverage hunting.
 
 - Stop consumers when queue is stopped
 - Remove setter for message consumerTag
 
-# 3.0.1
+## 3.0.1
 
 - Sometimes you need the name of the event, especially if you listen with wildcards. The name is an exact match of the emitted message routing key.
 
-# 3.0.0
+## 3.0.0
 
 Confirm messages and node 10 and above.
 
-## Breaking changes
+### Breaking changes
 
 - Drop nodejs 8 support, or at least for tests due to mocha
 
-## Additions
+### Additions
 
 - New message confirm option, will emit `message.nack`, `message.ack`, or `message.undelivered` on broker
 - Support offing broker events by consumerTag
 - Support offing exchange events by consumerTag
 
-# 2.2.0
+## 2.2.0
 
 - Add broker function `getConsumers()` to get the list of consumer properties
 
-# 2.1.1
+## 2.1.1
 
 - Ignore published message if no one is listening, unless it is mandatory
 
-# 2.1.0
+## 2.1.0
 
 - Support changing destination exchange key in shovel
 - Support overwriting shoveled message properties
 
-# 2.0.1
+## 2.0.1
 
 - Support passing source binding priority to shovel or bound exchange
 
-# 2.0.0
+## 2.0.0
 
-## Breaking changes
+### Breaking changes
 
 - `createShovel` has changed signature: last argument `cloneMessage` is converted to an `args` object, and `cloneMessage` moved to a property of `args`
 
-## Additions
+### Additions
 
 - Introduce e2e by `bindExchange` and consequentaly `unbindExchange`, shoveling messages between exchanges
 
-# 1.11.1
+## 1.11.1
 
 - Fix consumer eventlistener not working at all due to messed up binary code
 - Close shovel if source consumer is closed
 
-# 1.11.0
+## 1.11.0
 
-## Additions
+### Additions
 
 - Introduce shovel, shoveling messages between brokers
 
-# 1.10.0
+## 1.10.0
 
-## Additions
+### Additions
 
 - Support message expiration and queue `messageTtl`
 
-## Fixes
+### Fixes
 
 - Acked messages were sent to dead letter exchange, they shouldn't, and are not anymore
 
-# 1.9.0
+## 1.9.0
 
 - Add ability to reset everything, i.e. queues, exchanges, consumers you name it
 
-# 1.8.0
+## 1.8.0
 
 - Support turning off queue event listener - `queue.off(eventName, handler)`
 
-# 1.7.0
+## 1.7.0
 
 - `subscribeOnce` also takes priority option, as it should've from the beginning
 
-# 1.6.0
+## 1.6.0
 
 - Support turning off event listener with `off(eventName, handler)`
 
-# 1.5.0
+## 1.5.0
 
 - Non-persistent message, message option `persistent = false`, will not be recovered when recovering from state
 
-# 1.4.1
+## 1.4.1
 
 - A recovered queue with messages always considers messages redelivered, regardless if queue was stopped or not
 
-# 1.4.0
+## 1.4.0
 
 - Export `getRoutingKeyPattern`
 
-# 1.3.0
+## 1.3.0
 
 - Expose broker owner
 
-# 1.0.0
+## 1.0.0
 
-## Breaking changes
+### Breaking changes
 
 - `sendToQueue` has changed signature: argument `routingKey` is omitted, since it had nothing to do there anyhow
 - Message in message callback has changed:

@@ -20,7 +20,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/paed01/smqp"
+    "url": "git://github.com/paed01/smqp.git"
   },
   "bugs": {
     "url": "https://github.com/paed01/smqp/issues"
@@ -33,7 +33,8 @@
   "scripts": {
     "test": "mocha",
     "test:lcov": "c8 -r lcov mocha --exit && npm run lint",
-    "posttest": "npm run dist && npm run lint && npm run toc",
+    "posttest": "npm run dist && npm run lint && npm run toc && npm run test:md",
+    "test:md": "texample ./README.md,API.md",
     "cov:html": "c8 -r html -r text mocha",
     "dist": "babel src/**.js -d dist",
     "prepack": "npm run dist",
@@ -67,6 +68,7 @@
     "eslint": "^9.0.0",
     "markdown-toc": "^1.2.0",
     "mocha": "^10.4.0",
-    "prettier": "^3.2.5"
+    "prettier": "^3.2.5",
+    "texample": "^0.0.5"
   }
 }

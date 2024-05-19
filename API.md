@@ -450,7 +450,11 @@ Returns [consumer](#consumer) - that can be canceled.
 
 Callback is called with the event and the name of the event, in the same object.
 
-```js
+```javascript
+import { Broker } from 'smqp';
+
+const broker = new Broker();
+
 broker.on(
   'message.*',
   (event) => {
@@ -470,16 +474,25 @@ Arguments:
 - `callbackOrObject`: event callback function to off or object with basically one property:
   - `consumerTag`: optional event consumer tag to off
 
-```js
+```javascript
+import { Broker } from 'smqp';
+
+const broker = new Broker();
+broker.assertExchange('event', 'topic');
+
 broker.on('return', onMessageEvent, { consumerTag: 'my-event-consumertag' });
 
 function onMessageEvent(event) {
   console.log(event.name, 'fired');
 }
 
+broker.publish('event', 'error.1', 'message', { mandatory: true });
+
 /* later */
 
 broker.off('return', onMessageEvent);
+
+broker.publish('event', 'error.2', 'message', { mandatory: true });
 
 /* or */
 
@@ -833,13 +846,13 @@ Same as `nack(false, requeu)`
 
 Get routing key pattern tester. Test routing key pattern against routing key.
 
-```js
+```javascript
 import { getRoutingKeyPattern } from 'smqp';
 
-const { test } = getRoutingKeyPattern('activity.*');
+const pattern = getRoutingKeyPattern('activity.*');
 
-console.log(test('activity.start')); // true
-console.log(test('activity.execution.completed')); // false
+console.log(pattern.test('activity.start')); // true
+console.log(pattern.test('activity.execution.completed')); // false
 ```
 
 ## Message eviction
