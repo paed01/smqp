@@ -25,7 +25,7 @@ export function EventExchange(name) {
 function ExchangeBase(name, type, options, eventExchange) {
   this.name = name;
   this[kType] = type;
-  this[kBindings] = [];
+  this[kBindings] = new Set();
   this[kStopped] = false;
   this.options = { durable: true, autoDelete: true, ...options };
   this.events = eventExchange;
@@ -38,12 +38,12 @@ function ExchangeBase(name, type, options, eventExchange) {
 Object.defineProperties(ExchangeBase.prototype, {
   bindingCount: {
     get() {
-      return this[kBindings].length;
+      return this[kBindings].size;
     },
   },
   bindings: {
     get() {
-      return this[kBindings].slice();
+      return [...this[kBindings]];
     },
   },
   type: {
@@ -82,9 +82,9 @@ ExchangeBase.prototype._onTopicMessage = function topic(routingKey, message) {
 
   message.ack();
 
-  const deliverTo = bindings.filter((binding) => binding.testPattern(routingKey));
   let delivered = 0;
-  for (const binding of deliverTo) {
+  for (const binding of bindings) {
+    if (!binding.testPattern(routingKey)) continue;
     this._publishToQueue(binding.queue, routingKey, publishedMsg.content, publishedMsg.properties);
     ++delivered;
   }
@@ -100,21 +100,26 @@ ExchangeBase.prototype._onDirectMessage = function direct(routingKey, message) {
   const publishedMsg = message.content;
   const bindings = this[kBindings];
 
-  const deliverTo = bindings.find((binding) => binding.testPattern(routingKey));
-  if (!deliverTo) {
+  let deliverToBinding;
+  for (const binding of bindings) {
+    if (!binding.testPattern(routingKey)) continue;
+    deliverToBinding = binding;
+    break;
+  }
+
+  if (!deliverToBinding) {
     message.ack();
     this._emitReturn(routingKey, publishedMsg.content, publishedMsg.properties);
     return 0;
   }
 
-  if (bindings.length > 1) {
-    const idx = bindings.indexOf(deliverTo);
-    bindings.splice(idx, 1);
-    bindings.push(deliverTo);
+  if (bindings.size > 1) {
+    bindings.delete(deliverToBinding);
+    bindings.add(deliverToBinding);
   }
 
   message.ack();
-  this._publishToQueue(deliverTo.queue, routingKey, publishedMsg.content, publishedMsg.properties);
+  this._publishToQueue(deliverToBinding.queue, routingKey, publishedMsg.content, publishedMsg.properties);
   return 1;
 };
 
@@ -135,12 +140,19 @@ ExchangeBase.prototype._emitReturn = function emitReturn(routingKey, content, pr
 
 ExchangeBase.prototype.bindQueue = function bindQueue(queue, pattern, bindOptions) {
   const bindings = this[kBindings];
-  const bound = bindings.find((bq) => bq.queue === queue && bq.pattern === pattern);
-  if (bound) return bound;
+
+  for (const binding of bindings) {
+    if (binding.queue === queue && binding.pattern === pattern) return binding;
+  }
 
   const binding = new Binding(this, queue, pattern, bindOptions);
-  bindings.push(binding);
-  bindings.sort(sortByPriority);
+  bindings.add(binding);
+
+  if (bindings.size > 1 && binding.options.priority) {
+    const sortedBindings = [...bindings].sort(sortByPriority);
+    bindings.clear();
+    this[kBindings] = new Set(sortedBindings);
+  }
 
   this.emit('bind', binding);
 
@@ -148,27 +160,21 @@ ExchangeBase.prototype.bindQueue = function bindQueue(queue, pattern, bindOption
 };
 
 ExchangeBase.prototype.unbindQueue = function unbindQueue(queue, pattern) {
-  const bindings = this[kBindings];
-  const idx = bindings.findIndex((bq) => bq.queue === queue && bq.pattern === pattern);
-  if (idx === -1) return;
-
-  const [binding] = bindings.splice(idx, 1);
-  binding.close();
-
-  this.emit('unbind', binding);
-
-  if (!bindings.length && this.options.autoDelete) this.emit('delete', this);
+  for (const binding of this[kBindings]) {
+    if (binding.queue === queue && binding.pattern === pattern) {
+      return this.closeBinding(binding);
+    }
+  }
 };
 
 ExchangeBase.prototype.unbindQueueByName = function unbindQueueByName(queueName) {
   for (const binding of this[kBindings]) {
-    if (binding.queue.name !== queueName) continue;
-    this.unbindQueue(binding.queue, binding.pattern);
+    if (binding.queue.name === queueName) this.closeBinding(binding);
   }
 };
 
 ExchangeBase.prototype.close = function close() {
-  for (const binding of this[kBindings].slice()) {
+  for (const binding of this[kBindings]) {
     binding.close();
   }
   const deliveryQueue = this[kDeliveryQueue];
@@ -219,7 +225,9 @@ ExchangeBase.prototype.recover = function recover(state, getQueue) {
 };
 
 ExchangeBase.prototype.getBinding = function getBinding(queueName, pattern) {
-  return this[kBindings].find((binding) => binding.queue.name === queueName && binding.pattern === pattern);
+  for (const binding of this[kBindings]) {
+    if (binding.queue.name === queueName && binding.pattern === pattern) return binding;
+  }
 };
 
 ExchangeBase.prototype.emit = function emit(eventName, content) {
@@ -252,6 +260,17 @@ ExchangeBase.prototype.off = function off(pattern, handler) {
       else binding.queue.dismiss(handler);
     }
   }
+};
+
+ExchangeBase.prototype.closeBinding = function closeBinding(binding) {
+  const bindings = this[kBindings];
+  if (!bindings.delete(binding)) return;
+
+  binding.close();
+
+  this.emit('unbind', binding);
+
+  if (!bindings.size && this.options.autoDelete) this.emit('delete', this);
 };
 
 function Binding(exchange, queue, pattern, bindOptions) {

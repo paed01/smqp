@@ -647,7 +647,10 @@ describe('Broker queue', () => {
       broker.publish('topic', 'event.1');
       broker.publish('topic', 'load.1');
 
+      expect(queue.messageCount).to.equal(2);
+
       broker.unbindQueue(queue.name, 'topic', 'load.*');
+
       expect(topic.bindingCount).to.equal(1);
 
       broker.publish('topic', 'event.2');
