@@ -78,12 +78,11 @@ ExchangeBase.prototype.publish = function publish(routingKey, content, propertie
 
 ExchangeBase.prototype._onTopicMessage = function topic(routingKey, message) {
   const publishedMsg = message.content;
-  const bindings = this[kBindings];
 
   message.ack();
 
   let delivered = 0;
-  for (const binding of bindings) {
+  for (const binding of this[kBindings]) {
     if (!binding.testPattern(routingKey)) continue;
     this._publishToQueue(binding.queue, routingKey, publishedMsg.content, publishedMsg.properties);
     ++delivered;
@@ -183,10 +182,10 @@ ExchangeBase.prototype.close = function close() {
 };
 
 ExchangeBase.prototype.getState = function getState() {
-  const bindings = [];
+  const bindingsState = [];
   for (const binding of this[kBindings]) {
     if (!binding.queue.options.durable) continue;
-    bindings.push(binding.getState());
+    bindingsState.push(binding.getState());
   }
 
   const deliveryQueue = this[kDeliveryQueue];
@@ -195,7 +194,7 @@ ExchangeBase.prototype.getState = function getState() {
     type: this.type,
     options: { ...this.options },
     ...(deliveryQueue.messageCount ? { deliveryQueue: deliveryQueue.getState() } : undefined),
-    ...(bindings.length ? { bindings } : undefined),
+    ...(bindingsState.length ? { bindings: bindingsState } : undefined),
   };
 };
 

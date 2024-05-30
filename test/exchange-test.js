@@ -300,4 +300,49 @@ describe('exchange', () => {
       expect(broker.exchangeCount).to.equal(1);
     });
   });
+
+  describe('closeBinding(binding)', () => {
+    it('unbinds queue from exchange', () => {
+      const broker = Broker();
+      const exchange = broker.assertExchange('event', 'topic');
+
+      broker.subscribeTmp('event', 'event.#', () => {});
+
+      expect(exchange.bindingCount).to.equal(1);
+
+      exchange.closeBinding(exchange.bindings[0]);
+
+      expect(exchange.bindingCount).to.equal(0);
+    });
+
+    it('ignored if closed again', () => {
+      const broker = Broker();
+      const exchange = broker.assertExchange('event', 'topic');
+
+      broker.subscribeTmp('event', 'event.#', () => {});
+
+      expect(exchange.bindingCount).to.equal(1);
+
+      const [binding] = exchange.bindings;
+
+      exchange.closeBinding(binding);
+      exchange.closeBinding(binding);
+
+      expect(exchange.bindingCount).to.equal(0);
+    });
+
+    it('ignored if called with non-binding', () => {
+      const broker = Broker();
+      const exchange = broker.assertExchange('event', 'topic');
+
+      broker.subscribeTmp('event', 'event.#', () => {});
+
+      expect(exchange.bindingCount).to.equal(1);
+
+      exchange.closeBinding(null);
+      exchange.closeBinding(undefined);
+
+      expect(exchange.bindingCount).to.equal(1);
+    });
+  });
 });

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## [9.0.0] - 2024-05-29
+
+- replace array of entities with `new Set()` to gain some performance
 - fix API.md `getRoutingKeyPattern` example, destructing a method from an prototyped instance doesn't work
 - run through markdown examples with [texample](https://www.npmjs.com/package/texample)
 

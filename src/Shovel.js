@@ -51,7 +51,10 @@ export function Shovel(name, source, destination, options = {}) {
 
   const boundClose = this.close.bind(this);
 
-  const eventHandlers = (this[kEventHandlers] = [sourceExchange.on('delete', boundClose), destinationExchange.on('delete', boundClose)]);
+  const eventHandlers = (this[kEventHandlers] = new Set([
+    sourceExchange.on('delete', boundClose),
+    destinationExchange.on('delete', boundClose),
+  ]));
 
   let consumer;
   const shovelHandler = this._onShovelMessage.bind(this);
@@ -61,7 +64,7 @@ export function Shovel(name, source, destination, options = {}) {
     consumer = sourceBroker.subscribeTmp(sourceExchangeName, routingKeyPattern, shovelHandler, { consumerTag, priority });
     this.source.queue = consumer.queue.name;
   }
-  eventHandlers.push(consumer.on('cancel', boundClose));
+  eventHandlers.add(consumer.on('cancel', boundClose));
 }
 
 Object.defineProperties(Shovel.prototype, {
@@ -92,7 +95,8 @@ Shovel.prototype.off = function off(eventName, handler) {
 Shovel.prototype.close = function closeShovel() {
   if (this[kClosed]) return;
   this[kClosed] = true;
-  for (const eh of this[kEventHandlers].splice(0)) eh.cancel();
+  for (const eh of this[kEventHandlers]) eh.cancel();
+  this[kEventHandlers].clear();
   const events = this.events;
   this.emit('close', this);
   events.close();

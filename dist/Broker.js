@@ -18,27 +18,27 @@ function Broker(owner) {
   this.owner = owner;
   this.events = new _Exchange.EventExchange('broker__events');
   const entities = this[kEntities] = {
-    exchanges: [],
-    queues: [],
-    consumers: [],
-    shovels: []
+    exchanges: new Set(),
+    queues: new Set(),
+    consumers: new Set(),
+    shovels: new Set()
   };
   this[kEventHandler] = new EventHandler(this, entities);
 }
 Object.defineProperties(Broker.prototype, {
   exchangeCount: {
     get() {
-      return this[kEntities].exchanges.length;
+      return this[kEntities].exchanges.size;
     }
   },
   queueCount: {
     get() {
-      return this[kEntities].queues.length;
+      return this[kEntities].queues.size;
     }
   },
   consumerCount: {
     get() {
-      return this[kEntities].consumers.length;
+      return this[kEntities].consumers.size;
     }
   }
 });
@@ -91,7 +91,7 @@ Broker.prototype.assertExchange = function assertExchange(exchangeName, type, op
   }
   exchange = new _Exchange.Exchange(exchangeName, type || 'topic', options);
   this[kEventHandler].listen(exchange.events);
-  this[kEntities].exchanges.push(exchange);
+  this[kEntities].exchanges.add(exchange);
   return exchange;
 };
 Broker.prototype.bindQueue = function bindQueue(queueName, exchangeName, pattern, bindOptions) {
@@ -119,36 +119,37 @@ Broker.prototype.cancel = function cancel(consumerTag, requeue = true) {
   return true;
 };
 Broker.prototype.getConsumers = function getConsumers() {
-  return this[kEntities].consumers.map(consumer => {
-    return {
+  const result = [];
+  for (const consumer of this[kEntities].consumers) {
+    result.push({
       queue: consumer.queue.name,
       consumerTag: consumer.options.consumerTag,
       ready: consumer.ready,
       options: {
         ...consumer.options
       }
-    };
-  });
+    });
+  }
+  return result;
 };
 Broker.prototype.getConsumer = function getConsumer(consumerTag) {
-  return this[kEntities].consumers.find(c => c.consumerTag === consumerTag);
+  for (const consumer of this[kEntities].consumers) {
+    if (consumer.consumerTag === consumerTag) return consumer;
+  }
 };
 Broker.prototype.getExchange = function getExchange(exchangeName) {
   if (typeof exchangeName !== 'string') throw new TypeError('exchange name must be a string');
-  return this[kEntities].exchanges.find(({
-    name
-  }) => name === exchangeName);
+  for (const exchange of this[kEntities].exchanges) {
+    if (exchange.name === exchangeName) return exchange;
+  }
 };
 Broker.prototype.deleteExchange = function deleteExchange(exchangeName, {
   ifUnused
 } = {}) {
   if (typeof exchangeName !== 'string') throw new TypeError('exchange name must be a string');
-  const exchanges = this[kEntities].exchanges;
-  const idx = exchanges.findIndex(exchange => exchange.name === exchangeName);
-  if (idx === -1) return false;
-  const exchange = exchanges[idx];
-  if (ifUnused && exchange.bindingCount) return false;
-  exchanges.splice(idx, 1);
+  const exchange = this.getExchange(exchangeName);
+  if (!exchange || ifUnused && exchange.bindingCount) return false;
+  this[kEntities].exchanges.delete(exchange);
   exchange.close();
   return true;
 };
@@ -179,10 +180,10 @@ Broker.prototype.reset = function reset() {
     consumers,
     shovels
   } = this[kEntities];
-  exchanges.splice(0);
-  queues.splice(0);
-  consumers.splice(0);
-  shovels.splice(0);
+  exchanges.clear();
+  queues.clear();
+  consumers.clear();
+  shovels.clear();
 };
 Broker.prototype.getState = function getState(onlyWithContent) {
   const exchanges = this._getExchangeState(onlyWithContent);
@@ -277,14 +278,14 @@ Broker.prototype.createQueue = function createQueue(queueName, options) {
   const queueEmitter = new _Exchange.EventExchange(`${queueName}__events`);
   this[kEventHandler].listen(queueEmitter);
   const queue = new _Queue.Queue(queueName, options, queueEmitter);
-  this[kEntities].queues.push(queue);
+  this[kEntities].queues.add(queue);
   return queue;
 };
 Broker.prototype.getQueue = function getQueue(queueName) {
   if (!queueName || typeof queueName !== 'string') throw new TypeError('queue name must be a string');
-  const queues = this[kEntities].queues;
-  const idx = queues.findIndex(queue => queue.name === queueName);
-  if (idx > -1) return queues[idx];
+  for (const queue of this[kEntities].queues) {
+    if (queue.name === queueName) return queue;
+  }
 };
 Broker.prototype.assertQueue = function assertQueue(queueName, options = {}) {
   if (queueName && typeof queueName !== 'string') throw new TypeError('queue name must be a string');else if (!queueName) return this.createQueue(null, options);
@@ -341,7 +342,7 @@ Broker.prototype.createShovel = function createShovel(name, source, destination,
     broker: this
   }, destination, options);
   this[kEventHandler].listen(shovel.events);
-  shovels.push(shovel);
+  shovels.add(shovel);
   return shovel;
 };
 Broker.prototype.closeShovel = function closeShovel(name) {
@@ -353,10 +354,12 @@ Broker.prototype.closeShovel = function closeShovel(name) {
   return false;
 };
 Broker.prototype.getShovel = function getShovel(name) {
-  return this[kEntities].shovels.find(s => s.name === name);
+  for (const shovel of this[kEntities].shovels) {
+    if (shovel.name === name) return shovel;
+  }
 };
 Broker.prototype.getShovels = function getShovels() {
-  return this[kEntities].shovels.slice();
+  return [...this[kEntities].shovels];
 };
 Broker.prototype.on = function on(eventName, callback, options) {
   return this.events.on(eventName, getEventCallback(), {
@@ -403,10 +406,7 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
   switch (eventName) {
     case 'exchange.delete':
       {
-        const exchanges = this.entities.exchanges;
-        const idx = exchanges.indexOf(msg.content);
-        if (idx === -1) return;
-        exchanges.splice(idx, 1);
+        this.entities.exchanges.delete(msg.content);
         break;
       }
     case 'exchange.return':
@@ -421,10 +421,7 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
       }
     case 'queue.delete':
       {
-        const queues = this.entities.queues;
-        const idx = queues.indexOf(msg.content);
-        if (idx === -1) return;
-        queues.splice(idx, 1);
+        this.entities.queues.delete(msg.content);
         break;
       }
     case 'queue.dead-letter':
@@ -441,14 +438,12 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
       }
     case 'queue.consume':
       {
-        this.entities.consumers.push(msg.content);
+        this.entities.consumers.add(msg.content);
         break;
       }
     case 'queue.consumer.cancel':
       {
-        const consumers = this.entities.consumers;
-        const idx = consumers.indexOf(msg.content);
-        if (idx !== -1) consumers.splice(idx, 1);
+        this.entities.consumers.delete(msg.content);
         break;
       }
     case 'queue.message.consumed.ack':
@@ -463,9 +458,7 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
       }
     case 'shovel.close':
       {
-        const shovels = this.entities.shovels;
-        const idx = shovels.indexOf(msg.content);
-        if (idx > -1) shovels.splice(idx, 1);
+        this.entities.shovels.delete(msg.content);
         break;
       }
   }

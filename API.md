@@ -58,6 +58,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`exchange.stop()`](#exchangestop)
     - [`exchange.unbindQueue(queue, pattern)`](#exchangeunbindqueuequeue-pattern)
     - [`exchange.unbindQueueByName(queueName)`](#exchangeunbindqueuebynamequeuename)
+    - [`exchange.closeBinding(binding)`](#exchangeclosebindingbinding)
   - [Binding](#binding)
     - [`binding.testPattern(routingKey)`](#bindingtestpatternroutingkey)
     - [`binding.close()`](#bindingclose)
@@ -587,6 +588,10 @@ Arguments:
 - `pattern`: binding pattern
 
 ### `exchange.unbindQueueByName(queueName)`
+
+Remove all bindings to queue by queue name.
+
+### `exchange.closeBinding(binding)`
 
 Remove all bindings to queue by queue name.
 
