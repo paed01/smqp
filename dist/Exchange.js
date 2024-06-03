@@ -29,7 +29,7 @@ function EventExchange(name) {
 function ExchangeBase(name, type, options, eventExchange) {
   this.name = name;
   this[kType] = type;
-  this[kBindings] = new Set();
+  this[kBindings] = [];
   this[kStopped] = false;
   this.options = {
     durable: true,
@@ -49,12 +49,12 @@ function ExchangeBase(name, type, options, eventExchange) {
 Object.defineProperties(ExchangeBase.prototype, {
   bindingCount: {
     get() {
-      return this[kBindings].size;
+      return this[kBindings].length;
     }
   },
   bindings: {
     get() {
-      return [...this[kBindings]];
+      return this[kBindings].slice();
     }
   },
   type: {
@@ -75,7 +75,7 @@ Object.defineProperties(ExchangeBase.prototype, {
 });
 ExchangeBase.prototype.publish = function publish(routingKey, content, properties) {
   if (this[kStopped]) return;
-  if (!this[kBindings].size) return this._emitReturn(routingKey, content, properties);
+  if (!this[kBindings].length) return this._emitReturn(routingKey, content, properties);
   return this[kDeliveryQueue].queueMessage({
     routingKey
   }, {
@@ -87,7 +87,7 @@ ExchangeBase.prototype._onTopicMessage = function topic(routingKey, message) {
   const publishedMsg = message.content;
   message.ack();
   let delivered = 0;
-  for (const binding of new Set(this[kBindings])) {
+  for (const binding of this[kBindings].slice()) {
     if (!binding.testPattern(routingKey)) continue;
     this._publishToQueue(binding.queue, routingKey, publishedMsg.content, publishedMsg.properties);
     ++delivered;
@@ -111,9 +111,10 @@ ExchangeBase.prototype._onDirectMessage = function direct(routingKey, message) {
     this._emitReturn(routingKey, publishedMsg.content, publishedMsg.properties);
     return 0;
   }
-  if (bindings.size > 1) {
-    bindings.delete(deliverToBinding);
-    bindings.add(deliverToBinding);
+  if (bindings.length > 1) {
+    const idx = bindings.indexOf(deliverToBinding);
+    bindings.splice(idx, 1);
+    bindings.push(deliverToBinding);
   }
   message.ack();
   this._publishToQueue(deliverToBinding.queue, routingKey, publishedMsg.content, publishedMsg.properties);
@@ -146,11 +147,9 @@ ExchangeBase.prototype.bindQueue = function bindQueue(queue, pattern, bindOption
     if (binding.queue === queue && binding.pattern === pattern) return binding;
   }
   const binding = new Binding(this, queue, pattern, bindOptions);
-  bindings.add(binding);
-  if (bindings.size > 1 && binding.options.priority) {
-    const sortedBindings = [...bindings].sort(_shared.sortByPriority);
-    bindings.clear();
-    this[kBindings] = new Set(sortedBindings);
+  bindings.push(binding);
+  if (bindings.length > 1 && binding.options.priority) {
+    bindings.sort(_shared.sortByPriority);
   }
   this.emit('bind', binding);
   return binding;
@@ -259,10 +258,12 @@ ExchangeBase.prototype.off = function off(pattern, handler) {
 };
 ExchangeBase.prototype.closeBinding = function closeBinding(binding) {
   const bindings = this[kBindings];
-  if (!bindings.delete(binding)) return;
+  const idx = bindings.indexOf(binding);
+  if (idx === -1) return;
+  bindings.splice(idx, 1);
   binding.close();
   this.emit('unbind', binding);
-  if (!bindings.size && this.options.autoDelete) this.emit('delete', this);
+  if (!bindings.length && this.options.autoDelete) this.emit('delete', this);
 };
 function Binding(exchange, queue, pattern, bindOptions) {
   this.id = `${queue.name}/${pattern}`;
