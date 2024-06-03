@@ -140,6 +140,30 @@ describe('Broker', () => {
         }
       }
     });
+
+    it('supports multiple subscribe immediately cancelled in message callback', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event', 'topic');
+      broker.assertQueue('event1-q');
+      broker.assertQueue('event2-q');
+      broker.assertQueue('event3-q');
+
+      broker.subscribe('event', 'test.#', 'event1-q', onMessage.bind({}), { consumerTag: 'tag-1', priority: 1 });
+      broker.subscribe('event', 'test.#', 'event2-q', onMessage.bind({}), { consumerTag: 'tag-2', priority: 7 });
+      broker.subscribe('event', 'test.#', 'event3-q', onMessage.bind({}), { consumerTag: 'tag-3', priority: 10 });
+
+      let messageCount = 0;
+
+      broker.publish('event', 'test.1');
+
+      expect(messageCount).to.equal(3);
+
+      function onMessage(_, msg) {
+        broker.cancel(msg.fields.consumerTag);
+        ++messageCount;
+      }
+    });
   });
 
   describe('exclusive subscription', () => {
@@ -246,6 +270,116 @@ describe('Broker', () => {
       expect(consumer).to.have.property('consumerTag', 'guid');
 
       function onMessage() {}
+    });
+
+    it('supports multiple subscribeTmp to different functions and same pattern', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event', 'topic');
+      broker.subscribeTmp('event', 'test.*', onMessage1);
+      broker.subscribeTmp('event', 'test.*', onMessage2);
+
+      let messageCount = 0;
+
+      broker.publish('event', 'test.1');
+
+      expect(messageCount).to.equal(2);
+
+      function onMessage1(_, message) {
+        ++messageCount;
+        message.ack();
+      }
+      function onMessage2(_, message) {
+        ++messageCount;
+        message.ack();
+      }
+    });
+
+    it('supports multiple subscribeTmp with priority to different functions and same pattern', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event', 'topic');
+      broker.subscribeTmp('event', 'test.*', onMessage1, { priority: 100 });
+      broker.subscribeTmp('event', 'test.*', onMessage2, { priority: 200 });
+
+      let messageCount = 0;
+
+      broker.publish('event', 'test.1');
+
+      expect(messageCount).to.equal(2);
+
+      function onMessage1(_, message) {
+        ++messageCount;
+        message.ack();
+      }
+      function onMessage2(_, message) {
+        ++messageCount;
+        message.ack();
+      }
+    });
+
+    it('supports multiple subscribeTmp with noAck different functions and same pattern', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event', 'topic');
+      broker.subscribeTmp('event', 'test.*', onMessage1, { noAck: true });
+      broker.subscribeTmp('event', 'test.*', onMessage2, { noAck: true });
+      broker.subscribeTmp('event', 'test.*', onMessage3, { noAck: true });
+
+      let messageCount = 0;
+
+      broker.publish('event', 'test.1');
+
+      expect(messageCount).to.equal(3);
+
+      function onMessage1() {
+        ++messageCount;
+      }
+      function onMessage2() {
+        ++messageCount;
+      }
+      function onMessage3() {
+        ++messageCount;
+      }
+    });
+
+    it('supports multiple subscribeTmp with noAck same functions bound to different objects', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event', 'topic');
+      broker.subscribeTmp('event', 'test.#', onMessage.bind({}), { noAck: true, consumerTag: 'tag-1' });
+      broker.subscribeTmp('event', 'test.#', onMessage.bind({}), { noAck: true, consumerTag: 'tag-2' });
+      broker.subscribeTmp('event', 'test.#', onMessage.bind({}), { noAck: true, consumerTag: 'tag-3' });
+
+      let messageCount = 0;
+
+      broker.publish('event', 'test.1');
+
+      expect(messageCount).to.equal(3);
+
+      function onMessage() {
+        ++messageCount;
+      }
+    });
+
+    it('supports multiple subscribeTmp with noAck and immediately cancelled in message callback', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event', 'topic');
+      broker.subscribeTmp('event', 'test.#', onMessage.bind({}), { consumerTag: 'tag-1', priority: 1 });
+      broker.subscribeTmp('event', 'test.#', onMessage.bind({}), { consumerTag: 'tag-2', priority: 7 });
+      broker.subscribeTmp('event', 'test.#', onMessage.bind({}), { consumerTag: 'tag-3', priority: 10 });
+
+      let messageCount = 0;
+
+      broker.publish('event', 'test.1');
+
+      expect(messageCount).to.equal(3);
+
+      function onMessage(_, msg) {
+        broker.cancel(msg.fields.consumerTag);
+        ++messageCount;
+      }
     });
   });
 

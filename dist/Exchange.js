@@ -75,7 +75,7 @@ Object.defineProperties(ExchangeBase.prototype, {
 });
 ExchangeBase.prototype.publish = function publish(routingKey, content, properties) {
   if (this[kStopped]) return;
-  if (!this.bindingCount) return this._emitReturn(routingKey, content, properties);
+  if (!this[kBindings].size) return this._emitReturn(routingKey, content, properties);
   return this[kDeliveryQueue].queueMessage({
     routingKey
   }, {
@@ -87,7 +87,7 @@ ExchangeBase.prototype._onTopicMessage = function topic(routingKey, message) {
   const publishedMsg = message.content;
   message.ack();
   let delivered = 0;
-  for (const binding of this[kBindings]) {
+  for (const binding of new Set(this[kBindings])) {
     if (!binding.testPattern(routingKey)) continue;
     this._publishToQueue(binding.queue, routingKey, publishedMsg.content, publishedMsg.properties);
     ++delivered;
@@ -188,12 +188,12 @@ ExchangeBase.prototype.getState = function getState() {
     options: {
       ...this.options
     },
-    ...(deliveryQueue.messageCount ? {
+    ...(deliveryQueue.messageCount && {
       deliveryQueue: deliveryQueue.getState()
-    } : undefined),
-    ...(bindingsState.length ? {
+    }),
+    ...(bindingsState.length && {
       bindings: bindingsState
-    } : undefined)
+    })
   };
 };
 ExchangeBase.prototype.stop = function stop() {

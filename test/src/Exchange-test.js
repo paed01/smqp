@@ -97,6 +97,45 @@ describe('Exchange', () => {
         message.ack();
       }
     });
+
+    it('direct bindings is closed on received message is not re-arranged', () => {
+      const exchange = Exchange('event', 'direct');
+
+      const queue1 = new Queue('event1-q');
+      const queue2 = new Queue('event2-q');
+      const queue3 = new Queue('event3-q');
+
+      const binding1 = exchange.bindQueue(queue1, 'test.#', { priority: 10 });
+      const binding2 = exchange.bindQueue(queue2, 'test.#', { priority: 3 });
+      const binding3 = exchange.bindQueue(queue3, '#', { priority: 5 });
+
+      const messages = [];
+
+      queue1.consume(onMessageCloseBinding1);
+      queue2.consume(onMessageCloseBinding2);
+      queue3.consume(onMessageCloseBinding3);
+
+      exchange.publish('test.1');
+      exchange.publish('test.2');
+      exchange.publish('test.3');
+
+      expect(exchange.bindingCount).to.equal(0);
+
+      expect(messages).to.have.length(3);
+
+      function onMessageCloseBinding1(routingKey, message) {
+        messages.push(message);
+        binding1.close();
+      }
+      function onMessageCloseBinding2(routingKey, message) {
+        messages.push(message);
+        binding2.close();
+      }
+      function onMessageCloseBinding3(routingKey, message) {
+        messages.push(message);
+        binding3.close();
+      }
+    });
   });
 
   describe('topic exchange', () => {
@@ -199,6 +238,41 @@ describe('Exchange', () => {
         expect(messages2.map(({ fields }) => fields.routingKey)).to.eql(['test.1', 'test.2']);
 
         done();
+      }
+    });
+
+    it('delivers message to all bindings even if bindings are closed randomly when receiving message', () => {
+      const exchange = Exchange('event', 'topic');
+
+      const queue1 = new Queue('event1-q');
+      const queue2 = new Queue('event2-q');
+      const queue3 = new Queue('event3-q');
+
+      const binding1 = exchange.bindQueue(queue1, 'test.#', { priority: 10 });
+      const binding2 = exchange.bindQueue(queue2, 'test.#', { priority: 3 });
+      const binding3 = exchange.bindQueue(queue3, '#', { priority: 5 });
+
+      const messages = [];
+
+      queue1.consume(onMessageCloseBinding3);
+      queue2.consume(onMessageCloseBinding2);
+      queue3.consume(onMessageCloseBinding1);
+
+      exchange.publish('test.1');
+
+      expect(messages).to.have.length(3);
+
+      function onMessageCloseBinding3(routingKey, message) {
+        messages.push(message);
+        binding3.close();
+      }
+      function onMessageCloseBinding2(routingKey, message) {
+        messages.push(message);
+        binding2.close();
+      }
+      function onMessageCloseBinding1(routingKey, message) {
+        messages.push(message);
+        binding1.close();
       }
     });
   });
