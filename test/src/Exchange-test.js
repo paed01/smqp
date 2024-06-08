@@ -39,6 +39,14 @@ describe('Exchange', () => {
     });
   });
 
+  describe('.name', () => {
+    it('name cannot be changed', () => {
+      const exchange = Exchange('events');
+
+      expect(() => (exchange.name = 'my-name')).to.throw(TypeError);
+    });
+  });
+
   describe('direct exchange', () => {
     it('delivers message to a single queue', () => {
       const exchange = new Exchange('test', 'direct');

@@ -8,6 +8,7 @@ exports.Queue = Queue;
 var _shared = require("./shared.js");
 var _Message = require("./Message.js");
 var _Errors = require("./Errors.js");
+const kName = Symbol.for('name');
 const kConsumers = Symbol.for('consumers');
 const kConsuming = Symbol.for('consuming');
 const kExclusive = Symbol.for('exclusive');
@@ -17,7 +18,7 @@ const kAvailableCount = Symbol.for('availableCount');
 const kStopped = Symbol.for('stopped');
 function Queue(name, options, eventEmitter) {
   if (name && typeof name !== 'string') throw new TypeError('Queue name must be a string');else if (!name) name = `smq.qname-${(0, _shared.generateId)()}`;
-  this.name = name;
+  this[kName] = name;
   this.options = {
     autoDelete: true,
     ...options
@@ -31,6 +32,11 @@ function Queue(name, options, eventEmitter) {
   this._onMessageConsumed = this._onMessageConsumed.bind(this);
 }
 Object.defineProperties(Queue.prototype, {
+  name: {
+    get() {
+      return this[kName];
+    }
+  },
   consumerCount: {
     get() {
       return this[kConsumers].length;
@@ -353,7 +359,6 @@ Queue.prototype.recover = function recover(state) {
     this._consumeNext();
     return this;
   }
-  this.name = state.name;
   this.messages.splice(0);
   let continueConsume;
   if (consumers.length) {

@@ -2,17 +2,16 @@ import { Message } from './Message.js';
 import { Queue } from './Queue.js';
 import { sortByPriority, getRoutingKeyPattern, generateId } from './shared.js';
 
+const kName = Symbol.for('name');
 const kType = Symbol.for('type');
 const kStopped = Symbol.for('stopped');
 const kBindings = Symbol.for('bindings');
 const kDeliveryQueue = Symbol.for('deliveryQueue');
 
-const exchangeTypes = ['topic', 'direct'];
-
 export function Exchange(name, type = 'topic', options) {
   if (!name || typeof name !== 'string') throw new TypeError('Exchange name is required and must be a string');
 
-  if (exchangeTypes.indexOf(type) === -1) throw new TypeError('Exchange type must be one of topic or direct');
+  if (type !== 'topic' && type !== 'direct') throw new TypeError('Exchange type must be one of topic or direct');
   const eventExchange = new EventExchange(`${name}__events`);
   return new ExchangeBase(name, type, options, eventExchange);
 }
@@ -23,7 +22,7 @@ export function EventExchange(name) {
 }
 
 function ExchangeBase(name, type, options, eventExchange) {
-  this.name = name;
+  this[kName] = name;
   this[kType] = type;
   this[kBindings] = [];
   this[kStopped] = false;
@@ -36,6 +35,11 @@ function ExchangeBase(name, type, options, eventExchange) {
 }
 
 Object.defineProperties(ExchangeBase.prototype, {
+  name: {
+    get() {
+      return this[kName];
+    },
+  },
   bindingCount: {
     get() {
       return this[kBindings].length;

@@ -28,6 +28,14 @@ describe('Queue', () => {
     });
   });
 
+  describe('.name', () => {
+    it('name cannot be changed', () => {
+      const queue = new Queue('events');
+
+      expect(() => (queue.name = 'my-name')).to.throw(TypeError);
+    });
+  });
+
   describe('queue options', () => {
     describe('maxLength', () => {
       it('maxLength evicts old messages', () => {
@@ -1311,14 +1319,12 @@ describe('Queue', () => {
       queue.stop();
 
       const state = queue.getState();
-      state.name = 'test-recovered-q';
       state.messages.pop();
 
       queue.recover(state);
 
       queue.queueMessage({ routingKey: 'test.3' });
 
-      expect(queue.name).to.equal('test-recovered-q');
       expect(queue.messageCount).to.equal(2);
     });
 

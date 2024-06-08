@@ -2,6 +2,7 @@ import { generateId, sortByPriority } from './shared.js';
 import { kPending, Message } from './Message.js';
 import { SmqpError, ERR_EXCLUSIVE_CONFLICT, ERR_EXCLUSIVE_NOT_ALLOWED } from './Errors.js';
 
+const kName = Symbol.for('name');
 const kConsumers = Symbol.for('consumers');
 const kConsuming = Symbol.for('consuming');
 const kExclusive = Symbol.for('exclusive');
@@ -13,7 +14,7 @@ const kStopped = Symbol.for('stopped');
 export function Queue(name, options, eventEmitter) {
   if (name && typeof name !== 'string') throw new TypeError('Queue name must be a string');
   else if (!name) name = `smq.qname-${generateId()}`;
-  this.name = name;
+  this[kName] = name;
 
   this.options = { autoDelete: true, ...options };
 
@@ -27,6 +28,11 @@ export function Queue(name, options, eventEmitter) {
 }
 
 Object.defineProperties(Queue.prototype, {
+  name: {
+    get() {
+      return this[kName];
+    },
+  },
   consumerCount: {
     get() {
       return this[kConsumers].length;
@@ -403,8 +409,6 @@ Queue.prototype.recover = function recover(state) {
     this._consumeNext();
     return this;
   }
-
-  this.name = state.name;
 
   this.messages.splice(0);
 
