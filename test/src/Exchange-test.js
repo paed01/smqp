@@ -299,24 +299,6 @@ describe('Exchange', () => {
       exchange.bindQueue(queue, 'test.*');
       expect(exchange.bindingCount).to.equal(2);
     });
-
-    it('emits event with binding', () => {
-      let event;
-      const exchange = Exchange('event', 'topic');
-
-      exchange.on('*', onEvent);
-
-      const queue = new Queue();
-      const binding = exchange.bindQueue(queue, 'test.#');
-
-      expect(event).to.be.ok;
-      expect(event.fields).to.have.property('routingKey', 'exchange.bind');
-      expect(event.content === binding, 'content is binding').to.be.true;
-
-      function onEvent(_, message) {
-        event = message;
-      }
-    });
   });
 
   describe('unbindQueue(queue, pattern)', () => {
@@ -344,75 +326,6 @@ describe('Exchange', () => {
       exchange.unbindQueue(queue, 'test.#');
       exchange.unbindQueue(queue, 'test.#');
       expect(exchange.bindingCount).to.equal(0);
-    });
-
-    it('emits event with binding', () => {
-      let event;
-      const exchange = Exchange('event', 'topic');
-
-      exchange.on('unbind', onEvent);
-
-      const queue = new Queue();
-      const binding = exchange.bindQueue(queue, 'test.#');
-
-      exchange.unbindQueue(queue, 'test.#');
-
-      expect(event).to.be.ok;
-      expect(event.fields).to.have.property('routingKey', 'exchange.unbind');
-      expect(event.content === binding, 'content is binding').to.be.true;
-
-      function onEvent(_, message) {
-        event = message;
-      }
-    });
-
-    it('unbind in message callback', () => {
-      let event;
-      const exchange = Exchange('event', 'topic');
-
-      exchange.on('unbind', onEvent);
-
-      const queue = new Queue();
-      const binding = exchange.bindQueue(queue, 'test.#');
-      queue.consume(() => {
-        binding.close();
-      });
-
-      exchange.publish('test.1');
-
-      expect(event).to.be.ok;
-      expect(event.fields).to.have.property('routingKey', 'exchange.unbind');
-      expect(event.content === binding, 'content is binding').to.be.true;
-
-      function onEvent(_, message) {
-        event = message;
-      }
-    });
-
-    it('unbind in bind event', () => {
-      let event;
-      const exchange = Exchange('event', 'topic');
-      const queue = new Queue();
-
-      exchange.on('unbind', onEvent);
-      exchange.on('bind', () => {
-        exchange.unbindQueue(queue, 'test.#');
-      });
-
-      const binding = exchange.bindQueue(queue, 'test.#');
-      queue.consume(() => {
-        binding.close();
-      });
-
-      exchange.publish('test.1');
-
-      expect(event).to.be.ok;
-      expect(event.fields).to.have.property('routingKey', 'exchange.unbind');
-      expect(event.content === binding, 'content is binding').to.be.true;
-
-      function onEvent(_, message) {
-        event = message;
-      }
     });
   });
 
@@ -757,25 +670,6 @@ describe('Exchange', () => {
   });
 
   describe('events', () => {
-    it('emits event when binding is unbound with binding and exchange', () => {
-      let event;
-      const exchange = Exchange('event', 'topic');
-
-      exchange.on('unbind', onEvent);
-
-      const queue = new Queue('event-q');
-      exchange.bindQueue(queue, 'test.#');
-      exchange.unbindQueue(queue, 'test.#');
-
-      expect(event).to.be.ok;
-      expect(event.fields).to.have.property('routingKey', 'exchange.unbind');
-      expect(event.content.queue).to.have.property('name', 'event-q');
-
-      function onEvent(_, message) {
-        event = message;
-      }
-    });
-
     it('autoDelete emits delete when bindings drops to zero', () => {
       let event;
       const exchange = Exchange('event', 'topic', { autoDelete: true });

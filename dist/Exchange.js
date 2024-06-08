@@ -151,7 +151,6 @@ ExchangeBase.prototype.bindQueue = function bindQueue(queue, pattern, bindOption
   if (bindings.length > 1 && binding.options.priority) {
     bindings.sort(_shared.sortByPriority);
   }
-  this.emit('bind', binding);
   return binding;
 };
 ExchangeBase.prototype.unbindQueue = function unbindQueue(queue, pattern) {
@@ -262,7 +261,6 @@ ExchangeBase.prototype.closeBinding = function closeBinding(binding) {
   if (idx === -1) return;
   bindings.splice(idx, 1);
   binding.close();
-  this.emit('unbind', binding);
   if (!bindings.length && this.options.autoDelete) this.emit('delete', this);
 };
 function Binding(exchange, queue, pattern, bindOptions) {
