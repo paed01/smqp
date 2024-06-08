@@ -2,9 +2,16 @@
 
 ## Unreleased
 
-## [9.0.0] - 2024-05-29
+## [9.0.0] - 2024-06-08
 
-- replace array of entities with `new Set()` to gain some performance
+### Breaking
+
+- exchange- and queue name are read-only
+- stop emitting exchange bind and unbind events, no listeners
+
+### Fixes
+
+- replace entities arrays with `new Map()` to gain some performance
 - fix API.md `getRoutingKeyPattern` example, destructing a method from an prototyped instance doesn't work
 - run through markdown examples with [texample](https://www.npmjs.com/package/texample)
 

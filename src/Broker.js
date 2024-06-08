@@ -24,7 +24,7 @@ export function Broker(owner) {
   const entities = (this[kEntities] = new Map([
     ['exchanges', new Map()],
     ['queues', new Map()],
-    ['consumers', new Set()],
+    ['consumers', new Map()],
     ['shovels', new Set()],
   ]));
   this[kEventHandler] = new EventHandler(this, entities);
@@ -135,7 +135,7 @@ Broker.prototype.cancel = function cancel(consumerTag, requeue = true) {
 
 Broker.prototype.getConsumers = function getConsumers() {
   const result = [];
-  for (const consumer of this[kEntities].get('consumers')) {
+  for (const consumer of this[kEntities].get('consumers').values()) {
     result.push({
       queue: consumer.queue.name,
       consumerTag: consumer.options.consumerTag,
@@ -147,17 +147,12 @@ Broker.prototype.getConsumers = function getConsumers() {
 };
 
 Broker.prototype.getConsumer = function getConsumer(consumerTag) {
-  for (const consumer of this[kEntities].get('consumers')) {
-    if (consumer.consumerTag === consumerTag) return consumer;
-  }
+  return this[kEntities].get('consumers').get(consumerTag);
 };
 
 Broker.prototype.getExchange = function getExchange(exchangeName) {
   if (typeof exchangeName !== 'string') throw new TypeError('exchange name must be a string');
   return this[kEntities].get('exchanges').get(exchangeName);
-  // for (const exchange of this[kEntities].exchanges) {
-  //   if (exchange.name === exchangeName) return exchange;
-  // }
 };
 
 Broker.prototype.deleteExchange = function deleteExchange(exchangeName, { ifUnused } = {}) {
@@ -362,7 +357,7 @@ Broker.prototype.reject = function reject(message, requeue) {
 Broker.prototype.validateConsumerTag = function validateConsumerTag(consumerTag) {
   if (!consumerTag) return true;
 
-  if (this.getConsumer(consumerTag)) {
+  if (this[kEntities].get('consumers').has(consumerTag)) {
     throw new SmqpError(`Consumer tag must be unique, ${consumerTag} is occupied`, ERR_CONSUMER_TAG_CONFLICT);
   }
 
@@ -459,18 +454,18 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
       break;
     }
     case 'queue.dead-letter': {
-      const exchange = this.broker.getExchange(msg.content.deadLetterExchange);
+      const exchange = this.entities.get('exchanges').get(msg.content.deadLetterExchange);
       if (!exchange) return;
       const { fields, content, properties } = msg.content.message;
       exchange.publish(fields.routingKey, content, properties);
       break;
     }
     case 'queue.consume': {
-      this.entities.get('consumers').add(msg.content);
+      this.entities.get('consumers').set(msg.content.consumerTag, msg.content);
       break;
     }
     case 'queue.consumer.cancel': {
-      this.entities.get('consumers').delete(msg.content);
+      this.entities.get('consumers').delete(msg.content.consumerTag);
       break;
     }
     case 'queue.message.consumed.ack':

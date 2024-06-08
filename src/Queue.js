@@ -484,6 +484,7 @@ export function Consumer(queue, onMessage, options, owner, eventEmitter) {
   this.onMessage = onMessage;
   this.owner = owner;
   this.events = eventEmitter;
+  this[kName] = this.options.consumerTag;
   this[kIsReady] = true;
   this[kStopped] = false;
   this[kConsuming] = false;
@@ -501,7 +502,7 @@ export function Consumer(queue, onMessage, options, owner, eventEmitter) {
 Object.defineProperties(Consumer.prototype, {
   consumerTag: {
     get() {
-      return this.options.consumerTag;
+      return this[kName];
     },
   },
   ready: {
