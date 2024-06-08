@@ -7,6 +7,7 @@ exports.Exchange2Exchange = Exchange2Exchange;
 exports.Shovel = Shovel;
 var _Exchange = require("./Exchange.js");
 var _Errors = require("./Errors.js");
+const kName = Symbol.for('name');
 const kBrokerInternal = Symbol.for('brokerInternal');
 const kCloneMessage = Symbol.for('cloneMessage');
 const kClosed = Symbol.for('closed');
@@ -42,7 +43,7 @@ function Shovel(name, source, destination, options = {}) {
   }
   this[kBrokerInternal] = sourceBroker === destinationBroker;
   const routingKeyPattern = pattern || '#';
-  this.name = name;
+  this[kName] = name;
   this.source = {
     ...source,
     pattern: routingKeyPattern
@@ -76,6 +77,11 @@ function Shovel(name, source, destination, options = {}) {
   eventHandlers.add(consumer.on('cancel', boundClose));
 }
 Object.defineProperties(Shovel.prototype, {
+  name: {
+    get() {
+      return this[kName];
+    }
+  },
   closed: {
     get() {
       return this[kClosed];
@@ -147,7 +153,7 @@ Shovel.prototype._onShovelMessage = function onShovelMessage(routingKey, message
     ...this.destination.publishProperties,
     'source-exchange': this[kSourceExchange].name
   };
-  if (!this[kBrokerInternal]) props['shovel-name'] = this.name;
+  if (!this[kBrokerInternal]) props['shovel-name'] = this[kName];
   destinationExchange.publish(this.destination.exchangeKey || routingKey, content, props);
   message.ack();
 };

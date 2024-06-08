@@ -20,14 +20,14 @@ export function Broker(owner) {
     return new Broker(owner);
   }
   this.owner = owner;
-  this.events = new EventExchange('broker__events');
+  const events = (this.events = new EventExchange('broker__events'));
   const entities = (this[kEntities] = new Map([
     ['exchanges', new Map()],
     ['queues', new Map()],
     ['consumers', new Map()],
-    ['shovels', new Set()],
+    ['shovels', new Map()],
   ]));
-  this[kEventHandler] = new EventHandler(this, entities);
+  this[kEventHandler] = new BrokerEventHandler(events, entities);
 }
 
 Object.defineProperties(Broker.prototype, {
@@ -147,6 +147,7 @@ Broker.prototype.getConsumers = function getConsumers() {
 };
 
 Broker.prototype.getConsumer = function getConsumer(consumerTag) {
+  if (typeof consumerTag !== 'string') throw new TypeError('consumer tag must be a string');
   return this[kEntities].get('consumers').get(consumerTag);
 };
 
@@ -174,7 +175,7 @@ Broker.prototype.stop = function stop() {
 
 Broker.prototype.close = function close() {
   const entities = this[kEntities];
-  for (const shovel of entities.get('shovels')) shovel.close();
+  for (const shovel of entities.get('shovels').values()) shovel.close();
   for (const exchange of entities.get('exchanges').values()) exchange.close();
   for (const queue of entities.get('queues').values()) queue.close();
 };
@@ -304,9 +305,7 @@ Broker.prototype.createQueue = function createQueue(queueName, options) {
 
 Broker.prototype.getQueue = function getQueue(queueName) {
   if (!queueName || typeof queueName !== 'string') throw new TypeError('queue name must be a string');
-  for (const queue of this[kEntities].get('queues').values()) {
-    if (queue.name === queueName) return queue;
-  }
+  return this[kEntities].get('queues').get(queueName);
 };
 
 Broker.prototype.assertQueue = function assertQueue(queueName, options = {}) {
@@ -366,10 +365,10 @@ Broker.prototype.validateConsumerTag = function validateConsumerTag(consumerTag)
 
 Broker.prototype.createShovel = function createShovel(name, source, destination, options) {
   const shovels = this[kEntities].get('shovels');
-  if (this.getShovel(name)) throw new SmqpError(`Shovel name must be unique, ${name} is occupied`, ERR_SHOVEL_NAME_CONFLICT);
+  if (shovels.has(name)) throw new SmqpError(`Shovel name must be unique, ${name} is occupied`, ERR_SHOVEL_NAME_CONFLICT);
   const shovel = new Shovel(name, { ...source, broker: this }, destination, options);
   this[kEventHandler].listen(shovel.events);
-  shovels.add(shovel);
+  shovels.set(name, shovel);
   return shovel;
 };
 
@@ -383,13 +382,11 @@ Broker.prototype.closeShovel = function closeShovel(name) {
 };
 
 Broker.prototype.getShovel = function getShovel(name) {
-  for (const shovel of this[kEntities].get('shovels')) {
-    if (shovel.name === name) return shovel;
-  }
+  return this[kEntities].get('shovels').get(name);
 };
 
 Broker.prototype.getShovels = function getShovels() {
-  return [...this[kEntities].get('shovels')];
+  return [...this[kEntities].get('shovels').values()];
 };
 
 Broker.prototype.on = function on(eventName, callback, options) {
@@ -425,28 +422,28 @@ Broker.prototype.off = function off(eventName, callbackOrObject) {
 
 Broker.prototype.prefetch = function prefetch() {};
 
-function EventHandler(broker, entities) {
-  this.broker = broker;
+function BrokerEventHandler(eventExchange, entities) {
+  this.eventExchange = eventExchange;
   this.entities = entities;
   this.handler = this.handler.bind(this);
 }
 
-EventHandler.prototype.listen = function listen(emitter) {
+BrokerEventHandler.prototype.listen = function listen(emitter) {
   emitter.on('#', this.handler);
 };
 
-EventHandler.prototype.handler = function eventHandler(eventName, msg) {
+BrokerEventHandler.prototype.handler = function eventHandler(eventName, msg) {
   switch (eventName) {
     case 'exchange.delete': {
       this.entities.get('exchanges').delete(msg.content.name);
       break;
     }
     case 'exchange.return': {
-      this.broker.events.publish('return', msg.content);
+      this.eventExchange.publish('return', msg.content);
       break;
     }
     case 'exchange.message.undelivered': {
-      this.broker.events.publish('message.undelivered', msg.content);
+      this.eventExchange.publish('message.undelivered', msg.content);
       break;
     }
     case 'queue.delete': {
@@ -471,11 +468,11 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
     case 'queue.message.consumed.ack':
     case 'queue.message.consumed.nack': {
       const { operation, message } = msg.content;
-      this.broker.events.publish(`message.${operation}`, message);
+      this.eventExchange.publish(`message.${operation}`, message);
       break;
     }
     case 'shovel.close': {
-      this.entities.get('shovels').delete(msg.content);
+      this.entities.get('shovels').delete(msg.content.name);
       break;
     }
   }

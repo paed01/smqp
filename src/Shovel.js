@@ -1,6 +1,7 @@
 import { EventExchange } from './Exchange.js';
 import { SmqpError, ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND, ERR_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND } from './Errors.js';
 
+const kName = Symbol.for('name');
 const kBrokerInternal = Symbol.for('brokerInternal');
 const kCloneMessage = Symbol.for('cloneMessage');
 const kClosed = Symbol.for('closed');
@@ -37,7 +38,7 @@ export function Shovel(name, source, destination, options = {}) {
   this[kBrokerInternal] = sourceBroker === destinationBroker;
   const routingKeyPattern = pattern || '#';
 
-  this.name = name;
+  this[kName] = name;
   this.source = { ...source, pattern: routingKeyPattern };
   this.destination = { ...destination };
   this.events = new EventExchange('shovel__events');
@@ -68,6 +69,11 @@ export function Shovel(name, source, destination, options = {}) {
 }
 
 Object.defineProperties(Shovel.prototype, {
+  name: {
+    get() {
+      return this[kName];
+    },
+  },
   closed: {
     get() {
       return this[kClosed];
@@ -127,7 +133,7 @@ Shovel.prototype._onShovelMessage = function onShovelMessage(routingKey, message
 
   const { content, properties } = this._messageHandler(message);
   const props = { ...properties, ...this.destination.publishProperties, 'source-exchange': this[kSourceExchange].name };
-  if (!this[kBrokerInternal]) props['shovel-name'] = this.name;
+  if (!this[kBrokerInternal]) props['shovel-name'] = this[kName];
   destinationExchange.publish(this.destination.exchangeKey || routingKey, content, props);
   message.ack();
 };

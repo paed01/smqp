@@ -1467,6 +1467,11 @@ describe('Broker', () => {
       const broker = Broker();
       expect(broker.cancel('cancel-me')).to.be.false;
     });
+
+    it('throws type error if consumer tag is not a string', () => {
+      const broker = Broker();
+      expect(() => broker.cancel({})).to.throw(TypeError);
+    });
   });
 
   describe('dead letters', () => {
@@ -2671,6 +2676,30 @@ describe('Broker', () => {
       expect(messages).to.have.length(1);
       expect(messages[0]).to.have.property('source-exchange', 'source-events');
       expect(Object.keys(messages[0])).to.have.same.members(['messageId', 'timestamp', 'type', 'source-exchange']);
+    });
+  });
+
+  describe('getConsumer(consumerTag)', () => {
+    it('returns consumer by tag', () => {
+      const broker = Broker();
+      broker.assertExchange('event');
+      broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+      broker.consume('event-q', () => {}, { consumerTag: 'ct-test-1' });
+
+      expect(broker.getConsumer('ct-test-1')).to.be.instanceof(Consumer);
+    });
+
+    it('returns nothing if consumer is not found', () => {
+      const broker = Broker();
+      expect(broker.getConsumer('my-tag')).to.not.be.ok;
+    });
+
+    it('throws if consumer tag is not a string', () => {
+      const broker = Broker();
+      expect(() => broker.getConsumer(null)).to.throw(TypeError);
+      expect(() => broker.getConsumer({})).to.throw(TypeError);
+      expect(() => broker.getConsumer(1)).to.throw(TypeError);
     });
   });
 

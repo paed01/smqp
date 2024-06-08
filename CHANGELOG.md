@@ -6,8 +6,9 @@
 
 ### Breaking
 
-- exchange- and queue name are read-only
-- stop emitting exchange bind and unbind events, no listeners
+- exchange-, shovel-, and queue name are read-only
+- stop emitting exchange `bind` and `unbind` events, no listeners AFAIK
+- `broker.getConsumer(consumerTag)` requires consumer tag to be a string
 
 ### Fixes
 
