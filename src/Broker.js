@@ -21,29 +21,29 @@ export function Broker(owner) {
   }
   this.owner = owner;
   this.events = new EventExchange('broker__events');
-  const entities = (this[kEntities] = {
-    exchanges: new Set(),
-    queues: new Set(),
-    consumers: new Set(),
-    shovels: new Set(),
-  });
+  const entities = (this[kEntities] = new Map([
+    ['exchanges', new Map()],
+    ['queues', new Map()],
+    ['consumers', new Set()],
+    ['shovels', new Set()],
+  ]));
   this[kEventHandler] = new EventHandler(this, entities);
 }
 
 Object.defineProperties(Broker.prototype, {
   exchangeCount: {
     get() {
-      return this[kEntities].exchanges.size;
+      return this[kEntities].get('exchanges').size;
     },
   },
   queueCount: {
     get() {
-      return this[kEntities].queues.size;
+      return this[kEntities].get('queues').size;
     },
   },
   consumerCount: {
     get() {
-      return this[kEntities].consumers.size;
+      return this[kEntities].get('consumers').size;
     },
   },
 });
@@ -98,7 +98,7 @@ Broker.prototype.assertExchange = function assertExchange(exchangeName, type, op
 
   exchange = new Exchange(exchangeName, type || 'topic', options);
   this[kEventHandler].listen(exchange.events);
-  this[kEntities].exchanges.add(exchange);
+  this[kEntities].get('exchanges').set(exchangeName, exchange);
 
   return exchange;
 };
@@ -135,7 +135,7 @@ Broker.prototype.cancel = function cancel(consumerTag, requeue = true) {
 
 Broker.prototype.getConsumers = function getConsumers() {
   const result = [];
-  for (const consumer of this[kEntities].consumers) {
+  for (const consumer of this[kEntities].get('consumers')) {
     result.push({
       queue: consumer.queue.name,
       consumerTag: consumer.options.consumerTag,
@@ -147,16 +147,17 @@ Broker.prototype.getConsumers = function getConsumers() {
 };
 
 Broker.prototype.getConsumer = function getConsumer(consumerTag) {
-  for (const consumer of this[kEntities].consumers) {
+  for (const consumer of this[kEntities].get('consumers')) {
     if (consumer.consumerTag === consumerTag) return consumer;
   }
 };
 
 Broker.prototype.getExchange = function getExchange(exchangeName) {
   if (typeof exchangeName !== 'string') throw new TypeError('exchange name must be a string');
-  for (const exchange of this[kEntities].exchanges) {
-    if (exchange.name === exchangeName) return exchange;
-  }
+  return this[kEntities].get('exchanges').get(exchangeName);
+  // for (const exchange of this[kEntities].exchanges) {
+  //   if (exchange.name === exchangeName) return exchange;
+  // }
 };
 
 Broker.prototype.deleteExchange = function deleteExchange(exchangeName, { ifUnused } = {}) {
@@ -165,32 +166,32 @@ Broker.prototype.deleteExchange = function deleteExchange(exchangeName, { ifUnus
   const exchange = this.getExchange(exchangeName);
   if (!exchange || (ifUnused && exchange.bindingCount)) return false;
 
-  this[kEntities].exchanges.delete(exchange);
+  this[kEntities].get('exchanges').delete(exchangeName);
   exchange.close();
   return true;
 };
 
 Broker.prototype.stop = function stop() {
-  const { exchanges, queues } = this[kEntities];
-  for (const exchange of exchanges) exchange.stop();
-  for (const queue of queues) queue.stop();
+  const entities = this[kEntities];
+  for (const exchange of entities.get('exchanges').values()) exchange.stop();
+  for (const queue of entities.get('queues').values()) queue.stop();
 };
 
 Broker.prototype.close = function close() {
-  const { shovels, exchanges, queues } = this[kEntities];
-  for (const shovel of shovels) shovel.close();
-  for (const exchange of exchanges) exchange.close();
-  for (const queue of queues) queue.close();
+  const entities = this[kEntities];
+  for (const shovel of entities.get('shovels')) shovel.close();
+  for (const exchange of entities.get('exchanges').values()) exchange.close();
+  for (const queue of entities.get('queues').values()) queue.close();
 };
 
 Broker.prototype.reset = function reset() {
   this.stop();
   this.close();
-  const { exchanges, queues, consumers, shovels } = this[kEntities];
-  exchanges.clear();
-  queues.clear();
-  consumers.clear();
-  shovels.clear();
+  const entities = this[kEntities];
+  entities.get('exchanges').clear();
+  entities.get('queues').clear();
+  entities.get('consumers').clear();
+  entities.get('shovels').clear();
 };
 
 Broker.prototype.getState = function getState(onlyWithContent) {
@@ -214,11 +215,11 @@ Broker.prototype.recover = function recover(state) {
     if (state.exchanges)
       for (const eState of state.exchanges) this.assertExchange(eState.name, eState.type, eState.options).recover(eState, boundGetQueue);
   } else {
-    const { queues, exchanges } = this[kEntities];
-    for (const queue of queues) {
+    const entities = this[kEntities];
+    for (const queue of entities.get('queues').values()) {
       if (queue.stopped) queue.recover();
     }
-    for (const exchange of exchanges) {
+    for (const exchange of entities.get('exchanges').values()) {
       if (exchange.stopped) exchange.recover(null, boundGetQueue);
     }
   }
@@ -273,7 +274,7 @@ Broker.prototype.sendToQueue = function sendToQueue(queueName, content, options 
 
 Broker.prototype._getQueuesState = function getQueuesState(onlyWithContent) {
   let result;
-  for (const queue of this[kEntities].queues) {
+  for (const queue of this[kEntities].get('queues').values()) {
     if (!queue.options.durable) continue;
     if (onlyWithContent && !queue.messageCount) continue;
     if (!result) result = [];
@@ -284,7 +285,7 @@ Broker.prototype._getQueuesState = function getQueuesState(onlyWithContent) {
 
 Broker.prototype._getExchangeState = function getExchangeState(onlyWithContent) {
   let result;
-  for (const exchange of this[kEntities].exchanges) {
+  for (const exchange of this[kEntities].get('exchanges').values()) {
     if (!exchange.options.durable) continue;
     if (onlyWithContent && !exchange.undeliveredCount) continue;
     if (!result) result = [];
@@ -302,13 +303,13 @@ Broker.prototype.createQueue = function createQueue(queueName, options) {
   this[kEventHandler].listen(queueEmitter);
   const queue = new Queue(queueName, options, queueEmitter);
 
-  this[kEntities].queues.add(queue);
+  this[kEntities].get('queues').set(queueName, queue);
   return queue;
 };
 
 Broker.prototype.getQueue = function getQueue(queueName) {
   if (!queueName || typeof queueName !== 'string') throw new TypeError('queue name must be a string');
-  for (const queue of this[kEntities].queues) {
+  for (const queue of this[kEntities].get('queues').values()) {
     if (queue.name === queueName) return queue;
   }
 };
@@ -343,7 +344,7 @@ Broker.prototype.ack = function ack(message, allUpTo) {
 };
 
 Broker.prototype.ackAll = function ackAll() {
-  for (const queue of this[kEntities].queues) queue.ackAll();
+  for (const queue of this[kEntities].get('queues').values()) queue.ackAll();
 };
 
 Broker.prototype.nack = function nack(message, allUpTo, requeue) {
@@ -351,7 +352,7 @@ Broker.prototype.nack = function nack(message, allUpTo, requeue) {
 };
 
 Broker.prototype.nackAll = function nackAll(requeue) {
-  for (const queue of this[kEntities].queues) queue.nackAll(requeue);
+  for (const queue of this[kEntities].get('queues').values()) queue.nackAll(requeue);
 };
 
 Broker.prototype.reject = function reject(message, requeue) {
@@ -369,7 +370,7 @@ Broker.prototype.validateConsumerTag = function validateConsumerTag(consumerTag)
 };
 
 Broker.prototype.createShovel = function createShovel(name, source, destination, options) {
-  const shovels = this[kEntities].shovels;
+  const shovels = this[kEntities].get('shovels');
   if (this.getShovel(name)) throw new SmqpError(`Shovel name must be unique, ${name} is occupied`, ERR_SHOVEL_NAME_CONFLICT);
   const shovel = new Shovel(name, { ...source, broker: this }, destination, options);
   this[kEventHandler].listen(shovel.events);
@@ -387,13 +388,13 @@ Broker.prototype.closeShovel = function closeShovel(name) {
 };
 
 Broker.prototype.getShovel = function getShovel(name) {
-  for (const shovel of this[kEntities].shovels) {
+  for (const shovel of this[kEntities].get('shovels')) {
     if (shovel.name === name) return shovel;
   }
 };
 
 Broker.prototype.getShovels = function getShovels() {
-  return [...this[kEntities].shovels];
+  return [...this[kEntities].get('shovels')];
 };
 
 Broker.prototype.on = function on(eventName, callback, options) {
@@ -442,7 +443,7 @@ EventHandler.prototype.listen = function listen(emitter) {
 EventHandler.prototype.handler = function eventHandler(eventName, msg) {
   switch (eventName) {
     case 'exchange.delete': {
-      this.entities.exchanges.delete(msg.content);
+      this.entities.get('exchanges').delete(msg.content.name);
       break;
     }
     case 'exchange.return': {
@@ -454,7 +455,7 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
       break;
     }
     case 'queue.delete': {
-      this.entities.queues.delete(msg.content);
+      this.entities.get('queues').delete(msg.content.name);
       break;
     }
     case 'queue.dead-letter': {
@@ -465,11 +466,11 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
       break;
     }
     case 'queue.consume': {
-      this.entities.consumers.add(msg.content);
+      this.entities.get('consumers').add(msg.content);
       break;
     }
     case 'queue.consumer.cancel': {
-      this.entities.consumers.delete(msg.content);
+      this.entities.get('consumers').delete(msg.content);
       break;
     }
     case 'queue.message.consumed.ack':
@@ -479,7 +480,7 @@ EventHandler.prototype.handler = function eventHandler(eventName, msg) {
       break;
     }
     case 'shovel.close': {
-      this.entities.shovels.delete(msg.content);
+      this.entities.get('shovels').delete(msg.content);
       break;
     }
   }
