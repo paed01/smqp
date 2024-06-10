@@ -87,8 +87,6 @@ Queue.prototype.queueMessage = function queueMessage(fields, content, properties
       break;
   }
 
-  this.emit('message', message);
-
   return discarded ? 0 : this._consumeNext();
 };
 

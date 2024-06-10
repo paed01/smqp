@@ -73,7 +73,7 @@ export interface Queue {
   cancel(consumerTag: string, requeue?: boolean): boolean;
   dismiss(onMessage: onMessage, requeue?: boolean): void;
   unbindConsumer(consumer: Consumer, requeue?: boolean): void;
-  emit(eventName: string, content?: any): void;
+  emit(eventName: string, content?: any): number | undefined;
   on(eventName: string | QueueEventNames, handler: CallableFunction, options?: consumeOptions): Consumer;
   off(eventName: string | QueueEventNames, handler: CallableFunction | consumeOptions): Consumer;
   purge(): number;

@@ -593,7 +593,11 @@ Remove all bindings to queue by queue name.
 
 ### `exchange.closeBinding(binding)`
 
-Remove all bindings to queue by queue name.
+Close binding.
+
+Arguments:
+
+- `binding`: [Binding](#binding) instance
 
 ## Binding
 

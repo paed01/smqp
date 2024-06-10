@@ -1037,15 +1037,7 @@ describe('Queue', () => {
 
       queue.delete();
 
-      expect(triggered).to.eql([
-        'queue.message',
-        'queue.consume',
-        'queue.consume',
-        'queue.consumer.cancel',
-        'queue.consumer.cancel',
-        'queue.delete',
-      ]);
-      expect(triggered).to.have.length(6);
+      expect(triggered).to.deep.equal(['queue.consume', 'queue.consume', 'queue.consumer.cancel', 'queue.consumer.cancel', 'queue.delete']);
 
       function emit(eventName) {
         triggered.push(eventName);
@@ -1095,18 +1087,6 @@ describe('Queue', () => {
   });
 
   describe('events', () => {
-    it('emits message when message is queued', () => {
-      let triggered;
-      const queue = new Queue('test-q', {}, { emit });
-      queue.queueMessage({ routingKey: 'test.1' });
-
-      expect(triggered).to.be.true;
-
-      function emit(eventName) {
-        if (eventName === 'queue.message') triggered = true;
-      }
-    });
-
     it('emits depleted when queue is emptied by message ack', () => {
       let triggered;
       const queue = new Queue('test-q', {}, { emit });

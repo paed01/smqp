@@ -87,7 +87,6 @@ Queue.prototype.queueMessage = function queueMessage(fields, content, properties
       this.emit('saturated', this);
       break;
   }
-  this.emit('message', message);
   return discarded ? 0 : this._consumeNext();
 };
 Queue.prototype.evictFirst = function evictFirst(compareMessage) {

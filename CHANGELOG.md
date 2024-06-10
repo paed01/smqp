@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## [9.0.1] - 2024-06-10
+
+- stop emitting queue `message` event when message is queued, no listeners AFAIK
+
 ## [9.0.0] - 2024-06-08
 
 ### Breaking

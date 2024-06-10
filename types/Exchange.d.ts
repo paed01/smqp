@@ -41,6 +41,7 @@ export interface Exchange {
   bindQueue(queue: Queue, pattern: string, bindOptions?: bindingOptions): Binding;
   unbindQueue(queue: Queue, pattern: string): void;
   unbindQueueByName(queueName: string): void;
+  closeBinding(binding: Binding): void;
   close(): void;
   getState(): ExchangeState;
   stop(): void;
@@ -55,7 +56,7 @@ export interface Exchange {
    */
   recover(state: ExchangeState, getQueue: CallableFunction): Exchange;
   getBinding(queueName: string, pattern: string): Binding;
-  emit(eventName: string, content?: any): any;
+  emit(eventName: string, content?: any): number | undefined;
   on(pattern: string, handler: CallableFunction, consumeOptions?: consumeOptions): Consumer;
   off(pattern: string, handler: CallableFunction | consumeOptions): void;
 }
