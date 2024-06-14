@@ -116,8 +116,9 @@ Queue.prototype.consume = function consume(onMessage, consumeOptions = {}, owner
     if (consumeOptions.exclusive) throw new _Errors.SmqpError(`Queue ${this.name} already has consumers and cannot be exclusively consumed`, _Errors.ERR_EXCLUSIVE_NOT_ALLOWED);
   }
   const consumer = new Consumer(this, onMessage, consumeOptions, owner, new ConsumerEmitter(this));
-  consumers.push(consumer);
-  consumers.sort(_shared.sortByPriority);
+  if (consumers.push(consumer) > 1 && consumer.options.priority) {
+    consumers.sort(_shared.sortByPriority);
+  }
   if (consumer.options.exclusive) {
     this[kExclusive] = true;
   }

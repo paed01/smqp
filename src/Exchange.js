@@ -150,9 +150,7 @@ ExchangeBase.prototype.bindQueue = function bindQueue(queue, pattern, bindOption
   }
 
   const binding = new Binding(this, queue, pattern, bindOptions);
-  bindings.push(binding);
-
-  if (bindings.length > 1 && binding.options.priority) {
+  if (bindings.push(binding) > 1 && binding.options.priority) {
     bindings.sort(sortByPriority);
   }
 

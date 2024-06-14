@@ -125,8 +125,9 @@ Queue.prototype.consume = function consume(onMessage, consumeOptions = {}, owner
   }
 
   const consumer = new Consumer(this, onMessage, consumeOptions, owner, new ConsumerEmitter(this));
-  consumers.push(consumer);
-  consumers.sort(sortByPriority);
+  if (consumers.push(consumer) > 1 && consumer.options.priority) {
+    consumers.sort(sortByPriority);
+  }
 
   if (consumer.options.exclusive) {
     this[kExclusive] = true;

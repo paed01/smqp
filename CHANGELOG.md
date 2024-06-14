@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## [9.0.2] - 2024-06-14
+
+- no need to sort single binding or consumer by priority or if priority is not supplied
+
 ## [9.0.1] - 2024-06-10
 
 - stop emitting queue `message` event when message is queued, no listeners AFAIK
