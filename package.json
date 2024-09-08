@@ -65,10 +65,10 @@
     "c8": "^10.1.2",
     "chai": "^5.1.0",
     "chronokinesis": "^6.0.0",
-    "eslint": "^9.0.0",
+    "eslint": "^9.10.0",
     "markdown-toc": "^1.2.0",
-    "mocha": "^10.4.0",
+    "mocha": "^10.5.2",
     "prettier": "^3.2.5",
-    "texample": "^0.0.5"
+    "texample": "^0.0.6"
   }
 }
