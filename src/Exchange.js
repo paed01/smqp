@@ -233,7 +233,7 @@ ExchangeBase.prototype.emit = function emit(eventName, content) {
   return this.publish(eventName, content);
 };
 
-ExchangeBase.prototype.on = function on(pattern, handler, consumeOptions = {}) {
+ExchangeBase.prototype.on = function on(pattern, handler, consumeOptions) {
   if (this.events) return this.events.on(`exchange.${pattern}`, handler, consumeOptions);
 
   const eventQueue = new Queue(null, { durable: false, autoDelete: true });

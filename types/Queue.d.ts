@@ -1,3 +1,4 @@
+import { ConsumeOptions, ExchangeEventEmitter } from './types.js';
 import { Message, MessageFields, MessageProperties, MessageMessage } from './Message.js';
 
 type onMessage = (routingKey: string, message: Message, owner: any) => void;
@@ -9,15 +10,6 @@ type queueOptions = {
   maxLength?: number;
   deadLetterExchange?: string;
   deadLetterRoutingKey?: string;
-  [x: string]: any;
-};
-
-type consumeOptions = {
-  noAck?: boolean;
-  consumerTag?: string;
-  exclusive?: boolean;
-  prefetch?: number;
-  priority?: number;
   [x: string]: any;
 };
 
@@ -51,7 +43,8 @@ export const enum QueueEventNames {
   QueueSaturated = 'saturated',
 }
 
-export interface Queue {
+export class Queue {
+  constructor(name?: string, options?: queueOptions, eventEmitter?: ExchangeEventEmitter);
   name: string;
   options: queueOptions;
   get consumerCount(): number;
@@ -61,9 +54,9 @@ export interface Queue {
   get stopped(): boolean;
   queueMessage(fields: MessageFields, content?: any, properties?: MessageProperties): number;
   evictFirst(compareMessage?: Message): boolean;
-  consume(onMessage: onMessage, consumeOptions?: consumeOptions, owner?: any): Consumer;
-  assertConsumer(onMessage: onMessage, consumeOptions?: consumeOptions, owner?: any): Consumer;
-  get(options?: consumeOptions): Message | undefined;
+  consume(onMessage: onMessage, consumeOptions?: ConsumeOptions, owner?: any): Consumer;
+  assertConsumer(onMessage: onMessage, consumeOptions?: ConsumeOptions, owner?: any): Consumer;
+  get(options?: ConsumeOptions): Message | undefined;
   ack(message: Message, allUpTo?: boolean): void;
   nack(message: Message, allUpTo?: boolean, requeue?: boolean): void;
   reject(message: Message, requeue?: boolean): void;
@@ -74,8 +67,8 @@ export interface Queue {
   dismiss(onMessage: onMessage, requeue?: boolean): void;
   unbindConsumer(consumer: Consumer, requeue?: boolean): void;
   emit(eventName: string, content?: any): number | undefined;
-  on(eventName: string | QueueEventNames, handler: CallableFunction, options?: consumeOptions): Consumer;
-  off(eventName: string | QueueEventNames, handler: CallableFunction | consumeOptions): Consumer;
+  on(eventName: string | QueueEventNames, handler: CallableFunction, options?: ConsumeOptions): Consumer;
+  off(eventName: string | QueueEventNames, handler: CallableFunction | ConsumeOptions): Consumer;
   purge(): number;
   getState(): QueueState;
   recover(state?: QueueState): Queue;
@@ -85,7 +78,7 @@ export interface Queue {
 }
 
 export interface Consumer {
-  options: consumeOptions;
+  options: ConsumeOptions;
   get consumerTag(): string;
   get ready(): boolean;
   get stopped(): boolean;

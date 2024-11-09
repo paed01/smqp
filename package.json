@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "9.0.2",
+  "version": "9.0.3",
   "type": "module",
   "description": "Synchronous message queueing package",
   "author": {
@@ -11,9 +11,9 @@
   "module": "./src/index.js",
   "jsnext:main": "./src/index.js",
   "sideEffects": false,
-  "types": "./types",
+  "types": "./types/index.d.ts",
   "exports": {
-    "types": "./types",
+    "types": "./types/index.d.ts",
     "import": "./src/index.js",
     "require": "./dist/index.js"
   },

@@ -1,4 +1,5 @@
-import { Queue, Consumer, queueOptions, onMessage, consumeOptions, deleteQueueOptions, QueueState } from './Queue.js';
+import { ConsumeOptions } from './types.js';
+import { Queue, Consumer, queueOptions, onMessage, deleteQueueOptions, QueueState } from './Queue.js';
 import { Shovel, Exchange2Exchange, ShovelDestination, shovelOptions } from './Shovel.js';
 import { Message, MessageProperties } from './Message.js';
 import { Exchange, exchangeType, Binding, exchangeOptions, bindingOptions, ExchangeState } from './Exchange.js';
@@ -29,7 +30,7 @@ interface ConsumerInfo {
   queue: string;
   consumerTag: string;
   ready: boolean;
-  options: consumeOptions;
+  options: ConsumeOptions;
 }
 
 interface BrokerShovelSource {
@@ -60,7 +61,7 @@ export class Broker {
   assertQueue(queueName: string, options?: queueOptions): Queue;
   bindQueue(queueName: string, exchangeName: string, pattern: string, bindOptions?: bindingOptions): Binding;
   unbindQueue(queueName: string, exchangeName: string, pattern: string): void;
-  consume(queueName: string, onMessage: onMessage, options?: consumeOptions): Consumer;
+  consume(queueName: string, onMessage: onMessage, options?: ConsumeOptions): Consumer;
   /**
    * Cancel consumer
    * @param consumerTag Consumer tag
@@ -128,8 +129,8 @@ export class Broker {
    * @param callback event handler function
    * @param options consume options, consumerTag is probably the most usable option, noAck is ignored and always true
    */
-  on(eventName: string, callback: CallableFunction, options?: consumeOptions): Consumer;
-  off(eventName: string, callbackOrObject: CallableFunction | consumeOptions): void;
+  on(eventName: string, callback: CallableFunction, options?: ConsumeOptions): Consumer;
+  off(eventName: string, callbackOrObject: CallableFunction | ConsumeOptions): void;
   prefetch(value?: number): void;
   /** DANGER deletes all broker entities and closes broker */
   reset(): void;

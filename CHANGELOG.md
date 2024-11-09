@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## [9.0.3] - 2024-11-08
+
+- attempt to fix whiny type declarations
+
 ## [9.0.2] - 2024-06-14
 
 - no need to sort single binding or consumer by priority or if priority is not supplied
