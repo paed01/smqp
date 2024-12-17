@@ -1,11 +1,11 @@
 import { Consumer } from './Queue.js';
 import { Broker } from './Broker.js';
-import { Message } from './Message.js';
+import { Message, MessageMessage } from './Message.js';
 
-type shovelOptions = {
-  cloneMessage?: (message: Message) => Message;
+export interface ShovelOptions {
+  cloneMessage?: (message: MessageMessage) => MessageMessage;
   [x: string]: any;
-};
+}
 
 export interface ShovelSource {
   broker: Broker;
@@ -28,7 +28,7 @@ export interface ShovelDestination {
 }
 
 export class Shovel {
-  constructor(name: string, source: ShovelSource, destination: ShovelDestination, options?: shovelOptions);
+  constructor(name: string, source: ShovelSource, destination: ShovelDestination, options?: ShovelOptions);
   name: string;
   source: ShovelSource;
   destination: ShovelDestination;

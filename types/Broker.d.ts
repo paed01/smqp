@@ -1,6 +1,6 @@
 import { ConsumeOptions } from './types.js';
 import { Queue, Consumer, queueOptions, onMessage, deleteQueueOptions, QueueState } from './Queue.js';
-import { Shovel, Exchange2Exchange, ShovelDestination, shovelOptions } from './Shovel.js';
+import { Shovel, Exchange2Exchange, ShovelDestination, ShovelOptions } from './Shovel.js';
 import { Message, MessageProperties } from './Message.js';
 import { Exchange, exchangeType, Binding, exchangeOptions, bindingOptions, ExchangeState } from './Exchange.js';
 
@@ -83,9 +83,9 @@ export class Broker {
   purgeQueue(queueName: string): number;
   sendToQueue(queueName: string, content: any, options?: MessageProperties): number;
   deleteQueue(queueName: string, options?: deleteQueueOptions): { messageCount: number };
-  bindExchange(source: string, destination: string, pattern?: string, options?: shovelOptions): Exchange2Exchange;
+  bindExchange(source: string, destination: string, pattern?: string, options?: ShovelOptions): Exchange2Exchange;
   unbindExchange(source: string, destination: string, pattern?: string): boolean;
-  createShovel(name: string, source: BrokerShovelSource, destination: ShovelDestination, options?: shovelOptions): Shovel;
+  createShovel(name: string, source: BrokerShovelSource, destination: ShovelDestination, options?: ShovelOptions): Shovel;
   closeShovel(name: string): boolean;
   getShovel(name: string): Shovel;
   getShovels(): Shovel[];

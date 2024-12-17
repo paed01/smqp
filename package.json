@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "9.0.3",
+  "version": "9.0.4",
   "type": "module",
   "description": "Synchronous message queueing package",
   "author": {
@@ -67,7 +67,7 @@
     "chronokinesis": "^6.0.0",
     "eslint": "^9.10.0",
     "markdown-toc": "^1.2.0",
-    "mocha": "^10.5.2",
+    "mocha": "^11.0.1",
     "prettier": "^3.2.5",
     "texample": "^0.0.6"
   }

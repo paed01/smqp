@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## [9.0.4] - 2024-12-17
+
+- export MessageMessage and ShovelOptions from fussy type declarations
+
 ## [9.0.3] - 2024-11-08
 
 - attempt to fix whiny type declarations
