@@ -56,7 +56,7 @@ export class Queue {
   evictFirst(compareMessage?: Message): boolean;
   consume(onMessage: onMessage, consumeOptions?: ConsumeOptions, owner?: any): Consumer;
   assertConsumer(onMessage: onMessage, consumeOptions?: ConsumeOptions, owner?: any): Consumer;
-  get(options?: ConsumeOptions): Message | undefined;
+  get(options?: ConsumeOptions): Message | boolean;
   ack(message: Message, allUpTo?: boolean): void;
   nack(message: Message, allUpTo?: boolean, requeue?: boolean): void;
   reject(message: Message, requeue?: boolean): void;

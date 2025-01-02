@@ -1809,7 +1809,7 @@ describe('Broker', () => {
     it('get from empty queue returns false', () => {
       const broker = Broker();
       broker.assertQueue('test-q');
-      expect(broker.get('test-q')).to.be.undefined;
+      expect(broker.get('test-q')).to.be.false;
     });
 
     it('getQueue without name throws', () => {

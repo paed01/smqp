@@ -211,7 +211,7 @@ Creates exchange with name.
 - `type`: type of exchange, must be one of `topic` or `direct`, defaults to `topic`.
 - `options`:
   - `durable`: boolean, defaults to `true`, makes queue durable, i.e. will be returned when getting state
-  - `autoDelete`: boolean, defaults to `true`, the exchange will be removed when all consumers are down
+  - `autoDelete`: boolean, defaults to `true`, the exchange will be removed when all bindings are gone
 
 Returns [Exchange](#exchange).
 

@@ -149,7 +149,7 @@ Queue.prototype.get = function getMessage({
     noAck,
     consumerTag
   })[0];
-  if (!message) return;
+  if (!message) return false;
   if (noAck) {
     this._dequeueMessage(message);
     message[_Message.kPending] = false;

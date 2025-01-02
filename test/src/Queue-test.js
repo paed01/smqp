@@ -1168,7 +1168,7 @@ describe('Queue', () => {
 
       queue.queueMessage({ routingKey: 'test.3' });
 
-      expect(queue.get()).to.be.undefined;
+      expect(queue.get()).to.be.false;
       const consumer = queue.consume(() => {});
 
       expect(queue.messageCount).to.equal(2);

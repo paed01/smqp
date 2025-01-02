@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [9.0.5] - 2025-01-02
+
+- get returns false if there is no consumable message on queue, as stated in doc
+- make sure api is exposed as expected
+
 ## [9.0.4] - 2024-12-17
 
 - export MessageMessage and ShovelOptions from fussy type declarations

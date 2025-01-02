@@ -237,6 +237,50 @@ describe('exchange', () => {
 
       expect(broker.getExchange('test')).to.be.ok;
     });
+
+    it('drops exchange when number of e2e bindings drops to zero', () => {
+      const broker = Broker();
+
+      broker.assertExchange('event', 'topic', { autoDelete: true });
+      broker.assertExchange('test', 'topic', { autoDelete: false });
+
+      broker.bindExchange('event', 'test', '#');
+      broker.bindExchange('event', 'test', '*');
+
+      broker.publish('event', 'test.1', {});
+
+      broker.unbindExchange('event', 'test', '#');
+
+      expect(broker.getExchange('event')).to.be.ok;
+
+      broker.unbindExchange('event', 'test', '*');
+
+      expect(broker.getExchange('event')).to.not.be.ok;
+    });
+
+    it('stops e2e bindings when autodeleted exchange lacks bindings', () => {
+      const broker = new Broker();
+
+      broker.assertExchange('event', 'topic', { autoDelete: false });
+      broker.assertExchange('state', 'topic', { autoDelete: true });
+
+      broker.bindExchange('event', 'state', '#');
+      broker.bindExchange('event', 'state', '*');
+
+      broker.assertQueue('state-q', { durable: false, autoDelete: true });
+      broker.bindQueue('state-q', 'state', '#');
+      broker.consume('state-q', () => {}, { consumerTag: 'c-events' });
+
+      broker.publish('event', 'test.1', {});
+
+      expect(broker.getExchange('state')).to.be.ok;
+      expect(broker.getQueue('state-q').messageCount).to.equal(1);
+
+      broker.cancel('c-events');
+
+      expect(broker.getQueue('state-q')).to.not.be.ok;
+      expect(broker.getExchange('state')).to.not.be.ok;
+    });
   });
 
   describe('durable', () => {

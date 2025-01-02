@@ -160,7 +160,7 @@ Queue.prototype.assertConsumer = function assertConsumer(onMessage, consumeOptio
 
 Queue.prototype.get = function getMessage({ noAck, consumerTag } = {}) {
   const message = this._consumeMessages(1, { noAck, consumerTag })[0];
-  if (!message) return;
+  if (!message) return false;
   if (noAck) {
     this._dequeueMessage(message);
     message[kPending] = false;

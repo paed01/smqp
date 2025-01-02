@@ -49,7 +49,7 @@ export interface BrokerState {
 export function Broker(owner?: any): Broker;
 export class Broker {
   constructor(owner?: any);
-  owner: any;
+  owner?: any;
   get exchangeCount(): number;
   get queueCount(): number;
   get consumerCount(): number;
@@ -111,7 +111,7 @@ export class Broker {
     }?: {
       noAck: boolean;
     },
-  ): Message | undefined;
+  ): Message | boolean | undefined;
   ack(message: Message, allUpTo?: boolean): void;
   ackAll(): void;
   nack(message: Message, allUpTo?: boolean, requeue?: boolean): void;
