@@ -78,7 +78,7 @@ export class Broker {
       ifUnused,
     }?: {
       ifUnused?: boolean;
-    },
+    }
   ): boolean;
   purgeQueue(queueName: string): number;
   sendToQueue(queueName: string, content: any, options?: MessageProperties): number;
@@ -110,7 +110,7 @@ export class Broker {
       noAck,
     }?: {
       noAck: boolean;
-    },
+    }
   ): Message | boolean | undefined;
   ack(message: Message, allUpTo?: boolean): void;
   ackAll(): void;

@@ -100,7 +100,7 @@ describe('Shovel', () => {
               properties: { mandatory: false },
             };
           },
-        },
+        }
       );
       const content = { data: 1 };
 
@@ -157,7 +157,7 @@ describe('Shovel', () => {
 
             return { content: JSON.parse(JSON.stringify(message.content)) };
           },
-        },
+        }
       );
       const content = { data: 1 };
 
@@ -200,7 +200,7 @@ describe('Shovel', () => {
           broker: broker2,
           exchange: 'dest-events',
           exchangeKey: 'shoveled',
-        },
+        }
       );
 
       broker1.publish('source-events', 'event.1');
@@ -235,7 +235,7 @@ describe('Shovel', () => {
         {
           broker: broker2,
           exchange: 'dest-events',
-        },
+        }
       );
 
       broker1.publish('source-events', 'event.1');
@@ -263,7 +263,7 @@ describe('Shovel', () => {
           {
             broker: broker2,
             exchange: 'dest-events',
-          },
+          }
         );
       })
         .to.throw(SmqpError, /source exchange <source-events> not found/)
@@ -286,7 +286,7 @@ describe('Shovel', () => {
           {
             broker: broker2,
             exchange: 'dest-events',
-          },
+          }
         );
       })
         .to.throw(SmqpError, /destination exchange <dest-events> not found/)
@@ -313,7 +313,7 @@ describe('Shovel', () => {
         {
           broker: broker2,
           exchange: 'dest-events',
-        },
+        }
       );
 
       broker1.publish('source-events', 'event.1');
@@ -352,7 +352,7 @@ describe('Shovel', () => {
         {
           broker: broker2,
           exchange: 'dest-events',
-        },
+        }
       );
 
       broker1.publish('source-events', 'event.1');
@@ -389,7 +389,7 @@ describe('Shovel', () => {
         {
           broker: broker2,
           exchange: 'dest-events',
-        },
+        }
       );
 
       broker1.publish('source-events', 'event.1');
@@ -423,7 +423,7 @@ describe('Shovel', () => {
         {
           broker: broker2,
           exchange: 'dest-events',
-        },
+        }
       );
 
       shovel.close();
@@ -454,7 +454,7 @@ describe('Shovel', () => {
         {
           broker: broker2,
           exchange: 'dest-events',
-        },
+        }
       );
 
       broker1.publish('source-events', 'event.1');
@@ -590,7 +590,7 @@ describe('Shovel', () => {
         (_, msg) => {
           messages.push(msg);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       const args = [
@@ -616,7 +616,7 @@ describe('Shovel', () => {
         (_, msg) => {
           messages.push(msg);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       broker1.publish('source-events', 'event.1');
@@ -649,7 +649,7 @@ describe('Shovel', () => {
           broker: broker2,
           exchange: 'dest-events',
           publishProperties: { destProp: true },
-        },
+        }
       );
 
       broker1.publish('source-events', 'test.1', 'snow', { expiration: 10000 });
@@ -691,7 +691,7 @@ describe('Shovel', () => {
             messages.push(msg);
             return msg;
           },
-        },
+        }
       );
 
       broker1.publish('source-events', 'test.1', 'snow', { expiration: 10000 });
@@ -719,7 +719,7 @@ describe('Shovel', () => {
           broker: broker2,
           exchange: 'dest-events',
           publishProperties: { destProp: true },
-        },
+        }
       );
 
       broker1.publish('source-events', 'test.1', 'snow', { mandatory: true });
@@ -751,7 +751,7 @@ describe('Shovel', () => {
             messages.push(msg);
             return msg;
           },
-        },
+        }
       );
 
       broker1.publish('source-events', 'test.1', 'snow', { mandatory: true });
@@ -780,7 +780,7 @@ describe('Shovel', () => {
           broker: broker2,
           exchange: 'dest-events',
           publishProperties: { destProp: true },
-        },
+        }
       );
 
       broker1.publish('source-events', 'test.1', 'snow', { mandatory: true });
@@ -824,7 +824,7 @@ describe('Shovel', () => {
               properties: { type: undefined },
             };
           },
-        },
+        }
       );
 
       const content = { data: 1 };
@@ -1038,7 +1038,7 @@ describe('Shovel', () => {
           exchange: 'events',
           queue: queue.name,
         },
-        { broker: destinationBroker, exchange: 'dest-events' },
+        { broker: destinationBroker, exchange: 'dest-events' }
       );
       broker.publish('events', 'test.1');
 
@@ -1072,7 +1072,7 @@ describe('Shovel', () => {
         {
           broker: destinationBroker,
           exchange: 'dest-events',
-        },
+        }
       );
       broker.publish('events', 'test.1');
 
@@ -1103,7 +1103,7 @@ describe('Shovel', () => {
           exchange: 'events',
           queue: queue.name,
         },
-        { broker: destinationBroker, exchange: 'dest-events' },
+        { broker: destinationBroker, exchange: 'dest-events' }
       );
       broker.publish('events', 'test.1');
 
@@ -1130,7 +1130,7 @@ describe('Shovel', () => {
         broker.createShovel(
           'events-shovel',
           { exchange: 'events', pattern: 'test.*' },
-          { broker: destinationBroker, exchange: 'dest-events' },
+          { broker: destinationBroker, exchange: 'dest-events' }
         );
       })
         .to.throw(SmqpError, /events-shovel is occupied/)
@@ -1154,7 +1154,7 @@ describe('Shovel', () => {
         {
           broker: destinationBroker,
           exchange: 'dest-events',
-        },
+        }
       );
 
       broker.publish('events', 'test.1');

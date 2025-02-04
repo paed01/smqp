@@ -1377,7 +1377,7 @@ describe('Broker', () => {
           broker.cancel('cancel-me');
           broker.publish('event', 'test.3');
         },
-        { consumerTag: 'cancel-me', noAck: true },
+        { consumerTag: 'cancel-me', noAck: true }
       );
 
       broker.publish('event', 'test.1');
@@ -1400,7 +1400,7 @@ describe('Broker', () => {
           broker.cancel('cancel-me');
           broker.publish('event', 'test.3');
         },
-        { consumerTag: 'cancel-me' },
+        { consumerTag: 'cancel-me' }
       );
 
       broker.publish('event', 'test.1');
@@ -1426,7 +1426,7 @@ describe('Broker', () => {
           broker.cancel('cancel-me', false);
           broker.publish('event', 'test.3');
         },
-        { consumerTag: 'cancel-me' },
+        { consumerTag: 'cancel-me' }
       );
 
       broker.publish('event', 'test.1');
@@ -1452,7 +1452,7 @@ describe('Broker', () => {
           broker.cancel(msg.fields.consumerTag, false);
           broker.publish('event', 'test.3');
         },
-        { consumerTag: 'cancel-me', noAck: true },
+        { consumerTag: 'cancel-me', noAck: true }
       );
 
       broker.publish('event', 'test.1');
@@ -2373,7 +2373,7 @@ describe('Broker', () => {
         (routingKey) => {
           messages.push(routingKey);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       broker.publish('source-events', 'test.1');
@@ -2396,7 +2396,7 @@ describe('Broker', () => {
         (routingKey) => {
           messages.push(routingKey);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       broker.publish('source-events', 'test.1');
@@ -2423,7 +2423,7 @@ describe('Broker', () => {
         (_, msg) => {
           messages.push(msg.content);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       const content = { data: 1 };
@@ -2447,7 +2447,7 @@ describe('Broker', () => {
         (_, msg) => {
           messages.push(msg);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       broker.bindExchange('source-events', 'dest-events', 'event.#', { priority: 1000 });
@@ -2458,7 +2458,7 @@ describe('Broker', () => {
         (_, msg) => {
           messages.push(msg);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       broker.publish('source-events', 'event.1');
@@ -2489,7 +2489,7 @@ describe('Broker', () => {
         (_, msg) => {
           messages.push(msg.properties);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       const content = { data: 1 };
@@ -2516,7 +2516,7 @@ describe('Broker', () => {
         (routingKey) => {
           messages.push(routingKey);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       broker.publish('source-events', 'test.1');
@@ -2550,7 +2550,7 @@ describe('Broker', () => {
         (routingKey) => {
           messages.push(routingKey);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       broker.publish('source-events', 'test.1');
@@ -2580,7 +2580,7 @@ describe('Broker', () => {
         (routingKey) => {
           messages.push(routingKey);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       broker.publish('source-events', 'test.1');
@@ -2608,7 +2608,7 @@ describe('Broker', () => {
         (routingKey) => {
           messages.push(routingKey);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       broker.publish('source-events', 'test.1');
@@ -2635,7 +2635,7 @@ describe('Broker', () => {
         (_, msg) => {
           messages.push(msg.content);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       const content = { data: 1 };
@@ -2665,7 +2665,7 @@ describe('Broker', () => {
         (_, msg) => {
           messages.push(msg.properties);
         },
-        { noAck: true },
+        { noAck: true }
       );
 
       const content = { data: 1 };
@@ -2759,7 +2759,7 @@ describe('Broker', () => {
           messages.push(msg);
           broker.ack(msg);
         },
-        { consumerTag: 'ct-test-1' },
+        { consumerTag: 'ct-test-1' }
       );
 
       broker.publish('event', 'event.1', 'MSG');
@@ -2783,7 +2783,7 @@ describe('Broker', () => {
           broker.ack(msg);
           broker.ack(msg);
         },
-        { consumerTag: 'ct-test-1' },
+        { consumerTag: 'ct-test-1' }
       );
 
       broker.publish('event', 'event.1', 'MSG');

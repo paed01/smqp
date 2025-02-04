@@ -467,6 +467,73 @@ describe('Broker queue', () => {
     });
   });
 
+  describe('combination of broker publish and queueMessage', () => {
+    it('delivers messages in the expected order', () => {
+      const broker = new Broker();
+
+      broker.assertExchange('event');
+      const queue = broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+
+      broker.publish('event', 'event.1', 'MSG1');
+      queue.queueMessage({ routingKey: 'queue.1' }, 'MSG2');
+      broker.publish('event', 'event.2', 'MSG3');
+
+      const msgs = [];
+      queue.consume((_, msg) => {
+        msgs.push(msg.content);
+        msg.ack();
+      });
+
+      expect(msgs).to.deep.equal(['MSG1', 'MSG2', 'MSG3']);
+    });
+
+    it('with prefetch delivers messages in the expected order', () => {
+      const broker = new Broker();
+
+      broker.assertExchange('event');
+      const queue = broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+
+      broker.publish('event', 'event.1', 'MSG1');
+
+      const msgs = [];
+
+      queue.consume(
+        (_, msg) => {
+          msgs.push(msg.content);
+          msg.ack();
+        },
+        { prefetch: 100 }
+      );
+
+      queue.queueMessage({ routingKey: 'queue.1' }, 'MSG2');
+      broker.publish('event', 'event.2', 'MSG3');
+
+      expect(msgs).to.deep.equal(['MSG1', 'MSG2', 'MSG3']);
+    });
+
+    it('delivers messages in the expected order', () => {
+      const broker = new Broker();
+
+      broker.assertExchange('event');
+      const queue = broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+
+      broker.publish('event', 'event.1', 'MSG1');
+      queue.queueMessage({ routingKey: 'queue.1' }, 'MSG2');
+      broker.publish('event', 'event.2', 'MSG3');
+
+      const msgs = [];
+      queue.consume((_, msg) => {
+        msgs.push(msg.content);
+        msg.ack();
+      });
+
+      expect(msgs).to.deep.equal(['MSG1', 'MSG2', 'MSG3']);
+    });
+  });
+
   describe('queue.delete()', () => {
     it('deletes queue once from broker', () => {
       const broker = Broker();

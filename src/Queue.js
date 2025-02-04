@@ -228,7 +228,7 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
         messages.splice(
           msgIdx,
           0,
-          new Message({ ...message.fields, redelivered: true }, message.content, message.properties, this._onMessageConsumed),
+          new Message({ ...message.fields, redelivered: true }, message.content, message.properties, this._onMessageConsumed)
         );
       } else {
         deadLetterExchange = this.options.deadLetterExchange;
@@ -494,7 +494,7 @@ export function Consumer(queue, onMessage, options, owner, eventEmitter) {
       autoDelete: false,
       maxLength: this.options.prefetch,
     },
-    new ConsumerQueueEvents(this),
+    new ConsumerQueueEvents(this)
   );
 }
 

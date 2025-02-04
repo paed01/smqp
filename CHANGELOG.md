@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [9.0.6] - 2025-02-04
+
+- some ticks saved by letting the queue queue a published message rather than handing it over to internal `exchange._publishToQueue` to queue the published message
+- es5 trailing commas touched all files
+
 ## [9.0.5] - 2025-01-02
 
 - get returns false if there is no consumable message on queue, as stated in doc

@@ -1777,11 +1777,11 @@ describe('Consumer', () => {
 
       expect(
         messages1.map(({ fields }) => fields.routingKey),
-        '#1 consumer',
+        '#1 consumer'
       ).to.eql(['test.1', 'test.2', 'test.4', 'test.5']);
       expect(
         messages2.map(({ fields }) => fields.routingKey),
-        '#2 consumer',
+        '#2 consumer'
       ).to.eql(['test.3']);
 
       function onMessage1(routingKey, message) {

@@ -27,7 +27,7 @@ function generate(filename) {
 
   const output = Toc.insert(api, tocOptions).replace(
     /<!-- version -->(.|\n)*<!-- versionstop -->/,
-    '<!-- version -->\n\n# ' + version + ' API Reference\n\n<!-- versionstop -->',
+    '<!-- version -->\n\n# ' + version + ' API Reference\n\n<!-- versionstop -->'
   );
 
   fs.writeFileSync(filename, output);

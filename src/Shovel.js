@@ -27,7 +27,7 @@ export function Shovel(name, source, destination, options = {}) {
   if (!destinationExchange) {
     throw new SmqpError(
       `shovel ${name} destination exchange <${destinationExchangeName}> not found`,
-      ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND,
+      ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND
     );
   }
 

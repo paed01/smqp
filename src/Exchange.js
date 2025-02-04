@@ -76,7 +76,7 @@ ExchangeBase.prototype.publish = function publish(routingKey, content, propertie
     {
       content,
       properties,
-    },
+    }
   );
 };
 

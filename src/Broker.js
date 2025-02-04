@@ -239,7 +239,7 @@ Broker.prototype.bindExchange = function bindExchange(source, destination, patte
       broker: this,
       exchange: destination,
     },
-    { ...args },
+    { ...args }
   );
 
   return new Exchange2Exchange(shovel);

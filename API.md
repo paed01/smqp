@@ -461,7 +461,7 @@ broker.on(
   (event) => {
     console.log(event.name, 'fired');
   },
-  { consumerTag: 'my-event-consumertag' },
+  { consumerTag: 'my-event-consumertag' }
 );
 ```
 

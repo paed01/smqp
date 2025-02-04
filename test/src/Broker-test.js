@@ -28,7 +28,7 @@ describe('Broker', () => {
         {
           broker: destination,
           exchange: 'event',
-        },
+        }
       );
 
       shovel.emit('close', shovel);
