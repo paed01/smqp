@@ -88,7 +88,7 @@ ExchangeBase.prototype._onTopicMessage = function topic(routingKey, message) {
   let delivered = 0;
   for (const binding of this[kBindings].slice()) {
     if (!binding.testPattern(routingKey)) continue;
-    this._publishToQueue(binding.queue, routingKey, publishedMsg.content, publishedMsg.properties);
+    binding.queue.queueMessage({ routingKey, exchange: this.name }, publishedMsg.content, publishedMsg.properties);
     ++delivered;
   }
 
@@ -123,12 +123,10 @@ ExchangeBase.prototype._onDirectMessage = function direct(routingKey, message) {
   }
 
   message.ack();
-  this._publishToQueue(deliverToBinding.queue, routingKey, publishedMsg.content, publishedMsg.properties);
-  return 1;
-};
 
-ExchangeBase.prototype._publishToQueue = function publishToQueue(queue, routingKey, content, properties) {
-  queue.queueMessage({ routingKey, exchange: this.name }, content, properties);
+  deliverToBinding.queue.queueMessage({ routingKey, exchange: this.name }, publishedMsg.content, publishedMsg.properties);
+
+  return 1;
 };
 
 ExchangeBase.prototype._emitReturn = function emitReturn(routingKey, content, properties) {
