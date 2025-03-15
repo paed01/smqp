@@ -4,11 +4,12 @@ import { Queue, Consumer, QueueState } from './Queue.js';
 
 type exchangeType = 'topic' | 'direct';
 
-type exchangeOptions = {
+interface ExchangeOptions {
   durable?: boolean;
+  /** Remove exchange when all consumers are down, defaults to true */
   autoDelete?: boolean;
   [x: string]: any;
-};
+}
 
 type bindingOptions = {
   priority?: number;
@@ -25,16 +26,16 @@ export interface BindingState {
 export interface ExchangeState {
   name: string;
   type: exchangeType;
-  options: exchangeOptions;
+  options: ExchangeOptions;
   bindings?: BindingState[];
   /** Undelivered message queue */
   deliveryQueue?: QueueState;
 }
 
 export class Exchange implements ExchangeEventEmitter {
-  constructor(name: string, type?: exchangeType, options?: exchangeOptions);
+  constructor(name: string, type?: exchangeType, options?: ExchangeOptions);
   name: string;
-  options: exchangeOptions;
+  options: ExchangeOptions;
   get type(): exchangeType;
   get bindingCount(): number;
   get bindings(): Binding[];
