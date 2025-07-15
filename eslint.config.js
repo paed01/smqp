@@ -43,8 +43,16 @@ const rules = {
   'no-undef': 2,
   'no-underscore-dangle': 0,
   'no-unused-expressions': 2,
-  'no-unused-vars': 2,
-  'no-use-before-define': 0,
+  'no-unused-vars': ['error', { ignoreRestSiblings: true }],
+  'no-use-before-define': [
+    'error',
+    {
+      functions: false,
+      classes: true,
+      variables: true,
+      allowNamedExports: false,
+    },
+  ],
   'no-var': 2,
   'no-with': 2,
   'prefer-const': ['error', { destructuring: 'all' }],
@@ -70,7 +78,7 @@ export default [
     languageOptions: {
       parserOptions: {
         sourceType: 'module',
-        ecmaVersion: 2018,
+        ecmaVersion: 2020,
       },
       globals: {
         ...globals['shared-node-browser'],
@@ -81,10 +89,6 @@ export default [
   {
     files: ['scripts/**/*.js'],
     languageOptions: {
-      parserOptions: {
-        sourceType: 'module',
-        ecmaVersion: 2020,
-      },
       globals: {
         ...globals.node,
       },
@@ -93,9 +97,6 @@ export default [
   {
     files: ['test/**/*.js'],
     languageOptions: {
-      parserOptions: {
-        ecmaVersion: 2020,
-      },
       globals: {
         ...globals.node,
         ...globals.mocha,

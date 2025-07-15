@@ -1,6 +1,7 @@
 import { Consumer } from './Queue.js';
+import { ExchangeEventEmitter } from './types.js';
 import { Broker } from './Broker.js';
-import { Message, MessageMessage } from './Message.js';
+import { MessageMessage } from './Message.js';
 
 export interface ShovelOptions {
   cloneMessage?: (message: MessageMessage) => MessageMessage;
@@ -8,7 +9,9 @@ export interface ShovelOptions {
 }
 
 export interface ShovelSource {
+  /** source broker */
   broker: Broker;
+  /** source exchange name */
   exchange: string;
   pattern?: string;
   priority?: number;
@@ -27,16 +30,13 @@ export interface ShovelDestination {
   publishProperties?: Record<string, any>;
 }
 
-export class Shovel {
+export class Shovel extends ExchangeEventEmitter {
   constructor(name: string, source: ShovelSource, destination: ShovelDestination, options?: ShovelOptions);
-  name: string;
+  get name(): string;
   source: ShovelSource;
   destination: ShovelDestination;
   get closed(): boolean;
   get consumerTag(): string;
-  emit(eventName: string, content: any): void;
-  on(eventName: string, handler: CallableFunction): Consumer;
-  off(eventName: string, handler: any): Consumer;
   close(): void;
 }
 

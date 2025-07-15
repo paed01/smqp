@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## [10.0.0] - 2025-07-15
+
+- small breaking change when it comes to instantiate a new message - fields object is now required
+- use optional chaining (?) and nullish coalescing (??) where feasible since it's widely available, in nodejs since v14
+- shovel event listener function takes consumer options
+- document shovel
+
 ## [9.0.6] - 2025-02-04
 
 - some ticks saved by letting the queue queue a published message rather than handing it over to internal `exchange._publishToQueue` to queue the published message

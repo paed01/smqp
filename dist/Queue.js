@@ -74,7 +74,7 @@ Queue.prototype.queueMessage = function queueMessage(fields, content, properties
   if (messageTtl && !('expiration' in messageProperties)) {
     messageProperties.expiration = messageTtl;
   }
-  const message = new _Message.Message(fields, content, messageProperties, this._onMessageConsumed);
+  const message = new _Message.Message(fields ?? {}, content, messageProperties, this._onMessageConsumed);
   const capacity = this._getCapacity();
   this.messages.push(message);
   this[kAvailableCount]++;
@@ -109,11 +109,11 @@ Queue.prototype._consumeNext = function consumeNext() {
   }
   return consumed;
 };
-Queue.prototype.consume = function consume(onMessage, consumeOptions = {}, owner) {
+Queue.prototype.consume = function consume(onMessage, consumeOptions, owner) {
   const consumers = this[kConsumers];
   if (consumers.length) {
     if (this[kExclusive]) throw new _Errors.SmqpError(`Queue ${this.name} is exclusively consumed by ${consumers[0].consumerTag}`, _Errors.ERR_EXCLUSIVE_CONFLICT);
-    if (consumeOptions.exclusive) throw new _Errors.SmqpError(`Queue ${this.name} already has consumers and cannot be exclusively consumed`, _Errors.ERR_EXCLUSIVE_NOT_ALLOWED);
+    if (consumeOptions?.exclusive) throw new _Errors.SmqpError(`Queue ${this.name} already has consumers and cannot be exclusively consumed`, _Errors.ERR_EXCLUSIVE_NOT_ALLOWED);
   }
   const consumer = new Consumer(this, onMessage, consumeOptions, owner, new ConsumerEmitter(this));
   if (consumers.push(consumer) > 1 && consumer.options.priority) {
@@ -127,30 +127,29 @@ Queue.prototype.consume = function consume(onMessage, consumeOptions = {}, owner
   if (pendingMessages.length) consumer._push(pendingMessages);
   return consumer;
 };
-Queue.prototype.assertConsumer = function assertConsumer(onMessage, consumeOptions = {}, owner) {
+Queue.prototype.assertConsumer = function assertConsumer(onMessage, consumeOptions, owner) {
   const consumers = this[kConsumers];
   if (!consumers.length) return this.consume(onMessage, consumeOptions, owner);
   for (const consumer of consumers) {
     if (consumer.onMessage !== onMessage) continue;
-    if (consumeOptions.consumerTag && consumeOptions.consumerTag !== consumer.consumerTag) {
-      continue;
-    } else if ('exclusive' in consumeOptions && consumeOptions.exclusive !== consumer.options.exclusive) {
-      continue;
+    if (consumeOptions) {
+      if (consumeOptions.consumerTag && consumeOptions.consumerTag !== consumer.consumerTag) {
+        continue;
+      } else if ('exclusive' in consumeOptions && consumeOptions.exclusive !== consumer.options.exclusive) {
+        continue;
+      }
     }
     return consumer;
   }
   return this.consume(onMessage, consumeOptions, owner);
 };
-Queue.prototype.get = function getMessage({
-  noAck,
-  consumerTag
-} = {}) {
+Queue.prototype.get = function getMessage(options) {
   const message = this._consumeMessages(1, {
-    noAck,
-    consumerTag
+    noAck: options?.noAck,
+    consumerTag: options?.consumerTag
   })[0];
   if (!message) return false;
-  if (noAck) {
+  if (options?.noAck) {
     this._dequeueMessage(message);
     message[_Message.kPending] = false;
   }
@@ -225,10 +224,11 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
   }
   if (deadLetterExchange) {
     const deadLetterRoutingKey = this.options.deadLetterRoutingKey;
-    const deadMessage = new _Message.Message(message.fields, message.content, {
-      ...message.properties,
-      expiration: undefined
-    });
+    const {
+      expiration,
+      ...messageProperties
+    } = message.properties;
+    const deadMessage = new _Message.Message(message.fields, message.content, messageProperties);
     if (deadLetterRoutingKey) deadMessage.fields.routingKey = deadLetterRoutingKey;
     this.emit('dead-letter', {
       deadLetterExchange,
@@ -257,7 +257,7 @@ Queue.prototype._getPendingMessages = function getPendingMessages(untilIndex) {
   const l = messages.length;
   const result = [];
   if (!l) return result;
-  const until = untilIndex === undefined ? l : untilIndex;
+  const until = untilIndex ?? l;
   for (let i = 0; i < until; ++i) {
     const msg = messages[i];
     if (!msg.pending) continue;
@@ -386,14 +386,11 @@ Queue.prototype.recover = function recover(state) {
   }
   return this;
 };
-Queue.prototype.delete = function deleteQueue({
-  ifUnused,
-  ifEmpty
-} = {}) {
+Queue.prototype.delete = function deleteQueue(options) {
   const consumers = this[kConsumers];
-  if (ifUnused && consumers.length) return;
+  if (options?.ifUnused && consumers.length) return;
   const messages = this.messages;
-  if (ifEmpty && messages.length) return;
+  if (options?.ifEmpty && messages.length) return;
   this[kStopped] = true;
   const messageCount = messages.length;
   for (const consumer of this[kConsumers].splice(0)) {

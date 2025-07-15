@@ -48,34 +48,35 @@ Object.defineProperties(Broker.prototype, {
   },
 });
 
-Broker.prototype.subscribe = function subscribe(exchangeName, pattern, queueName, onMessage, options = { durable: true }) {
+Broker.prototype.subscribe = function subscribe(exchangeName, pattern, queueName, onMessage, options) {
   if (!exchangeName || !pattern || typeof onMessage !== 'function')
     throw new TypeError('exchange name, pattern, and message callback are required');
-  if (options && options.consumerTag) this.validateConsumerTag(options.consumerTag);
+  if (options?.consumerTag) this.validateConsumerTag(options.consumerTag);
 
   const exchange = this.assertExchange(exchangeName);
-  const queue = this.assertQueue(queueName, options);
+  const queueOptions = { durable: true, ...options };
+  const queue = this.assertQueue(queueName, queueOptions);
 
-  exchange.bindQueue(queue, pattern, options);
+  exchange.bindQueue(queue, pattern, queueOptions);
 
-  return queue.assertConsumer(onMessage, options, this.owner);
+  return queue.assertConsumer(onMessage, queueOptions, this.owner);
 };
 
 Broker.prototype.subscribeTmp = function subscribeTmp(exchangeName, pattern, onMessage, options) {
   return this.subscribe(exchangeName, pattern, null, onMessage, { ...options, durable: false });
 };
 
-Broker.prototype.subscribeOnce = function subscribeOnce(exchangeName, pattern, onMessage, options = {}) {
+Broker.prototype.subscribeOnce = function subscribeOnce(exchangeName, pattern, onMessage, options) {
   if (typeof onMessage !== 'function') throw new TypeError('message callback is required');
-  if (options && options.consumerTag) this.validateConsumerTag(options.consumerTag);
+  if (options?.consumerTag) this.validateConsumerTag(options.consumerTag);
 
   const exchange = this.assertExchange(exchangeName);
-  const onceOptions = { autoDelete: true, durable: false, priority: options.priority || 0 };
+  const onceOptions = { autoDelete: true, durable: false, priority: options?.priority ?? 0 };
 
   const onceQueue = this.createQueue(null, onceOptions);
   exchange.bindQueue(onceQueue, pattern, onceOptions);
 
-  return this.consume(onceQueue.name, wrappedOnMessage, { noAck: true, consumerTag: options.consumerTag });
+  return this.consume(onceQueue.name, wrappedOnMessage, { noAck: true, consumerTag: options?.consumerTag });
 
   function wrappedOnMessage(...args) {
     onceQueue.delete();
@@ -121,7 +122,7 @@ Broker.prototype.consume = function consume(queueName, onMessage, options) {
   const queue = this.getQueue(queueName);
   if (!queue) throw new SmqpError(`Queue with name <${queueName}> was not found`, ERR_QUEUE_NOT_FOUND);
 
-  if (options) this.validateConsumerTag(options.consumerTag);
+  if (options?.consumerTag) this.validateConsumerTag(options.consumerTag);
 
   return queue.consume(onMessage, options, this.owner);
 };
@@ -156,11 +157,11 @@ Broker.prototype.getExchange = function getExchange(exchangeName) {
   return this[kEntities].get('exchanges').get(exchangeName);
 };
 
-Broker.prototype.deleteExchange = function deleteExchange(exchangeName, { ifUnused } = {}) {
+Broker.prototype.deleteExchange = function deleteExchange(exchangeName, options) {
   if (typeof exchangeName !== 'string') throw new TypeError('exchange name must be a string');
 
   const exchange = this.getExchange(exchangeName);
-  if (!exchange || (ifUnused && exchange.bindingCount)) return false;
+  if (!exchange || (options?.ifUnused && exchange.bindingCount)) return false;
 
   this[kEntities].get('exchanges').delete(exchangeName);
   exchange.close();
@@ -223,16 +224,15 @@ Broker.prototype.recover = function recover(state) {
   return this;
 };
 
-Broker.prototype.bindExchange = function bindExchange(source, destination, pattern = '#', args = {}) {
+Broker.prototype.bindExchange = function bindExchange(source, destination, pattern = '#', args) {
   const name = `e2e-${source}2${destination}-${pattern}`;
-  const { priority } = args;
   const shovel = this.createShovel(
     name,
     {
       broker: this,
       exchange: source,
       pattern,
-      priority,
+      priority: args?.priority,
       consumerTag: `smq.ctag-${name}`,
     },
     {
@@ -250,10 +250,10 @@ Broker.prototype.unbindExchange = function unbindExchange(source, destination, p
   return this.closeShovel(name);
 };
 
-Broker.prototype.publish = function publish(exchangeName, routingKey, content, options) {
+Broker.prototype.publish = function publish(exchangeName, routingKey, content, properties) {
   const exchange = this.getExchange(exchangeName);
   if (!exchange) return;
-  return exchange.publish(routingKey, content, options);
+  return exchange.publish(routingKey, content, properties);
 };
 
 Broker.prototype.purgeQueue = function purgeQueue(queueName) {
@@ -262,7 +262,7 @@ Broker.prototype.purgeQueue = function purgeQueue(queueName) {
   return queue.purge();
 };
 
-Broker.prototype.sendToQueue = function sendToQueue(queueName, content, options = {}) {
+Broker.prototype.sendToQueue = function sendToQueue(queueName, content, options) {
   const queue = this.getQueue(queueName);
   if (!queue) throw new SmqpError(`Queue with name <${queueName}> was not found`, ERR_QUEUE_NOT_FOUND);
   return queue.queueMessage(null, content, options);
@@ -308,15 +308,15 @@ Broker.prototype.getQueue = function getQueue(queueName) {
   return this[kEntities].get('queues').get(queueName);
 };
 
-Broker.prototype.assertQueue = function assertQueue(queueName, options = {}) {
+Broker.prototype.assertQueue = function assertQueue(queueName, options) {
   if (queueName && typeof queueName !== 'string') throw new TypeError('queue name must be a string');
   else if (!queueName) return this.createQueue(null, options);
 
   const queue = this.getQueue(queueName);
-  options = { durable: true, ...options };
-  if (!queue) return this.createQueue(queueName, options);
+  const queueOptions = { durable: true, ...options };
+  if (!queue) return this.createQueue(queueName, queueOptions);
 
-  if (queue.options.durable !== options.durable) throw new SmqpError("Durable doesn't match", ERR_QUEUE_DURABLE_MISMATCH);
+  if (queue.options.durable !== queueOptions?.durable) throw new SmqpError("Durable doesn't match", ERR_QUEUE_DURABLE_MISMATCH);
   return queue;
 };
 
@@ -326,11 +326,11 @@ Broker.prototype.deleteQueue = function deleteQueue(queueName, options) {
   return queue.delete(options);
 };
 
-Broker.prototype.get = function getMessageFromQueue(queueName, { noAck } = {}) {
+Broker.prototype.get = function getMessageFromQueue(queueName, options) {
   const queue = this.getQueue(queueName);
   if (!queue) return;
 
-  return queue.get({ noAck });
+  return queue.get({ noAck: options?.noAck });
 };
 
 Broker.prototype.ack = function ack(message, allUpTo) {

@@ -1,6 +1,6 @@
-import { ConsumeOptions, ExchangeEventEmitter } from 'types';
+import { ExchangeEventEmitter } from './types.js';
 import { MessageProperties } from './Message.js';
-import { Queue, Consumer, QueueState } from './Queue.js';
+import { Queue, QueueState } from './Queue.js';
 
 type exchangeType = 'topic' | 'direct';
 
@@ -32,9 +32,9 @@ export interface ExchangeState {
   deliveryQueue?: QueueState;
 }
 
-export class Exchange implements ExchangeEventEmitter {
+export class Exchange extends ExchangeEventEmitter {
   constructor(name: string, type?: exchangeType, options?: ExchangeOptions);
-  name: string;
+  get name(): string;
   options: ExchangeOptions;
   get type(): exchangeType;
   get bindingCount(): number;
@@ -59,9 +59,6 @@ export class Exchange implements ExchangeEventEmitter {
    */
   recover(state: ExchangeState, getQueue: CallableFunction): Exchange;
   getBinding(queueName: string, pattern: string): Binding;
-  emit(eventName: string, content?: any): number | undefined;
-  on(pattern: string, handler: CallableFunction, consumeOptions?: ConsumeOptions): Consumer;
-  off(pattern: string, handler: CallableFunction | ConsumeOptions): void;
 }
 
 export interface Binding {

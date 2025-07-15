@@ -1,8 +1,8 @@
-import { ConsumeOptions } from './types.js';
-import { Queue, Consumer, queueOptions, onMessage, deleteQueueOptions, QueueState } from './Queue.js';
+import { ConsumeOptions, onMessage } from './types.js';
+import { Queue, Consumer, queueOptions, deleteQueueOptions, QueueState } from './Queue.js';
 import { Shovel, Exchange2Exchange, ShovelDestination, ShovelOptions } from './Shovel.js';
 import { Message, MessageProperties } from './Message.js';
-import { Exchange, exchangeType, Binding, exchangeOptions, bindingOptions, ExchangeState } from './Exchange.js';
+import { Exchange, exchangeType, Binding, ExchangeOptions, bindingOptions, ExchangeState } from './Exchange.js';
 
 type subscribeOptions = {
   /** defaults to true, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down */
@@ -57,7 +57,7 @@ export class Broker {
   subscribeTmp(exchangeName: string, pattern: string, onMessage: onMessage, options?: subscribeOptions): Consumer;
   subscribeOnce(exchangeName: string, pattern: string, onMessage: onMessage, options?: subscribeOptions): Consumer;
   unsubscribe(queueName: string, onMessage: onMessage): void;
-  assertExchange(exchangeName: string, type?: exchangeType, options?: exchangeOptions): Exchange;
+  assertExchange(exchangeName: string, type?: exchangeType, options?: ExchangeOptions): Exchange;
   assertQueue(queueName: string, options?: queueOptions): Queue;
   bindQueue(queueName: string, exchangeName: string, pattern: string, bindOptions?: bindingOptions): Binding;
   unbindQueue(queueName: string, exchangeName: string, pattern: string): void;
@@ -72,14 +72,7 @@ export class Broker {
   getExchange(exchangeName: string): Exchange;
   getQueue(queueName: string): Queue;
   createQueue(queueName: string, options: any): Queue;
-  deleteExchange(
-    exchangeName: string,
-    {
-      ifUnused,
-    }?: {
-      ifUnused?: boolean;
-    }
-  ): boolean;
+  deleteExchange(exchangeName: string, options?: { ifUnused?: boolean }): boolean;
   purgeQueue(queueName: string): number;
   sendToQueue(queueName: string, content: any, options?: MessageProperties): number;
   deleteQueue(queueName: string, options?: deleteQueueOptions): { messageCount: number };
@@ -104,14 +97,7 @@ export class Broker {
   getState(onlyWithContent: boolean): BrokerState | undefined;
   recover(state?: BrokerState): Broker;
   publish(exchangeName: string, routingKey: string, content?: any, options?: MessageProperties): number;
-  get(
-    queueName: string,
-    {
-      noAck,
-    }?: {
-      noAck: boolean;
-    }
-  ): Message | boolean | undefined;
+  get(queueName: string, options?: { noAck: boolean }): ReturnType<Queue['get']>;
   ack(message: Message, allUpTo?: boolean): void;
   ackAll(): void;
   nack(message: Message, allUpTo?: boolean, requeue?: boolean): void;

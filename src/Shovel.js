@@ -12,7 +12,7 @@ const kSourceBroker = Symbol.for('sourceBroker');
 const kSourceExchange = Symbol.for('sourceExchange');
 const kE2EShovel = Symbol.for('shovel');
 
-export function Shovel(name, source, destination, options = {}) {
+export function Shovel(name, source, destination, options) {
   if (!name || typeof name !== 'string') throw new TypeError('Shovel name is required and must be a string');
 
   const { broker: sourceBroker, exchange: sourceExchangeName, pattern, queue, priority } = source;
@@ -48,7 +48,7 @@ export function Shovel(name, source, destination, options = {}) {
   this[kSourceBroker] = sourceBroker;
   this[kSourceExchange] = sourceExchange;
   this[kDestinationExchange] = destinationExchange;
-  this[kCloneMessage] = options.cloneMessage;
+  this[kCloneMessage] = options?.cloneMessage;
 
   const boundClose = this.close.bind(this);
 
@@ -90,8 +90,8 @@ Shovel.prototype.emit = function emit(eventName, content) {
   this.events.emit(`shovel.${eventName}`, content);
 };
 
-Shovel.prototype.on = function on(eventName, handler) {
-  return this.events.on(`shovel.${eventName}`, handler);
+Shovel.prototype.on = function on(eventName, handler, options) {
+  return this.events.on(`shovel.${eventName}`, handler, options);
 };
 
 Shovel.prototype.off = function off(eventName, handler) {

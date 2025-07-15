@@ -17,7 +17,7 @@ const kEventHandlers = Symbol.for('eventHandlers');
 const kSourceBroker = Symbol.for('sourceBroker');
 const kSourceExchange = Symbol.for('sourceExchange');
 const kE2EShovel = Symbol.for('shovel');
-function Shovel(name, source, destination, options = {}) {
+function Shovel(name, source, destination, options) {
   if (!name || typeof name !== 'string') throw new TypeError('Shovel name is required and must be a string');
   const {
     broker: sourceBroker,
@@ -57,7 +57,7 @@ function Shovel(name, source, destination, options = {}) {
   this[kSourceBroker] = sourceBroker;
   this[kSourceExchange] = sourceExchange;
   this[kDestinationExchange] = destinationExchange;
-  this[kCloneMessage] = options.cloneMessage;
+  this[kCloneMessage] = options?.cloneMessage;
   const boundClose = this.close.bind(this);
   const eventHandlers = this[kEventHandlers] = new Set([sourceExchange.on('delete', boundClose), destinationExchange.on('delete', boundClose)]);
   let consumer;
@@ -96,8 +96,8 @@ Object.defineProperties(Shovel.prototype, {
 Shovel.prototype.emit = function emit(eventName, content) {
   this.events.emit(`shovel.${eventName}`, content);
 };
-Shovel.prototype.on = function on(eventName, handler) {
-  return this.events.on(`shovel.${eventName}`, handler);
+Shovel.prototype.on = function on(eventName, handler, options) {
+  return this.events.on(`shovel.${eventName}`, handler, options);
 };
 Shovel.prototype.off = function off(eventName, handler) {
   return this.events.off(`shovel.${eventName}`, handler);

@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "9.0.6",
+  "version": "10.0.0",
   "type": "module",
   "description": "Synchronous message queueing package",
   "author": {
@@ -68,6 +68,6 @@
     "markdown-toc": "^1.2.0",
     "mocha": "^11.0.1",
     "prettier": "^3.2.5",
-    "texample": "^0.0.7"
+    "texample": "^0.0.8"
   }
 }

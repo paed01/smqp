@@ -65,5 +65,14 @@ describe('Broker', () => {
       const broker = Broker();
       expect(() => broker.assertQueue({})).to.throw(TypeError);
     });
+
+    it('falsy validateConsumerTag returns true', () => {
+      const broker = Broker();
+      expect(broker.validateConsumerTag('')).to.be.true;
+      expect(broker.validateConsumerTag(false)).to.be.true;
+      expect(broker.validateConsumerTag(0)).to.be.true;
+      expect(broker.validateConsumerTag(null)).to.be.true;
+      expect(broker.validateConsumerTag(undefined)).to.be.true;
+    });
   });
 });

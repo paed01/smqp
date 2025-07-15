@@ -93,6 +93,10 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`message.ack([allUpTo])`](#messageackallupto)
     - [`message.nack([allUpTo, requeue])`](#messagenackallupto-requeue)
     - [`message.reject([requeue])`](#messagerejectrequeue)
+  - [`new Shovel(name, source, destination[, options])`](#new-shovelname-source-destination-options)
+    - [`shovel.close()`](#shovelclose)
+    - [`shovel.on(eventName, callback[, options])`](#shoveloneventname-callback-options)
+    - [`shovel.off(eventName, callbackOrObject)`](#shoveloffeventname-callbackorobject)
   - [SmqpError](#smqperror)
     - [`error.code`](#errorcode)
   - [`getRoutingKeyPattern(pattern)`](#getroutingkeypatternpattern)
@@ -416,21 +420,15 @@ Arguments:
 - `options`: Optional options object
   - `cloneMessage(message) => message`: clone message function called with shoveled message, must return new [message](#message), altough fields are ignored completely. Known to be used to clone the message content to make sure no references to the old message is traversed.
 
-Returns Shovel:
-
-- `name`: name of shovel
-- `source`: input source options
-- `destination`: input destination broker options
-  - `queue`: name of queue, added if not provided when creating shovel
-- `consumerTag`: consumer tag for source shovel queue
-- `on(eventName, handler)`: listen for shovel events, returns event consumer
-- `close()`: close shovel and cancel source consumer tag
+Returns [Shovel](#new-shovelname-source-destination-options).
 
 Shovel is closed if either source- or destination exchange is closed, or source consumer is canceled.
 
 ### `broker.getShovel(name)`
 
 Get shovel by name.
+
+Returns [Shovel](#new-shovelname-source-destination-options).
 
 ### `broker.closeShovel(name)`
 
@@ -832,6 +830,104 @@ Reject message.
 Same as `nack(false, requeu)`
 
 - `requeue`: optional boolean, requeue message, defaults to true
+
+## `new Shovel(name, source, destination[, options])`
+
+Create a shovel between brokers.
+
+**Arguments**:
+
+- `name`: shovel name
+- `source`: source broker options
+  - `broker`: source [broker](#new-brokerowner)
+  - `exchange`: source exchange name
+  - `pattern`: optional shovel message routing key pattern, defaults to `#`
+  - `priority`: optional binding priority
+  - `queue`: optional source binding queue name, must be asserted if used
+  - `consumerTag`: optional source binding queue consumer tag name
+- `destination`: destination broker options
+  - `broker`: destination [broker](#new-brokerowner)
+  - `exchange`: destination exchange name
+  - `exchangeKey`: optional destination exchange routing key, defaults to original message's routing key
+  - `publishProperties`: optional object with message properties to overwrite when shovelling messages
+- `options`: optional shovel options
+  - `cloneMessage`: optional function to handle message before shoveling, should return message, e.g `(message) => JSON.parse(JSON.stringify(message))`
+
+**Properties**:
+
+- `name`: readonly shovel name
+- `source`: source broker options
+  - `queue`: name of queue, added if not provided when creating shovel
+- `destination`: destination broker options
+- `closed`: readonly boolean if the shovel is closed or not
+- `consumerTag`: readonly source queue consumer tag name
+
+```javascript
+import { Shovel, Broker } from 'smqp';
+
+const sourceBroker = new Broker();
+
+const sourceExchange = sourceBroker.assertExchange('events', 'topic');
+
+const destinationBroker = new Broker();
+
+const destinationExchange = destinationBroker.assertExchange('events', 'topic');
+
+const shovel = new Shovel(
+  'event2event',
+  {
+    broker: sourceBroker,
+    exchange: sourceExchange.name,
+  },
+  {
+    broker: destinationBroker,
+    exchange: destinationExchange.name,
+  }
+);
+
+destinationBroker.subscribeTmp(
+  'events',
+  'event.*',
+  (_, msg) => {
+    console.log({ shovelled: msg });
+  },
+  { noAck: true }
+);
+
+sourceBroker.publish('events', 'event.1', 'SHOVELME1');
+```
+
+Shoveled message properties will contain two extra properties:
+
+- `source-exchange`: source exchange name
+- `shovel-name`: shovel name
+
+### `shovel.close()`
+
+Close shovel.
+
+### `shovel.on(eventName, callback[, options])`
+
+Listen for events from Shovel.
+
+Arguments:
+
+- `eventName`: name of event or a "routingKey" pattern
+- `callback`: event callback
+- `options`: optional consume options
+  - `consumerTag`: optional event consumer tag
+
+Returns [consumer](#consumer) - that can be canceled.
+
+### `shovel.off(eventName, callbackOrObject)`
+
+Turn off event listener(s) associated with event callback.
+
+Arguments:
+
+- `eventName`: name of event
+- `callbackOrObject`: event callback function to off or object with basically one property:
+  - `consumerTag`: optional event consumer tag to off
 
 ## SmqpError
 

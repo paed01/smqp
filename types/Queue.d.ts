@@ -1,7 +1,5 @@
-import { ConsumeOptions, ExchangeEventEmitter } from './types.js';
+import { ConsumeOptions, ExchangeEventEmitter, onMessage } from './types.js';
 import { Message, MessageFields, MessageProperties, MessageMessage } from './Message.js';
-
-type onMessage = (routingKey: string, message: Message, owner: any) => void;
 
 type queueOptions = {
   autoDelete?: boolean;
@@ -43,9 +41,9 @@ export const enum QueueEventNames {
   QueueSaturated = 'saturated',
 }
 
-export class Queue {
+export class Queue extends ExchangeEventEmitter {
   constructor(name?: string, options?: queueOptions, eventEmitter?: ExchangeEventEmitter);
-  name: string;
+  get name(): string;
   options: queueOptions;
   get consumerCount(): number;
   get consumers(): Consumer[];
@@ -56,7 +54,7 @@ export class Queue {
   evictFirst(compareMessage?: Message): boolean;
   consume(onMessage: onMessage, consumeOptions?: ConsumeOptions, owner?: any): Consumer;
   assertConsumer(onMessage: onMessage, consumeOptions?: ConsumeOptions, owner?: any): Consumer;
-  get(options?: ConsumeOptions): Message | boolean;
+  get(options?: ConsumeOptions): Message | undefined;
   ack(message: Message, allUpTo?: boolean): void;
   nack(message: Message, allUpTo?: boolean, requeue?: boolean): void;
   reject(message: Message, requeue?: boolean): void;
@@ -68,7 +66,7 @@ export class Queue {
   unbindConsumer(consumer: Consumer, requeue?: boolean): void;
   emit(eventName: string, content?: any): number | undefined;
   on(eventName: string | QueueEventNames, handler: CallableFunction, options?: ConsumeOptions): Consumer;
-  off(eventName: string | QueueEventNames, handler: CallableFunction | ConsumeOptions): Consumer;
+  off(eventName: string | QueueEventNames, handler: CallableFunction | ConsumeOptions): void;
   purge(): number;
   getState(): QueueState;
   recover(state?: QueueState): Queue;

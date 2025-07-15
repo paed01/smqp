@@ -1,4 +1,4 @@
-import { Broker, Shovel } from '../src/index.js';
+import { Broker, Shovel, Consumer } from '../src/index.js';
 import { SmqpError } from '../src/Errors.js';
 
 describe('Shovel', () => {
@@ -14,6 +14,39 @@ describe('Shovel', () => {
       expect(shovel).to.have.property('on').that.is.a('function');
       expect(shovel).to.have.property('off').that.is.a('function');
       expect(shovel).to.have.property('close').that.is.a('function');
+    });
+
+    it('on returns consumer', () => {
+      const broker1 = new Broker();
+      broker1.assertExchange('source-events', 'topic');
+
+      const broker2 = new Broker();
+      broker2.assertExchange('dest-events', 'topic');
+
+      const shovel = new Shovel('my-shovel', { broker: broker1, exchange: 'source-events' }, { broker: broker2, exchange: 'dest-events' });
+
+      expect(shovel.on('close', () => {}, { consumerTag: 'close-tag-1' })).to.be.instanceof(Consumer);
+    });
+
+    it('on takes consumer options', () => {
+      const broker1 = new Broker();
+      broker1.assertExchange('source-events', 'topic');
+
+      const broker2 = new Broker();
+      broker2.assertExchange('dest-events', 'topic');
+
+      const shovel = new Shovel('my-shovel', { broker: broker1, exchange: 'source-events' }, { broker: broker2, exchange: 'dest-events' });
+      shovel.on('close', onClose1, { consumerTag: 'close-tag-1' });
+      shovel.on('close', onClose2, { consumerTag: 'close-tag-2', priority: 1000 });
+
+      expect(shovel.events.bindingCount).to.equal(2);
+
+      shovel.off('close', { consumerTag: 'close-tag-1' });
+
+      expect(shovel.events.bindingCount).to.equal(1);
+
+      function onClose1() {}
+      function onClose2() {}
     });
 
     it('off turns off event handler', () => {
