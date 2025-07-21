@@ -75,7 +75,8 @@ export class Queue extends ExchangeEventEmitter {
   stop(): void;
 }
 
-export interface Consumer {
+export class Consumer {
+  constructor(queue: Queue, onMessage: onMessage, options: ConsumeOptions, owner?: any, eventEmitter?: ExchangeEventEmitter);
   options: ConsumeOptions;
   get consumerTag(): string;
   get ready(): boolean;

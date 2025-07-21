@@ -28,13 +28,14 @@ export interface MessageProperties extends Record<string, any> {
   'shovel-name'?: string;
 }
 
-export interface MessageMessage {
+export abstract class MessageMessage {
   fields: MessageFields;
   content?: any;
   properties: MessageProperties;
 }
 
-export interface Message extends MessageMessage {
+export class Message extends MessageMessage {
+  constructor(fields: MessageFields, content?: any, properties?: MessageProperties);
   /**
    * Acknowledge message
    * @param allUpTo all outstanding messages prior to and including the given message shall be considered acknowledged. If false, or omitted, only the message supplied is acknowledged. Defaults to false

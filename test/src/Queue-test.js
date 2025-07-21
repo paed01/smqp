@@ -264,7 +264,7 @@ describe('Queue', () => {
 
     it('throws if message fields is not an object', () => {
       const queue = new Queue();
-      expect(() => queue.queueMessage('test.1')).to.throw(TypeError);
+      expect(() => queue.queueMessage('test.1')).to.throw(TypeError, /fields must be an object/);
     });
 
     it('throws if message properties is not an object', () => {

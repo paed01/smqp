@@ -1,4 +1,4 @@
-import { Broker } from '../../src/Broker.js';
+import { Broker } from 'smqp';
 
 describe('Broker', () => {
   describe('coverage', () => {

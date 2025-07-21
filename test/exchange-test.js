@@ -1,5 +1,4 @@
-import { Broker } from '../src/index.js';
-import { Message } from '../src/Message.js';
+import { Broker, Message } from 'smqp';
 
 const deliveryQueueSymbol = Symbol.for('deliveryQueue');
 

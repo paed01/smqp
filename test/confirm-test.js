@@ -1,6 +1,6 @@
 import * as ck from 'chronokinesis';
 
-import { Broker } from '../src/index.js';
+import { Broker } from 'smqp';
 
 describe('Confirm messages with confirm property', () => {
   after(ck.reset);

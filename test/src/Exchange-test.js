@@ -1,5 +1,5 @@
-import { Exchange, EventExchange } from '../../src/Exchange.js';
-import { Queue } from '../../src/Queue.js';
+import { Queue, Exchange } from 'smqp';
+import { EventExchange } from '../../src/Exchange.js';
 
 describe('Exchange', () => {
   describe('ctor', () => {
@@ -95,12 +95,12 @@ describe('Exchange', () => {
 
       expect(messages2.map(({ fields }) => fields.routingKey)).to.eql(['test.1.2', 'test.2.2']);
 
-      function onMessage1(routingKey, message) {
+      function onMessage1(_routingKey, message) {
         messages1.push(message);
         message.ack();
       }
 
-      function onMessage2(routingKey, message) {
+      function onMessage2(_routingKey, message) {
         messages2.push(message);
         message.ack();
       }
@@ -131,15 +131,15 @@ describe('Exchange', () => {
 
       expect(messages).to.have.length(3);
 
-      function onMessageCloseBinding1(routingKey, message) {
+      function onMessageCloseBinding1(_routingKey, message) {
         messages.push(message);
         binding1.close();
       }
-      function onMessageCloseBinding2(routingKey, message) {
+      function onMessageCloseBinding2(_routingKey, message) {
         messages.push(message);
         binding2.close();
       }
-      function onMessageCloseBinding3(routingKey, message) {
+      function onMessageCloseBinding3(_routingKey, message) {
         messages.push(message);
         binding3.close();
       }
@@ -194,11 +194,11 @@ describe('Exchange', () => {
 
       expect(messages2.map(({ fields }) => fields.routingKey)).to.eql(['test.1.1', 'test.1.2', 'test.2.1', 'test.2.2']);
 
-      function onMessage1(routingKey, message) {
+      function onMessage1(_routingKey, message) {
         messages1.push(message);
         message.ack();
       }
-      function onMessage2(routingKey, message) {
+      function onMessage2(_routingKey, message) {
         messages2.push(message);
         message.ack();
       }
@@ -270,15 +270,15 @@ describe('Exchange', () => {
 
       expect(messages).to.have.length(3);
 
-      function onMessageCloseBinding3(routingKey, message) {
+      function onMessageCloseBinding3(_routingKey, message) {
         messages.push(message);
         binding3.close();
       }
-      function onMessageCloseBinding2(routingKey, message) {
+      function onMessageCloseBinding2(_routingKey, message) {
         messages.push(message);
         binding2.close();
       }
-      function onMessageCloseBinding1(routingKey, message) {
+      function onMessageCloseBinding1(_routingKey, message) {
         messages.push(message);
         binding1.close();
       }
@@ -692,7 +692,7 @@ describe('Exchange', () => {
       expect(event.fields).to.have.property('routingKey', 'exchange.delete');
       expect(event.content).to.have.property('name', 'event');
 
-      function onEvent(eventName, message) {
+      function onEvent(_eventName, message) {
         event = message;
       }
     });
@@ -710,7 +710,7 @@ describe('Exchange', () => {
 
       expect(event).to.not.be.ok;
 
-      function onEvent(eventName, message) {
+      function onEvent(_eventName, message) {
         event = message;
       }
     });
@@ -728,7 +728,7 @@ describe('Exchange', () => {
 
       expect(event).to.not.be.ok;
 
-      function onEvent(eventName, message) {
+      function onEvent(_eventName, message) {
         event = message;
       }
     });
@@ -744,7 +744,7 @@ describe('Exchange', () => {
 
       expect(event).to.not.be.ok;
 
-      function onEvent(eventName, message) {
+      function onEvent(_eventName, message) {
         event = message;
       }
     });

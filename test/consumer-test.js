@@ -1,4 +1,4 @@
-import { Broker } from '../src/index.js';
+import { Broker } from 'smqp';
 
 describe('consumer', () => {
   describe('noAck', () => {

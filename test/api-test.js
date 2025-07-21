@@ -1,4 +1,4 @@
-import * as smqp from '../src/index.js';
+import * as smqp from 'smqp';
 
 describe('smqp', () => {
   it('exposes Broker', () => {
@@ -15,6 +15,10 @@ describe('smqp', () => {
 
   it('exposes Queue', () => {
     expect(smqp.Queue).to.be.a('function');
+  });
+
+  it('exposes Consumer', () => {
+    expect(smqp.Consumer).to.be.a('function');
   });
 
   it('exposes Shovel', () => {

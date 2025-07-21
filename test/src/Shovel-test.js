@@ -1,5 +1,4 @@
-import { Shovel } from '../../src/Shovel.js';
-import { Broker } from '../../src/Broker.js';
+import { Broker, Shovel } from 'smqp';
 
 describe('Shovel', () => {
   describe('ctor', () => {

@@ -1,5 +1,4 @@
-import { Broker, Shovel, Consumer } from '../src/index.js';
-import { SmqpError } from '../src/Errors.js';
+import { Broker, Shovel, Consumer, SmqpError } from 'smqp';
 
 describe('Shovel', () => {
   describe('api', () => {
@@ -93,7 +92,7 @@ describe('Shovel', () => {
       expect(message).to.have.property('content', 'snow');
       expect(message).to.have.property('properties').with.property('expiration', 10000);
 
-      function onMessage(routingKey, msg) {
+      function onMessage(_routingKey, msg) {
         messages.push(msg);
       }
     });
@@ -148,7 +147,7 @@ describe('Shovel', () => {
       expect(message).to.have.property('content').with.property('data', 1);
       expect(message).to.have.property('properties').with.property('mandatory', false);
 
-      function onMessage(routingKey, msg) {
+      function onMessage(_routingKey, msg) {
         messages.push(msg);
       }
     });
@@ -205,7 +204,7 @@ describe('Shovel', () => {
       expect(message.properties).to.have.property('type', 'shoveled');
       expect(message.properties).to.have.property('source-exchange', 'source-events');
 
-      function onMessage(routingKey, msg) {
+      function onMessage(_routingKey, msg) {
         messages.push(msg);
       }
     });
@@ -243,7 +242,7 @@ describe('Shovel', () => {
       expect(messages[0]).to.have.property('fields').with.property('routingKey', 'shoveled');
       expect(messages[1]).to.have.property('fields').with.property('routingKey', 'shoveled');
 
-      function onMessage(routingKey, msg) {
+      function onMessage(_routingKey, msg) {
         messages.push(msg);
       }
     });

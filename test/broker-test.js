@@ -1,12 +1,7 @@
 import * as ck from 'chronokinesis';
 
-import * as smqp from '../src/index.js';
-import { Broker } from '../src/index.js';
-import { Queue, Consumer } from '../src/Queue.js';
-import { Exchange } from '../src/Exchange.js';
-import { SmqpError } from '../src/Errors.js';
-import { Shovel } from '../src/Shovel.js';
-import { Message } from '../src/Message.js';
+import * as smqp from 'smqp';
+import { Broker, Queue, Consumer, Exchange, SmqpError, Shovel, Message } from 'smqp';
 
 describe('Broker', () => {
   describe('api', () => {

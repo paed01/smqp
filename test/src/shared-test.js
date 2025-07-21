@@ -1,4 +1,4 @@
-import { getRoutingKeyPattern } from '../../src/index.js';
+import { getRoutingKeyPattern } from 'smqp';
 
 describe('shared', () => {
   describe('routingKey pattern', () => {

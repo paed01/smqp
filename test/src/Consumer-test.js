@@ -1,4 +1,4 @@
-import { Queue } from '../../src/Queue.js';
+import { Queue } from 'smqp';
 
 describe('Consumer', () => {
   describe('internal queue', () => {

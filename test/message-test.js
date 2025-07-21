@@ -1,7 +1,6 @@
 import * as ck from 'chronokinesis';
 
-import { Broker } from '../src/index.js';
-import { Message } from '../src/Message.js';
+import { Broker, Message } from 'smqp';
 
 describe('message', () => {
   after(ck.reset);
