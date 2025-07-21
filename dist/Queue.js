@@ -167,7 +167,7 @@ Queue.prototype._consumeMessages = function consumeMessages(n, consumeOptions) {
       evict.push(message);
       continue;
     }
-    message._consume(consumeOptions);
+    message._consume(consumeOptions?.consumerTag);
     this[kAvailableCount]--;
     msgs.push(message);
     if (! --n) break;
@@ -491,14 +491,14 @@ Consumer.prototype._push = function push(messages) {
 };
 Consumer.prototype._consume = function consume() {
   const internalQ = this[kInternalQueue];
+  const consumerTag = this[kName];
   let _msg;
   while (_msg = internalQ.get()) {
     const msg = _msg;
-    const options = this.options;
-    msg._consume(options);
+    msg._consume(consumerTag);
     const message = msg.content;
-    message._consume(options, () => msg.ack(false));
-    if (options.noAck) message.ack();
+    message._consume(consumerTag, () => msg.ack(false));
+    if (this.options.noAck) message.ack();
     this.onMessage(msg.fields.routingKey, message, this.owner);
     if (this[kStopped]) break;
   }

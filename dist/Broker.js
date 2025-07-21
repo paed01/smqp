@@ -225,7 +225,7 @@ Broker.prototype.purgeQueue = function purgeQueue(queueName) {
 Broker.prototype.sendToQueue = function sendToQueue(queueName, content, options) {
   const queue = this.getQueue(queueName);
   if (!queue) throw new _Errors.SmqpError(`Queue with name <${queueName}> was not found`, _Errors.ERR_QUEUE_NOT_FOUND);
-  return queue.queueMessage(null, content, options);
+  return queue.queueMessage({}, content, options);
 };
 Broker.prototype._getQueuesState = function getQueuesState(onlyWithContent) {
   let result;

@@ -2,11 +2,13 @@
 
 ## Unreleased
 
-## [10.0.0] - 2025-07-15
+## [10.0.0] - 2025-07-16
 
-- small breaking change when it comes to instantiate a new message - fields object is now required
+- small breaking change when it comes to instantiate a new message - fields object is required
 - use optional chaining (?) and nullish coalescing (??) where feasible since it's widely available, in nodejs since v14
-- shovel event listener function takes consumer options
+- shovel on event listener function takes consumer options
+- export Message type as class
+- export Consumer type as class
 - document shovel
 
 ## [9.0.6] - 2025-02-04

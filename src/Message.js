@@ -49,7 +49,7 @@ Message.prototype.reject = function reject(requeue = true) {
   this.nack(false, requeue);
 };
 
-Message.prototype._consume = function consume({ consumerTag }, consumedCb) {
+Message.prototype._consume = function consume(consumerTag, consumedCb) {
   this[kPending] = true;
   this.fields.consumerTag = consumerTag;
   this[kOnConsumed][0] = consumedCb;
