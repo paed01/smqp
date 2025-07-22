@@ -5,8 +5,9 @@ import { Queue, QueueState } from './Queue.js';
 type exchangeType = 'topic' | 'direct';
 
 interface ExchangeOptions {
+  /** makes exchange durable, i.e. will be returned when getting state, defaults to true */
   durable?: boolean;
-  /** Remove exchange when all consumers are down, defaults to true */
+  /** remove exchange when all bindings are gone, defaults to true */
   autoDelete?: boolean;
   [x: string]: any;
 }

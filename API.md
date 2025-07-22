@@ -13,7 +13,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.publish(exchangeName, routingKey[, content, options])`](#brokerpublishexchangename-routingkey-content-options)
     - [`broker.close()`](#brokerclose)
     - [`broker.assertExchange(exchangeName[, type = topic, options])`](#brokerassertexchangeexchangename-type--topic-options)
-    - [`broker.deleteExchange(exchangeName[, ifUnused])`](#brokerdeleteexchangeexchangename-ifunused)
+    - [`broker.deleteExchange(exchangeName[, { ifUnused }])`](#brokerdeleteexchangeexchangename--ifunused-)
     - [`broker.bindExchange(source, destination[, pattern, args])`](#brokerbindexchangesource-destination-pattern-args)
     - [`broker.unbindExchange(source, destination[, pattern])`](#brokerunbindexchangesource-destination-pattern)
     - [`broker.assertQueue(queueName[, options])`](#brokerassertqueuequeuename-options)
@@ -219,9 +219,17 @@ Creates exchange with name.
 
 Returns [Exchange](#exchange).
 
-### `broker.deleteExchange(exchangeName[, ifUnused])`
+### `broker.deleteExchange(exchangeName[, { ifUnused }])`
 
 Delete exchange by name
+
+Arguments:
+
+- `exchangeName`: exchange name
+- `options`: optional options
+  - `ifUnused`: delete if no bindings
+
+Returns boolean if exchange was deleted or not.
 
 ### `broker.bindExchange(source, destination[, pattern, args])`
 
@@ -319,7 +327,10 @@ Create queue with name. Throws if queue already exists.
 
 Delete queue by name.
 
-- options
+Arguments:
+
+- `queueName`: queue name
+- `options`: optional options
   - `ifUnused`: delete if no consumers, defaults to false
   - `ifEmpty`: delete if no messages, defaults to false
 
@@ -504,7 +515,7 @@ Noop, only placeholder.
 
 ### `broker.reset()`
 
-Reset everything. Deletes exchanges, queues, consumers, and bindings.
+Reset everything. Deletes exchanges, queues, consumers and bindings.
 
 ## Exchange
 

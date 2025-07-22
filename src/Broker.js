@@ -158,8 +158,6 @@ Broker.prototype.getExchange = function getExchange(exchangeName) {
 };
 
 Broker.prototype.deleteExchange = function deleteExchange(exchangeName, options) {
-  if (typeof exchangeName !== 'string') throw new TypeError('exchange name must be a string');
-
   const exchange = this.getExchange(exchangeName);
   if (!exchange || (options?.ifUnused && exchange.bindingCount)) return false;
 

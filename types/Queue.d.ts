@@ -2,7 +2,9 @@ import { ConsumeOptions, ExchangeEventEmitter, onMessage } from './types.js';
 import { Message, MessageFields, MessageProperties, MessageMessage } from './Message.js';
 
 type queueOptions = {
+  /** makes queue durable, i.e. will be returned when getting state, defaults to true */
   autoDelete?: boolean;
+  /** makes queue durable, i.e. will be returned when getting state */
   durable?: boolean;
   messageTtl?: number;
   maxLength?: number;

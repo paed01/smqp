@@ -75,7 +75,7 @@ export class Broker {
   deleteExchange(exchangeName: string, options?: { ifUnused?: boolean }): boolean;
   purgeQueue(queueName: string): number;
   sendToQueue(queueName: string, content: any, options?: MessageProperties): number;
-  deleteQueue(queueName: string, options?: deleteQueueOptions): { messageCount: number };
+  deleteQueue(queueName: string, options?: deleteQueueOptions): { messageCount: number } | undefined;
   bindExchange(source: string, destination: string, pattern?: string, options?: ShovelOptions): Exchange2Exchange;
   unbindExchange(source: string, destination: string, pattern?: string): boolean;
   createShovel(name: string, source: BrokerShovelSource, destination: ShovelDestination, options?: ShovelOptions): Shovel;
