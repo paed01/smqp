@@ -1450,6 +1450,62 @@ describe('Queue', () => {
 
       expect(queue.messageCount).to.equal(0);
     });
+
+    it('recover empty message object is ok', () => {
+      const state = { messages: [{}] };
+
+      const queue = new Queue('test-q');
+
+      queue.recover(state);
+
+      expect(queue.messageCount).to.equal(1);
+
+      const msg = queue.get();
+      expect(msg.fields, 'message fields').to.be.an('object').with.property('redelivered', true);
+      expect(msg.properties, 'message properties').to.be.an('object');
+    });
+
+    it('recover message without fields is ok', () => {
+      const state = { messages: [{ properties: {} }] };
+
+      const queue = new Queue('test-q');
+
+      queue.recover(state);
+
+      expect(queue.messageCount).to.equal(1);
+
+      const msg = queue.get();
+      expect(msg.fields, 'message fields').to.be.an('object').with.property('redelivered', true);
+      expect(msg.properties, 'message properties').to.be.an('object');
+    });
+
+    it('recover message without null properties is ok', () => {
+      const state = { messages: [{ properties: null }] };
+
+      const queue = new Queue('test-q');
+
+      queue.recover(state);
+
+      expect(queue.messageCount).to.equal(1);
+
+      const msg = queue.get();
+      expect(msg.fields, 'message fields').to.be.an('object').with.property('redelivered', true);
+      expect(msg.properties, 'message properties').to.be.an('object');
+    });
+
+    it('recovered message has cloned fields and properties', () => {
+      const state = { messages: [{ fields: { routingKey: 'test.1' }, properties: { persistent: true } }] };
+
+      const queue = new Queue('test-q');
+
+      queue.recover(state);
+
+      expect(queue.messageCount).to.equal(1);
+
+      const msg = queue.get();
+      expect(msg.fields, 'message fields').to.be.an('object').that.is.not.equal(state.messages[0].fields);
+      expect(msg.properties, 'message properties').to.be.an('object').that.is.not.equal(state.messages[0].properties);
+    });
   });
 
   describe('evictFirst(compareMessage)', () => {

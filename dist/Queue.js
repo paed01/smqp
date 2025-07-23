@@ -300,19 +300,16 @@ Queue.prototype.unbindConsumer = function unbindConsumer(consumer, requeue = tru
   if (!consumers.length && this.options.autoDelete) return this.emit('delete', this);
 };
 Queue.prototype.emit = function emit(eventName, content) {
-  const eventEmitter = this.events;
-  if (!eventEmitter) return;
-  eventEmitter.emit(`queue.${eventName}`, content);
+  if (!this.events) return;
+  this.events.emit(`queue.${eventName}`, content);
 };
 Queue.prototype.on = function on(eventName, handler, options) {
-  const eventEmitter = this.events;
-  if (!eventEmitter) return;
-  return eventEmitter.on(`queue.${eventName}`, handler, options);
+  if (!this.events) return;
+  return this.events.on(`queue.${eventName}`, handler, options);
 };
 Queue.prototype.off = function off(eventName, handler) {
-  const eventEmitter = this.events;
-  if (!eventEmitter) return;
-  return eventEmitter.off(`queue.${eventName}`, handler);
+  if (!this.events) return;
+  return this.events.off(`queue.${eventName}`, handler);
 };
 Queue.prototype.purge = function purge() {
   const toDelete = this.messages.filter(({
@@ -372,7 +369,7 @@ Queue.prototype.recover = function recover(state) {
     content,
     properties
   } of state.messages) {
-    if (properties.persistent === false) continue;
+    if (properties?.persistent === false) continue;
     const msg = new _Message.Message({
       ...fields,
       redelivered: true

@@ -2,7 +2,14 @@
 
 ## Unreleased
 
-## [10.0.0] - 2025-07-16
+## [10.0.1] - 2025-07-23
+
+Belt and suspenders release.
+
+- allow recover messages without properties
+- make sure recovered message without fields is ok
+
+## [10.0.0] - 2025-07-21
 
 - small breaking change when it comes to instantiate a new message - fields object is required
 - use optional chaining (?) and nullish coalescing (??) where feasible since it's widely available, in nodejs since v14

@@ -13,7 +13,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.publish(exchangeName, routingKey[, content, options])`](#brokerpublishexchangename-routingkey-content-options)
     - [`broker.close()`](#brokerclose)
     - [`broker.assertExchange(exchangeName[, type = topic, options])`](#brokerassertexchangeexchangename-type--topic-options)
-    - [`broker.deleteExchange(exchangeName[, { ifUnused }])`](#brokerdeleteexchangeexchangename--ifunused-)
+    - [`broker.deleteExchange(exchangeName[, {ifUnused}])`](#brokerdeleteexchangeexchangename-ifunused)
     - [`broker.bindExchange(source, destination[, pattern, args])`](#brokerbindexchangesource-destination-pattern-args)
     - [`broker.unbindExchange(source, destination[, pattern])`](#brokerunbindexchangesource-destination-pattern)
     - [`broker.assertQueue(queueName[, options])`](#brokerassertqueuequeuename-options)
@@ -75,8 +75,8 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`queue.getState()`](#queuegetstate)
     - [`queue.nack(message[, allUpTo, requeue = true])`](#queuenackmessage-allupto-requeue--true)
     - [`queue.nackAll([requeue = true])`](#queuenackallrequeue--true)
+    - [`queue.on(eventName, handler[, consumeOptions])`](#queueoneventname-handler-consumeoptions)
     - [`queue.off(eventName, handler)`](#queueoffeventname-handler)
-    - [`queue.on(eventName, handler)`](#queueoneventname-handler)
     - [`queue.peek([ignoreDelivered])`](#queuepeekignoredelivered)
     - [`queue.purge()`](#queuepurge)
     - [`queue.queueMessage(fields[, content, properties])`](#queuequeuemessagefields-content-properties)
@@ -219,7 +219,7 @@ Creates exchange with name.
 
 Returns [Exchange](#exchange).
 
-### `broker.deleteExchange(exchangeName[, { ifUnused }])`
+### `broker.deleteExchange(exchangeName[, {ifUnused}])`
 
 Delete exchange by name
 
@@ -566,6 +566,8 @@ Arguments:
 - `consumeOptions`: optional consume options
   - `consumerTag`: optional event consumer tag
 
+Returns [consumer](#consumer)
+
 ### `exchange.off(pattern, handlerOrObject)`
 
 Stop consuming events from exchange.
@@ -718,11 +720,7 @@ Will throw a TypeError if messages contains circular JSON. The error will be dec
 
 ### `queue.nackAll([requeue = true])`
 
-### `queue.off(eventName, handler)`
-
-Stop listening for events from queue.
-
-### `queue.on(eventName, handler)`
+### `queue.on(eventName, handler[, consumeOptions])`
 
 Listen for events from queue.
 
@@ -736,6 +734,19 @@ Events:
 - `queue.message`: message was queued
 - `queue.ready`: queue is ready to receive new messages
 - `queue.saturated`: queue is saturated, i.e. max capacity was reached
+
+Arguments:
+
+- `eventName`: event pattern
+- `handler`: event handler function
+- `consumeOptions`: optional consume options
+  - `consumerTag`: optional event consumer tag
+
+Returns [consumer](#consumer)
+
+### `queue.off(eventName, handler)`
+
+Stop listening for events from queue.
 
 ### `queue.peek([ignoreDelivered])`
 
