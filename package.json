@@ -63,7 +63,7 @@
     "@babel/preset-env": "^7.24.4",
     "c8": "^10.1.2",
     "chai": "^5.1.0",
-    "chronokinesis": "^6.0.0",
+    "chronokinesis": "^7.0.0",
     "eslint": "^9.10.0",
     "markdown-toc": "^1.2.0",
     "mocha": "^11.0.1",
