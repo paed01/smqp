@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## [10.0.2] - 2025-11-13
+
+- prove provenance and get green-outlined-cake-checkbox-badge by publishing with github actions
+
 ## [10.0.1] - 2025-07-23
 
 Belt and suspenders release.

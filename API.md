@@ -21,7 +21,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
     - [`broker.unbindQueue(queueName, exchangeName, pattern)`](#brokerunbindqueuequeuename-exchangename-pattern)
     - [`broker.consume(queueName, onMessage[, options])`](#brokerconsumequeuename-onmessage-options)
     - [`broker.cancel(consumerTag[, requeue = true])`](#brokercancelconsumertag-requeue--true)
-    - [`broker.createQueue(queueName[, options])`](#brokercreatequeuequeuename-options)
+    - [`broker.createQueue([queueName, options])`](#brokercreatequeuequeuename-options)
     - [`broker.deleteQueue(queueName[, {ifUnused, ifEmpty}])`](#brokerdeletequeuequeuename-ifunused-ifempty)
     - [`broker.getExchange(exchangeName)`](#brokergetexchangeexchangename)
     - [`broker.getQueue(queueName)`](#brokergetqueuequeuename)
@@ -269,11 +269,14 @@ Arguments:
 
 Assert a queue into existence.
 
+- `queueName`: optional queue name, a name will be genereted if omitted
 - `options`: optional queue options
   - `durable`: boolean, defaults to `true`, makes queue durable, i.e. will be returned when getting state
   - `autoDelete`: boolean, defaults to `true`, the queue will be removed when all consumers are down
   - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange if non-existing
   - `messageTtl`: integer, expire message after milliseconds, [see Message Eviction](#message-eviction)
+
+Returns [Queue](#queue).
 
 ### `broker.bindQueue(queueName, exchangeName, pattern[, options])`
 
@@ -319,9 +322,18 @@ Cancel consumption by consumer tag.
 
 Returns true if consumer tag was found, and consequently false if not.
 
-### `broker.createQueue(queueName[, options])`
+### `broker.createQueue([queueName, options])`
 
 Create queue with name. Throws if queue already exists.
+
+- `queueName`: optional queue name, a name will be genereted if omitted
+- `options`: optional queue options
+  - `durable`: boolean, defaults to `true`, makes queue durable, i.e. will be returned when getting state
+  - `autoDelete`: boolean, defaults to `true`, the queue will be removed when all consumers are down
+  - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange if non-existing
+  - `messageTtl`: integer, expire message after milliseconds, [see Message Eviction](#message-eviction)
+
+Returns [Queue](#queue).
 
 ### `broker.deleteQueue(queueName[, {ifUnused, ifEmpty}])`
 
@@ -348,7 +360,7 @@ Returns a list of consumer properties, i.e. queue name, consumer tag, and option
 
 ### `broker.getConsumer(consumerTag)`
 
-Get [consumer](#consumer) by consumer tag. Returns existing consumer or nothing
+Get [consumer](#consumer) by consumer tag. Returns existing consumer or nothing.
 
 ### `broker.getState([onlyWithContent])`
 

@@ -71,7 +71,7 @@ export class Broker {
   cancel(consumerTag: string, requeue?: boolean): boolean;
   getExchange(exchangeName: string): Exchange;
   getQueue(queueName: string): Queue;
-  createQueue(queueName: string, options: any): Queue;
+  createQueue(queueName?: string, options?: queueOptions): Queue;
   deleteExchange(exchangeName: string, options?: { ifUnused?: boolean }): boolean;
   purgeQueue(queueName: string): number;
   sendToQueue(queueName: string, content: any, options?: MessageProperties): number;
