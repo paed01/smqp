@@ -121,9 +121,6 @@ Broker.prototype.unbindQueue = function unbindQueue(queueName, exchangeName, pat
 Broker.prototype.consume = function consume(queueName, onMessage, options) {
   const queue = this.getQueue(queueName);
   if (!queue) throw new SmqpError(`Queue with name <${queueName}> was not found`, ERR_QUEUE_NOT_FOUND);
-
-  if (options?.consumerTag) this.validateConsumerTag(options.consumerTag);
-
   return queue.consume(onMessage, options, this.owner);
 };
 
@@ -352,13 +349,7 @@ Broker.prototype.reject = function reject(message, requeue) {
 };
 
 Broker.prototype.validateConsumerTag = function validateConsumerTag(consumerTag) {
-  if (!consumerTag) return true;
-
-  if (this[kEntities].get('consumers').has(consumerTag)) {
-    throw new SmqpError(`Consumer tag must be unique, ${consumerTag} is occupied`, ERR_CONSUMER_TAG_CONFLICT);
-  }
-
-  return true;
+  return this[kEventHandler].validateConsumerTag('' + consumerTag);
 };
 
 Broker.prototype.createShovel = function createShovel(name, source, destination, options) {
@@ -430,6 +421,14 @@ BrokerEventHandler.prototype.listen = function listen(emitter) {
   emitter.on('#', this.handler);
 };
 
+BrokerEventHandler.prototype.validateConsumerTag = function validateConsumerTag(consumerTag) {
+  if (this.entities.get('consumers').has(consumerTag)) {
+    throw new SmqpError(`Consumer tag must be unique, ${consumerTag} is occupied`, ERR_CONSUMER_TAG_CONFLICT);
+  }
+
+  return true;
+};
+
 BrokerEventHandler.prototype.handler = function eventHandler(eventName, msg) {
   switch (eventName) {
     case 'exchange.delete': {
@@ -453,6 +452,10 @@ BrokerEventHandler.prototype.handler = function eventHandler(eventName, msg) {
       if (!exchange) return;
       const { fields, content, properties } = msg.content.message;
       exchange.publish(fields.routingKey, content, properties);
+      break;
+    }
+    case 'queue.consume.validate.tag': {
+      this.validateConsumerTag(msg.content.consumerTag);
       break;
     }
     case 'queue.consume': {

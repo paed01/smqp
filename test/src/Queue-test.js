@@ -1,5 +1,4 @@
-import { Queue } from '../../src/Queue.js';
-import { SmqpError } from '../../src/Errors.js';
+import { Queue, SmqpError } from 'smqp';
 
 describe('Queue', () => {
   describe('ctor', () => {
@@ -1639,7 +1638,7 @@ describe('Consumer', () => {
 
     expect(consumer.ready).to.be.true;
 
-    function onMessage(routingKey, message) {
+    function onMessage(_routingKey, message) {
       messages.push(message);
     }
   });
@@ -1895,7 +1894,7 @@ describe('Consumer', () => {
 
       expect(queue).to.have.property('messageCount', 0);
 
-      function onMessage(routingKey, msg) {
+      function onMessage(_routingKey, msg) {
         if (messages.find((m) => m.fields.routingKey === msg.fields.routingKey)) throw new Error('Circuitbreaker');
         messages.push(msg);
         msg.ack();

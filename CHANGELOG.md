@@ -2,18 +2,24 @@
 
 ## Unreleased
 
-## [10.0.2] - 2025-11-13
+## v11.0.0 - 2025-11-27
+
+### Breaking
+
+- calling `queue.consume(onMessage, {consumerTag})` with existing consumer tag throws `SmqpError`. The previous behaviour effectively bypassed the unique consumer tag check leaving a lingering consumer munching messages.
+
+## v10.0.2 - 2025-11-13
 
 - prove provenance and get green-outlined-cake-checkbox-badge by publishing with github actions
 
-## [10.0.1] - 2025-07-23
+## v10.0.1 - 2025-07-23
 
 Belt and suspenders release.
 
 - allow recover messages without properties
 - make sure recovered message without fields is ok
 
-## [10.0.0] - 2025-07-21
+## v10.0.0 - 2025-07-21
 
 - small breaking change when it comes to instantiate a new message - fields object is required
 - use optional chaining (?) and nullish coalescing (??) where feasible since it's widely available, in nodejs since v14
@@ -22,33 +28,33 @@ Belt and suspenders release.
 - export Consumer type as class
 - document shovel
 
-## [9.0.6] - 2025-02-04
+## v9.0.6 - 2025-02-04
 
 - some ticks saved by letting the queue queue a published message rather than handing it over to internal `exchange._publishToQueue` to queue the published message
 - es5 trailing commas touched all files
 
-## [9.0.5] - 2025-01-02
+## v9.0.5 - 2025-01-02
 
 - get returns false if there is no consumable message on queue, as stated in doc
 - make sure api is exposed as expected
 
-## [9.0.4] - 2024-12-17
+## v9.0.4 - 2024-12-17
 
 - export MessageMessage and ShovelOptions from fussy type declarations
 
-## [9.0.3] - 2024-11-08
+## v9.0.3 - 2024-11-08
 
 - attempt to fix whiny type declarations
 
-## [9.0.2] - 2024-06-14
+## v9.0.2 - 2024-06-14
 
 - no need to sort single binding or consumer by priority or if priority is not supplied
 
-## [9.0.1] - 2024-06-10
+## v9.0.1 - 2024-06-10
 
 - stop emitting queue `message` event when message is queued, no listeners AFAIK
 
-## [9.0.0] - 2024-06-08
+## v9.0.0 - 2024-06-08
 
 ### Breaking
 
@@ -62,20 +68,20 @@ Belt and suspenders release.
 - fix API.md `getRoutingKeyPattern` example, destructing a method from an prototyped instance doesn't work
 - run through markdown examples with [texample](https://www.npmjs.com/package/texample)
 
-## [8.2.4] - 2024-04-19
+## v8.2.4 - 2024-04-19
 
 - using prettier for formatting rules was mistakenly considered a production dependency. Now it is back where it belong.
 
-## [8.2.3] - 2024-04-08
+## v8.2.3 - 2024-04-08
 
 - major update of eslint
 - use prettier for formatting rules, touched basically ALL files
 
-## [8.2.2] - 2024-02-03
+## v8.2.2 - 2024-02-03
 
 - `broker.getConsumers()` now also returns if the consumer is ready or not. Cannot remember why, but the info is there
 
-## [8.2.1] - 2023-10-21
+## v8.2.1 - 2023-10-21
 
 - export Message, Queue, Consumer, and Exchange
 - allow queue event options `queue.on(event, handler[, options])`
@@ -83,26 +89,26 @@ Belt and suspenders release.
 - `broker.get(queueName, { noAck: true })` not only dequeues message it also marks the actual message as consumed on the, until now, undocumented `message.pending` flag
 - fix other inconsistent message pending stuff
 
-## [8.2.0] - 2023-09-03
+## v8.2.0 - 2023-09-03
 
 - introduce `SmqpError(message, code)` inherited from Error, it is thrown when package specific errors occur. It is also exported so that instance can be checked
 - no more general errors, either it is a `TypeError` or `SmqpError`
 - fix inconsistent cancel consumer implementations in queue, add requeue argument when applicable
 
-## [8.1.0] - 2023-08-26
+## v8.1.0 - 2023-08-26
 
 - noAck consumer continues consuming if error is thrown in message callback, the error is, hopefully, caught somewhere else
 - ack consumer continues consuming if error is thrown in message callback after message was acked
 - add some Broker, Queue, Exchange, Shovel, and Consumer argument constraints
 - fix exchange to exchange binding type
 
-## [8.0.0] - 2023-06-22
+## v8.0.0 - 2023-06-22
 
 - shovel ignores shoveling if destination exchange lacks bindings, could be breaking if cloneMessage function option was used to make things happen
 - abide to new lint rules
 - bump all dev dependencies
 
-## [7.1.4] - 2023-04-05
+## v7.1.4 - 2023-04-05
 
 - type declare broker state from `getState()`
 

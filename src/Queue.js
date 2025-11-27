@@ -124,6 +124,10 @@ Queue.prototype.consume = function consume(onMessage, consumeOptions, owner) {
       throw new SmqpError(`Queue ${this.name} already has consumers and cannot be exclusively consumed`, ERR_EXCLUSIVE_NOT_ALLOWED);
   }
 
+  if (consumeOptions?.consumerTag) {
+    this.emit('consume.validate.tag', consumeOptions);
+  }
+
   const consumer = new Consumer(this, onMessage, consumeOptions, owner, new ConsumerEmitter(this));
   if (consumers.push(consumer) > 1 && consumer.options.priority) {
     consumers.sort(sortByPriority);

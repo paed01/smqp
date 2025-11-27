@@ -1,4 +1,4 @@
-import { Broker } from 'smqp';
+import { Broker, SmqpError } from 'smqp';
 
 describe('Broker queue', () => {
   describe('options', () => {
@@ -554,7 +554,7 @@ describe('Broker queue', () => {
     });
   });
 
-  describe('maxLength', () => {
+  describe('maxLength option', () => {
     it('maxLength = 0 evicts all messages', () => {
       const broker = Broker();
 
@@ -908,7 +908,7 @@ describe('Broker queue', () => {
     });
   });
 
-  describe('peek', () => {
+  describe('queue.peek([ignoreDelivered])', () => {
     it('returns nothing if no messages', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
@@ -925,7 +925,7 @@ describe('Broker queue', () => {
     });
   });
 
-  describe('cancel', () => {
+  describe('cancel consumer', () => {
     it('cancels consumer by tag', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
@@ -1093,7 +1093,7 @@ describe('Broker queue', () => {
     });
   });
 
-  describe('close', () => {
+  describe('queue.close()', () => {
     it('closes all consumers', () => {
       const broker = Broker();
       const queue = broker.assertQueue('event-q');
@@ -1110,7 +1110,7 @@ describe('Broker queue', () => {
     });
   });
 
-  describe('stop', () => {
+  describe('queue.stop()', () => {
     it('stops consumers and keeps messages', () => {
       const broker = Broker();
       const queue = broker.assertQueue('event-q');
@@ -1131,7 +1131,7 @@ describe('Broker queue', () => {
     });
   });
 
-  describe('getState', () => {
+  describe('queue.getState()', () => {
     it('returns only name and options if no messages', () => {
       const broker = Broker();
       const queue = broker.assertQueue('test-q');
@@ -1161,23 +1161,108 @@ describe('Broker queue', () => {
       queue.get().ack();
 
       expect(queue.getState()).to.be.ok;
-      expect(queue.getState(true).queues).to.be.undefined;
     });
   });
 
-  describe('recover()', () => {
-    it('recover without state returns queue', () => {
+  describe('queue.consume(onMessage[, {consumerTag}])', () => {
+    it('queue consume with existing consumer tag on same queue throws tag conflict error', () => {
       const broker = Broker();
-      const queue = broker.assertQueue('test-q', { durable: true });
-      queue.queueMessage({ routingKey: 'test.1' });
+      const queue = broker.createQueue('test-q');
 
-      expect(broker.getState().queues).to.be.ok;
-      expect(broker.getState(true).queues).to.be.ok;
+      queue.consume(() => {}, { consumerTag: 'c-tag' });
 
-      queue.get().ack();
+      try {
+        queue.consume(() => {}, { consumerTag: 'c-tag' });
+      } catch (err) {
+        // eslint-disable-next-line no-var
+        var error = err;
+      }
 
-      expect(queue.getState()).to.be.ok;
-      expect(queue.getState(true).queues).to.be.undefined;
+      expect(error).to.be.instanceOf(SmqpError);
+      expect(error.code).to.equal('ERR_SMQP_CONSUMER_TAG_CONFLICT');
+    });
+
+    it('queue consume with existing consumer tag does not add consumer to queue', () => {
+      const broker = Broker();
+      const queue = broker.createQueue('test-q');
+
+      queue.consume(() => {}, { consumerTag: 'c-tag' });
+
+      expect(() => {
+        queue.consume(() => {}, { consumerTag: 'c-tag' });
+      }).to.throw(SmqpError);
+
+      expect(queue.consumerCount).to.equal(1);
+      expect(broker.consumerCount).to.equal(1);
+    });
+
+    it('queue consume with existing consumer tag on other queue throws tag conflict error', () => {
+      const broker = Broker();
+      const queue1 = broker.createQueue('test-q');
+      const queue2 = broker.createQueue('event-q');
+
+      queue1.consume(() => {}, { consumerTag: 'c-tag' });
+
+      try {
+        queue2.consume(() => {}, { consumerTag: 'c-tag' });
+      } catch (err) {
+        // eslint-disable-next-line no-var
+        var error = err;
+      }
+
+      expect(error).to.be.instanceOf(SmqpError);
+      expect(error.code).to.equal('ERR_SMQP_CONSUMER_TAG_CONFLICT');
+    });
+  });
+
+  describe('queue.assertConsumer(onMessage[, {consumerTag}])', () => {
+    it('queue consume with existing consumer tag on same queue throws tag conflict error', () => {
+      const broker = Broker();
+      const queue = broker.createQueue('test-q');
+
+      queue.assertConsumer(() => {}, { consumerTag: 'c-tag' });
+
+      try {
+        queue.assertConsumer(() => {}, { consumerTag: 'c-tag' });
+      } catch (err) {
+        // eslint-disable-next-line no-var
+        var error = err;
+      }
+
+      expect(error).to.be.instanceOf(SmqpError);
+      expect(error.code).to.equal('ERR_SMQP_CONSUMER_TAG_CONFLICT');
+    });
+
+    it('queue consume with existing consumer tag does not add consumer to queue', () => {
+      const broker = Broker();
+      const queue = broker.createQueue('test-q');
+
+      queue.assertConsumer(() => {}, { consumerTag: 'c-tag' });
+
+      expect(() => {
+        queue.assertConsumer(() => {}, { consumerTag: 'c-tag' });
+      }).to.throw(SmqpError);
+
+      expect(queue.consumerCount).to.equal(1);
+      expect(broker.consumerCount).to.equal(1);
+    });
+
+    it('queue consume with existing consumer tag on other queue throws tag conflict error', () => {
+      const broker = Broker();
+      const queue1 = broker.createQueue('test-q');
+      const queue2 = broker.createQueue('event-q');
+
+      queue1.assertConsumer(() => {}, { consumerTag: 'c-tag' });
+
+      try {
+        queue2.assertConsumer(() => {}, { consumerTag: 'c-tag' });
+      } catch (err) {
+        // eslint-disable-next-line no-var
+        var error = err;
+      }
+
+      expect(error).to.be.instanceOf(SmqpError);
+      expect(error.code).to.equal('ERR_SMQP_CONSUMER_TAG_CONFLICT');
     });
   });
 });
