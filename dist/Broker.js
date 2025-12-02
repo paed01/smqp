@@ -404,13 +404,9 @@ BrokerEventHandler.prototype.handler = function eventHandler(eventName, msg) {
         exchange.publish(fields.routingKey, content, properties);
         break;
       }
-    case 'queue.consume.validate.tag':
-      {
-        this.validateConsumerTag(msg.content.consumerTag);
-        break;
-      }
     case 'queue.consume':
       {
+        this.validateConsumerTag(msg.content.consumerTag);
         this.entities.get('consumers').set(msg.content.consumerTag, msg.content);
         break;
       }

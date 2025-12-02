@@ -124,11 +124,9 @@ Queue.prototype.consume = function consume(onMessage, consumeOptions, owner) {
       throw new SmqpError(`Queue ${this.name} already has consumers and cannot be exclusively consumed`, ERR_EXCLUSIVE_NOT_ALLOWED);
   }
 
-  if (consumeOptions?.consumerTag) {
-    this.emit('consume.validate.tag', consumeOptions);
-  }
-
   const consumer = new Consumer(this, onMessage, consumeOptions, owner, new ConsumerEmitter(this));
+  this.emit('consume', consumer);
+
   if (consumers.push(consumer) > 1 && consumer.options.priority) {
     consumers.sort(sortByPriority);
   }
@@ -136,8 +134,6 @@ Queue.prototype.consume = function consume(onMessage, consumeOptions, owner) {
   if (consumer.options.exclusive) {
     this[kExclusive] = true;
   }
-
-  this.emit('consume', consumer);
 
   const pendingMessages = this._consumeMessages(consumer.capacity, consumer.options);
   if (pendingMessages.length) consumer._push(pendingMessages);

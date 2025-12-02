@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v11.0.1 - 2025-12-02
+
+- mitigate degraded performance as a result of refactoring consumer tag uniqueness
+
 ## v11.0.0 - 2025-11-27
 
 ### Breaking

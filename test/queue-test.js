@@ -1169,6 +1169,7 @@ describe('Broker queue', () => {
       const broker = Broker();
       const queue = broker.createQueue('test-q');
 
+      queue.consume(() => {});
       queue.consume(() => {}, { consumerTag: 'c-tag' });
 
       try {
@@ -1180,6 +1181,7 @@ describe('Broker queue', () => {
 
       expect(error).to.be.instanceOf(SmqpError);
       expect(error.code).to.equal('ERR_SMQP_CONSUMER_TAG_CONFLICT');
+      expect(queue.consumerCount, 'no of queue consumers').to.equal(2);
     });
 
     it('queue consume with existing consumer tag does not add consumer to queue', () => {
@@ -1212,11 +1214,14 @@ describe('Broker queue', () => {
 
       expect(error).to.be.instanceOf(SmqpError);
       expect(error.code).to.equal('ERR_SMQP_CONSUMER_TAG_CONFLICT');
+      expect(broker.consumerCount, 'no of broker consumers').to.equal(1);
+      expect(queue1.consumerCount, 'no of queue consumers queue 1').to.equal(1);
+      expect(queue2.consumerCount, 'no of queue consumers queue 2').to.equal(0);
     });
   });
 
   describe('queue.assertConsumer(onMessage[, {consumerTag}])', () => {
-    it('queue consume with existing consumer tag on same queue throws tag conflict error', () => {
+    it('assert consumer on same queue with different onMessage throws tag conflict error', () => {
       const broker = Broker();
       const queue = broker.createQueue('test-q');
 

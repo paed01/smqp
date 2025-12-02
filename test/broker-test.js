@@ -25,7 +25,7 @@ describe('Broker', () => {
     });
   });
 
-  describe('subscribe()', () => {
+  describe('subscribe(...)', () => {
     it('creates topic exchange with passed exchange name if not exists', () => {
       const broker = Broker();
 
@@ -159,6 +159,23 @@ describe('Broker', () => {
         ++messageCount;
       }
     });
+
+    it('no resources are created if consumer tag is not unique', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+      broker.consume('test', () => {}, { consumerTag: 'guid' });
+
+      expect(() => {
+        broker.subscribe('event', 'event.#', 'event-q', () => {}, { consumerTag: 'guid' });
+      })
+        .to.throw(SmqpError, /guid/)
+        .with.property('code', 'ERR_SMQP_CONSUMER_TAG_CONFLICT');
+
+      expect(broker.exchangeCount, 'exchanges').to.equal(0);
+      expect(broker.queueCount, 'queues').to.equal(1);
+      expect(broker.consumerCount, 'consumers').to.equal(1);
+    });
   });
 
   describe('exclusive subscription', () => {
@@ -210,7 +227,7 @@ describe('Broker', () => {
     });
   });
 
-  describe('subscribeTmp()', () => {
+  describe('subscribeTmp(...)', () => {
     it('supports subscribe with suffixed wildcard hash (test.#)', (done) => {
       const broker = Broker();
 
@@ -376,6 +393,23 @@ describe('Broker', () => {
         ++messageCount;
       }
     });
+
+    it('no resources are created if consumer tag is not unique', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+      broker.consume('test', () => {}, { consumerTag: 'guid' });
+
+      expect(() => {
+        broker.subscribeTmp('event', 'event.#', () => {}, { consumerTag: 'guid' });
+      })
+        .to.throw(SmqpError, /guid/)
+        .with.property('code', 'ERR_SMQP_CONSUMER_TAG_CONFLICT');
+
+      expect(broker.exchangeCount, 'exchanges').to.equal(0);
+      expect(broker.queueCount, 'queues').to.equal(1);
+      expect(broker.consumerCount, 'consumers').to.equal(1);
+    });
   });
 
   describe('subscribeOnce()', () => {
@@ -509,6 +543,23 @@ describe('Broker', () => {
         broker.subscribeOnce('event', '#', 'not-fn');
       }).to.throw(TypeError, /message callback/);
     });
+
+    it('no resources are created if consumer tag is not unique', () => {
+      const broker = Broker();
+
+      broker.assertQueue('test');
+      broker.consume('test', () => {}, { consumerTag: 'guid' });
+
+      expect(() => {
+        broker.subscribeOnce('event', 'event.#', () => {}, { consumerTag: 'guid' });
+      })
+        .to.throw(SmqpError, /guid/)
+        .with.property('code', 'ERR_SMQP_CONSUMER_TAG_CONFLICT');
+
+      expect(broker.exchangeCount, 'exchanges').to.equal(0);
+      expect(broker.queueCount, 'queues').to.equal(1);
+      expect(broker.consumerCount, 'consumers').to.equal(1);
+    });
   });
 
   describe('unsubscribe()', () => {
@@ -610,7 +661,7 @@ describe('Broker', () => {
     });
   });
 
-  describe('consume()', () => {
+  describe('consume(queueName, onMessage[, options])', () => {
     it('returns consumer', () => {
       const broker = Broker();
 
