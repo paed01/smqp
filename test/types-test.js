@@ -107,4 +107,46 @@ describe('generated types bundle', () => {
       expect(dts).to.match(/createShovel\(name: string, source: ShovelSource, destination: ShovelDestination, options\?: ShovelOptions\)/);
     });
   });
+
+  describe('Queue method signatures', () => {
+    it('queueMessage carries typed params', () => {
+      expect(dts).to.match(/queueMessage\(fields: MessageFields, content\?: any, properties\?: MessageProperties\)/);
+    });
+
+    it('consume carries typed params', () => {
+      expect(dts).to.match(/consume\(onMessage: onMessage, consumeOptions\?: ConsumeOptions, owner\?: any\)/);
+    });
+
+    it('ack carries typed params', () => {
+      expect(dts).to.match(/ack\(message: Message, allUpTo\?: boolean\)/);
+    });
+
+    it('recover carries typed params', () => {
+      expect(dts).to.match(/recover\(state\?: QueueState\)/);
+    });
+
+    it('on uses QueueEventNames union', () => {
+      expect(dts).to.match(/on\(eventName: QueueEventNames \| string, handler: Function, options\?: ConsumeOptions\)/);
+    });
+
+    it('off uses QueueEventNames union', () => {
+      expect(dts).to.match(/off\(eventName: QueueEventNames \| string/);
+    });
+
+    it('exposes QueueEventNames literal union', () => {
+      expect(dts).to.include("'consumer.cancel'");
+      expect(dts).to.include("'dead-letter'");
+      expect(dts).to.include("'saturated'");
+    });
+  });
+
+  describe('Consumer method signatures', () => {
+    it('cancel carries typed params', () => {
+      expect(dts).to.match(/cancel\(requeue\?: boolean\)/);
+    });
+
+    it('prefetch carries typed params', () => {
+      expect(dts).to.match(/prefetch\(value: number\)/);
+    });
+  });
 });

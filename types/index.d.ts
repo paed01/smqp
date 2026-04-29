@@ -1,19 +1,38 @@
 declare module 'smqp' {
-	export function Message(fields: any, content: any, properties: any, onConsumed: any): void;
+	/**
+	 * What it is all about - message
+	 * 
+	 */
+	export function Message(fields: MessageFields, content?: any, properties?: MessageProperties, onConsumed?: CallableFunction): void;
 	export class Message {
-		constructor(fields: any, content: any, properties: any, onConsumed: any);
-		fields: any;
+		
+		/**
+		 * What it is all about - message
+		 * 
+		 */
+		constructor(fields: MessageFields, content?: any, properties?: MessageProperties, onConsumed?: CallableFunction);
+		/**
+		 * Message fields
+		 * */
+		fields: MessageFields;
+		/**
+		 * Message content
+		 * */
 		content: any;
-		properties: any;
+		/**
+		 * Message properties
+		 * */
+		properties: MessageProperties;
 		get pending(): boolean;
 		ack(allUpTo: any): void;
 		nack(allUpTo: any, requeue?: boolean): void;
 		reject(requeue?: boolean): void;
 		_consume(consumerTag: any, consumedCb: any): void;
-		[kOnConsumed]: any[];
+		[kOnConsumed]: (CallableFunction | null | undefined)[];
 		[kPending]: boolean;
 	}
 	const kPending: unique symbol;
+	type SerializedMessage = Pick<Message, "fields" | "content" | "properties">;
 	const kOnConsumed: unique symbol;
 	export function Shovel(name: any, source: any, destination: any, options: any): Shovel | undefined;
 	export class Shovel {
@@ -55,21 +74,6 @@ declare module 'smqp' {
 	 * @param name optional event exchange name, defaults to smq.ename-<random>
 	 */
 	function EventExchange(name?: string): ExchangeBase;
-	interface ExchangeBase {
-		readonly name: string;
-		readonly type: exchangeType;
-		readonly bindingCount: number;
-		readonly bindings: Binding[];
-		readonly stopped: boolean;
-		readonly undeliveredCount: number;
-	}
-	interface Binding {
-		id: string;
-		pattern: string;
-		options: BindingOptions;
-		exchange: ExchangeBase;
-		queue: Queue;
-	}
 	/**
 	 * Exchange
 	 * @param name name
@@ -83,57 +87,54 @@ declare module 'smqp' {
 		 * 
 		 */
 		constructor(name: string, type: exchangeType, options?: ExchangeOptions, eventExchange?: ExchangeBase);
-		options: {
-			durable: boolean;
-			autoDelete: boolean;
-		};
+		
+		options: ExchangeOptions;
 		events: ExchangeBase | undefined;
-		publish(routingKey: any, content: any, properties: any): number | void;
+		publish(routingKey: any, content: any, properties: any): any;
 		_onTopicMessage(routingKey: any, message: any): number;
-		_onDirectMessage(routingKey: any, message: any): 0 | 1;
+		
+		_onDirectMessage(routingKey: string, message: Message): 0 | 1;
 		_emitReturn(routingKey: any, content: any, properties: any): void;
 		bindQueue(queue: any, pattern: any, bindOptions: any): any;
 		unbindQueue(queue: any, pattern: any): void;
 		unbindQueueByName(queueName: any): void;
 		close(): void;
 		getState(): {
-			bindings?: any[] | undefined;
+			bindings?: {
+				id: string;
+				options: {
+					priority: number;
+				};
+				queueName: string;
+				pattern: string;
+			}[] | undefined;
 			deliveryQueue?: {
 				name: string;
-				options: {
-					autoDelete: boolean;
-					durable?: boolean;
-					messageTtl?: number;
-					maxLength?: number;
-					deadLetterExchange?: string;
-					deadLetterRoutingKey?: string;
-				};
+				options: QueueOptions;
+				messages?: SerializedMessage[];
 			} | undefined;
-			name: any;
-			type: any;
+			name: string;
+			type: exchangeType;
 			options: {
-				durable: boolean;
-				autoDelete: boolean;
+				[x: string]: any;
+				durable?: boolean;
+				autoDelete?: boolean;
 			};
 		};
 		stop(): void;
 		recover(state: any, getQueue: any): this | undefined;
 		getBinding(queueName: any, pattern: any): any;
-		emit(eventName: any, content: any): number | void;
+		emit(eventName: any, content: any): any;
 		on(pattern: any, handler: any, consumeOptions: any): any;
 		off(pattern: any, handler: any): any;
 		closeBinding(binding: any): void;
-		[kName]: string;
-		[kType]: exchangeType;
-		[kBindings]: any[];
-		[kStopped]: boolean;
-		[kDeliveryQueue]: Queue;
+		readonly name: string;
+		readonly type: exchangeType;
+		readonly bindingCount: number;
+		readonly bindings: Binding[];
+		readonly stopped: boolean;
+		readonly undeliveredCount: number;
 	}
-	const kName: unique symbol;
-	const kType: unique symbol;
-	const kBindings: unique symbol;
-	const kStopped: unique symbol;
-	const kDeliveryQueue: unique symbol;
 	export class SmqpError extends Error {
 		constructor(message: any, code: any);
 		type: string;
@@ -149,19 +150,20 @@ declare module 'smqp' {
 	export const ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND: "ERR_SMQP_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND";
 	export const ERR_SHOVEL_NAME_CONFLICT: "ERR_SMQP_SHOVEL_NAME_CONFLICT";
 	export const ERR_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND: "ERR_SMQP_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND";
-	export function getRoutingKeyPattern(pattern: any): RegExp | DirectRoutingKeyPattern | EndMatchRoutingKeyPattern;
-	function DirectRoutingKeyPattern(pattern: any): void;
-	class DirectRoutingKeyPattern {
-		constructor(pattern: any);
-		_match: any;
-		test(routingKey: any): boolean;
-	}
-	function EndMatchRoutingKeyPattern(pattern: any): void;
-	class EndMatchRoutingKeyPattern {
-		constructor(pattern: any);
-		_match: any;
-		test(routingKey: any): boolean;
-	}
+	/**
+	 * Get routing key pattern
+	 * @param pattern routing key pattern
+	 * */
+	export function getRoutingKeyPattern(pattern: string): RoutingKeyPattern;
+	/**
+	 * Get routing key pattern
+	 */
+	type RoutingKeyPattern = {
+		/**
+		 * function to test routing key pattern
+		 */
+		test: typeof RegExp.test;
+	};
 	/**
 	 * Smqp message broker
 	 * @param owner optional broker owner, forwarded to message consumer
@@ -287,17 +289,32 @@ declare module 'smqp' {
 		 * @param onlyWithContent omit exchanges and queues without content
 		 */
 		getState(onlyWithContent?: boolean): {
-			exchanges: any[] | undefined;
+			exchanges: {
+				bindings?: {
+					id: string;
+					options: {
+						priority: number;
+					};
+					queueName: string;
+					pattern: string;
+				}[] | undefined;
+				deliveryQueue?: {
+					name: string;
+					options: QueueOptions;
+					messages?: SerializedMessage[];
+				} | undefined;
+				name: string;
+				type: exchangeType;
+				options: {
+					[x: string]: any;
+					durable?: boolean;
+					autoDelete?: boolean;
+				};
+			}[] | undefined;
 			queues: {
 				name: string;
-				options: {
-					autoDelete: boolean;
-					durable?: boolean;
-					messageTtl?: number;
-					maxLength?: number;
-					deadLetterExchange?: string;
-					deadLetterRoutingKey?: string;
-				};
+				options: QueueOptions;
+				messages?: SerializedMessage[];
 			}[] | undefined;
 		} | undefined;
 		/**
@@ -340,21 +357,8 @@ declare module 'smqp' {
 		 * @param options optional message properties
 		 */
 		sendToQueue(queueName: string, content: any, options?: MessageProperties): any;
-		/**
-		 * @param onlyWithContent skip queues without messages
-		 */
-		_getQueuesState(onlyWithContent?: boolean): {
-			name: string;
-			options: {
-				autoDelete: boolean;
-				durable?: boolean;
-				messageTtl?: number;
-				maxLength?: number;
-				deadLetterExchange?: string;
-				deadLetterRoutingKey?: string;
-			};
-		}[] | undefined;
-		_getExchangeState(onlyWithContent: any): any[] | undefined;
+		private _getQueuesState;
+		private _getExchangeState;
 		/**
 		 * Create queue
 		 * @param queueName queue name, defaults to a generated name
@@ -461,57 +465,137 @@ declare module 'smqp' {
 	export class Queue {
 		
 		constructor(name: string, options: QueueOptions, eventEmitter: EventExchange);
-		options: {
-			autoDelete: boolean;
-			durable?: boolean;
-			messageTtl?: number;
-			maxLength?: number;
-			deadLetterExchange?: string;
-			deadLetterRoutingKey?: string;
-		};
-		messages: any[];
+		
+		options: QueueOptions;
+		
+		messages: Message[];
 		events: EventExchange;
 		_onMessageConsumed: any;
-		queueMessage(fields: any, content: any, properties: any): number | undefined;
-		evictFirst(compareMessage: any): boolean | undefined;
+		/**
+		 * Enqueue a message
+		 * @param fields message fields
+		 * @param content message content
+		 * @param properties message properties
+		 */
+		queueMessage(fields: MessageFields, content?: any, properties?: MessageProperties): number | undefined;
+		/**
+		 * Evict first non-pending message; returns true if it was the supplied message
+		 * @param compareMessage message to compare against the evicted one
+		 */
+		evictFirst(compareMessage?: Message): boolean | undefined;
 		_consumeNext(): number | undefined;
-		consume(onMessage: any, consumeOptions: any, owner: any): Consumer;
-		assertConsumer(onMessage: any, consumeOptions: any, owner: any): any;
-		get(options: any): any;
-		_consumeMessages(n: any, consumeOptions: any): any[];
-		ack(message: any, allUpTo: any): void;
-		nack(message: any, allUpTo: any, requeue?: boolean): void;
-		reject(message: any, requeue?: boolean): void;
+		/**
+		 * Add a consumer
+		 * @param onMessage message handler
+		 * @param consumeOptions optional consume options
+		 * @param owner forwarded to the message handler as the third arg
+		 */
+		consume(onMessage: onMessage, consumeOptions?: ConsumeOptions, owner?: any): Consumer;
+		/**
+		 * Assert consumer matching handler + options exists, create if absent
+		 * @param onMessage message handler
+		 * @param consumeOptions optional consume options
+		 * @param owner forwarded to the message handler as the third arg
+		 */
+		assertConsumer(onMessage: onMessage, consumeOptions?: ConsumeOptions, owner?: any): any;
+		/**
+		 * Get next message from queue
+		 * @param options optional consume options
+		 */
+		get(options?: ConsumeOptions): any;
+		private _consumeMessages;
+		/**
+		 * Acknowledge message
+		 * @param message message to ack
+		 * @param allUpTo ack all messages up to and including this one
+		 */
+		ack(message: Message, allUpTo?: boolean): void;
+		/**
+		 * Reject message
+		 * @param message message to nack
+		 * @param allUpTo nack all messages up to and including this one
+		 * @param requeue requeue nacked message(s), defaults to true
+		 */
+		nack(message: Message, allUpTo?: boolean, requeue?: boolean): void;
+		/**
+		 * Reject message
+		 * @param message message to reject
+		 * @param requeue requeue rejected message, defaults to true
+		 */
+		reject(message: Message, requeue?: boolean): void;
 		ackAll(): void;
+		/**
+		 * Reject all pending messages
+		 * @param requeue requeue nacked messages, defaults to true
+		 */
 		nackAll(requeue?: boolean): void;
-		_getPendingMessages(untilIndex: any): any[];
-		peek(ignoreDelivered: any): any;
-		cancel(consumerTag: any, requeue: any): boolean;
-		dismiss(onMessage: any, requeue: any): void;
-		unbindConsumer(consumer: any, requeue?: boolean): void;
-		emit(eventName: any, content: any): void;
-		on(eventName: any, handler: any, options: any): any;
-		off(eventName: any, handler: any): any;
+		private _getPendingMessages;
+		/**
+		 * Peek at the next message without consuming it
+		 * @param ignoreDelivered skip pending messages
+		 */
+		peek(ignoreDelivered?: boolean): Message | undefined;
+		/**
+		 * Cancel consumer by tag
+		 * @param consumerTag consumer tag
+		 * @param requeue requeue messages held by the consumer, defaults to true
+		 */
+		cancel(consumerTag: string, requeue?: boolean): boolean;
+		/**
+		 * Cancel consumer matching the given handler
+		 * @param onMessage handler previously passed to consume
+		 * @param requeue requeue messages held by the consumer, defaults to true
+		 */
+		dismiss(onMessage: onMessage, requeue?: boolean): void;
+		/**
+		 * Unbind consumer from queue
+		 * @param consumer consumer to unbind
+		 * @param requeue requeue messages held by the consumer, defaults to true
+		 */
+		unbindConsumer(consumer: Consumer, requeue?: boolean): void;
+		/**
+		 * Emit a queue event
+		 * @param eventName event name (without `queue.` prefix)
+		 * @param content event payload
+		 */
+		emit(eventName: string, content?: any): void;
+		/**
+		 * Subscribe to a queue event
+		 * @param eventName event name (without `queue.` prefix); accepts known names or a routing pattern
+		 * @param handler event handler
+		 * @param options optional consume options
+		 */
+		on(eventName: QueueEventNames | string, handler: Function, options?: ConsumeOptions): any;
+		/**
+		 * Unsubscribe from a queue event
+		 * @param eventName event name previously passed to on
+		 * @param handler the handler used in on, or an object with the consumer tag
+		 */
+		off(eventName: QueueEventNames | string, handler: Function | {
+			consumerTag?: string;
+		}): any;
 		purge(): number;
-		_dequeueMessage(message: any): number;
+		private _dequeueMessage;
 		getState(): {
 			name: string;
-			options: {
-				autoDelete: boolean;
-				durable?: boolean;
-				messageTtl?: number;
-				maxLength?: number;
-				deadLetterExchange?: string;
-				deadLetterRoutingKey?: string;
-			};
+			options: QueueOptions;
+			messages?: SerializedMessage[];
 		};
-		recover(state: any): this;
-		delete(options: any): {
+		/**
+		 * Recover queue from previously captured state
+		 * @param state queue state, omit to recover stopped queue in place
+		 */
+		recover(state?: QueueState): this;
+		/**
+		 * Delete queue
+		 * @param options optional delete guards
+		 */
+		delete(options?: DeleteQueueOptions): {
 			messageCount: number;
 		} | undefined;
 		close(): void;
 		stop(): void;
-		_getCapacity(): number;
+		private _getCapacity;
 		readonly name: string;
 		readonly consumerCount: number;
 		readonly consumers: Consumer[];
@@ -519,22 +603,76 @@ declare module 'smqp' {
 		readonly messageCount: number;
 		readonly stopped: boolean;
 	}
-	export function Consumer(queue: any, onMessage: any, options: any, owner: any, eventEmitter: any): void;
+	/**
+	 * Queue consumer
+	 * @param queue queue this consumer reads from
+	 * @param onMessage message handler
+	 * @param options consume options
+	 * @param owner forwarded to the message handler as the third arg
+	 * @param eventEmitter internal queue event bridge
+	 */
+	export function Consumer(queue: Queue, onMessage: onMessage, options?: ConsumeOptions, owner?: any, eventEmitter?: {
+		emit(eventName: string, content?: any): any;
+		on(pattern: string, handler: Function): any;
+	}): void;
 	export class Consumer {
-		constructor(queue: any, onMessage: any, options: any, owner: any, eventEmitter: any);
-		options: any;
-		queue: any;
-		onMessage: any;
+		/**
+		 * Queue consumer
+		 * @param queue queue this consumer reads from
+		 * @param onMessage message handler
+		 * @param options consume options
+		 * @param owner forwarded to the message handler as the third arg
+		 * @param eventEmitter internal queue event bridge
+		 */
+		constructor(queue: Queue, onMessage: onMessage, options?: ConsumeOptions, owner?: any, eventEmitter?: {
+			emit(eventName: string, content?: any): any;
+			on(pattern: string, handler: Function): any;
+		});
+		options: {
+			noAck: boolean;
+			consumerTag?: string;
+			exclusive?: boolean;
+			prefetch: number;
+			priority: number;
+		};
+		queue: Queue;
+		onMessage: onMessage;
 		owner: any;
-		events: any;
+		events: {
+			emit(eventName: string, content?: any): any;
+			on(pattern: string, handler: Function): any;
+		} | undefined;
 		_push(messages: any): void;
 		_consume(): void;
-		nackAll(requeue: any): void;
+		/**
+		 * Reject all messages held by this consumer
+		 * @param requeue requeue nacked messages, defaults to true
+		 */
+		nackAll(requeue?: boolean): void;
+		/** Acknowledge all messages held by this consumer */
 		ackAll(): void;
+		/**
+		 * Cancel consumer
+		 * @param requeue requeue messages held by the consumer, defaults to true
+		 */
 		cancel(requeue?: boolean): void;
-		prefetch(value: any): void;
-		emit(eventName: any, content: any): void;
-		on(eventName: any, handler: any): any;
+		/**
+		 * Set consumer prefetch count
+		 * @param value new prefetch count
+		 */
+		prefetch(value: number): void;
+		/**
+		 * Emit consumer event
+		 * @param eventName event name (without `consumer.` prefix)
+		 * @param content event payload
+		 */
+		emit(eventName: string, content?: any): void;
+		/**
+		 * Subscribe to consumer event
+		 * @param eventName event name (without `consumer.` prefix)
+		 * @param handler event handler
+		 */
+		on(eventName: string, handler: Function): any;
 		recover(): void;
 		stop(): void;
 		readonly consumerTag: string;
@@ -549,10 +687,15 @@ declare module 'smqp' {
   type exchangeType = 'topic' | 'direct';
 
   interface ConsumeOptions {
+	/** set to true if there is no need to acknowledge message, message is immediately consumed */
 	noAck?: boolean;
+	/** unique consumer tag */
 	consumerTag?: string;
+	/** queue is exclusively consumed */
 	exclusive?: boolean;
+	/** defaults to 1, number of messages to consume at a time */
 	prefetch?: number;
+	/** defaults to 0, higher value gets messages first */
 	priority?: number;
 	[x: string]: any;
   }
@@ -584,6 +727,24 @@ declare module 'smqp' {
 	ifUnused?: boolean;
 	ifEmpty?: boolean;
   }
+
+  type QueueEventNames =
+	/** consumer was cancelled */
+	| 'consumer.cancel'
+	/** consumer was added */
+	| 'consume'
+	/** message was dead-lettered, payload includes `deadLetterExchange` name and message */
+	| 'dead-letter'
+	/** queue was deleted */
+	| 'delete'
+	/** queue is depleted */
+	| 'depleted'
+	/** message was queued */
+	| 'message'
+	/** queue is ready to receive new messages */
+	| 'ready'
+	/** queue is saturated, i.e. max capacity was reached */
+	| 'saturated';
 
   interface ExchangeOptions {
 	/** makes exchange durable, i.e. will be returned when getting state, defaults to true */
@@ -687,10 +848,53 @@ declare module 'smqp' {
 	/** optional object with message properties to overwrite when shovelling messages */
 	publishProperties?: Record<string, any>;
   }
+	/**
+	 *
+	 * @param pattern message routing key pattern
+	 * 
+	 */
+	function Binding(exchange: ExchangeBase, queue: Queue, pattern: string, bindOptions?: BindingOptions): void;
+	class Binding {
+		/**
+		 *
+		 * @param pattern message routing key pattern
+		 * 
+		 */
+		constructor(exchange: ExchangeBase, queue: Queue, pattern: string, bindOptions?: BindingOptions);
+		id: string;
+		options: {
+			priority: number;
+		};
+		pattern: string;
+		exchange: ExchangeBase;
+		queue: Queue;
+		
+		_compiledPattern: {
+			test(routingKey: string): boolean;
+		};
+		/**
+		 * Test routing key against pattern
+		 * @param routingKey message routing key
+		 */
+		testPattern(routingKey: string): boolean;
+		/**
+		 * Close binding
+		 */
+		close(): void;
+		/**
+		 * Get binding state
+		 */
+		getState(): {
+			id: string;
+			options: {
+				priority: number;
+			};
+			queueName: string;
+			pattern: string;
+		};
+	}
 
 	export {};
-
-	export { Broker_1 as Broker };
 }
 
 //# sourceMappingURL=index.d.ts.map

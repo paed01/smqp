@@ -24,6 +24,15 @@ function EndMatchRoutingKeyPattern(pattern) {
 EndMatchRoutingKeyPattern.prototype.test = function test(routingKey) {
   return !routingKey.indexOf(this._match);
 };
+
+/**
+ * Get routing key pattern
+ * @param {string} pattern routing key pattern
+ * @returns {RoutingKeyPattern}
+ *
+ * @typedef {object} RoutingKeyPattern
+ * @property {typeof RegExp.test} test function to test routing key pattern
+ */
 function getRoutingKeyPattern(pattern) {
   const len = pattern.length;
   const hashIdx = pattern.indexOf('#');

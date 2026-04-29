@@ -391,6 +391,7 @@ Broker.prototype.sendToQueue = function sendToQueue(queueName, content, options)
 };
 
 /**
+ * @private
  * @param {boolean} [onlyWithContent] skip queues without messages
  */
 Broker.prototype._getQueuesState = function getQueuesState(onlyWithContent) {
@@ -407,6 +408,7 @@ Broker.prototype._getQueuesState = function getQueuesState(onlyWithContent) {
 };
 
 /**
+ * @private
  * @param {boolean} [onlyWithContent] skip exchanges without undelivered messages
  */
 Broker.prototype._getExchangeState = function getExchangeState(onlyWithContent) {

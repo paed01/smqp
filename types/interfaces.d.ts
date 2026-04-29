@@ -3,10 +3,15 @@ export type onMessage = (routingKey: string, message: import('../src/Message.js'
 export type exchangeType = 'topic' | 'direct';
 
 export interface ConsumeOptions {
+  /** set to true if there is no need to acknowledge message, message is immediately consumed */
   noAck?: boolean;
+  /** unique consumer tag */
   consumerTag?: string;
+  /** queue is exclusively consumed */
   exclusive?: boolean;
+  /** defaults to 1, number of messages to consume at a time */
   prefetch?: number;
+  /** defaults to 0, higher value gets messages first */
   priority?: number;
   [x: string]: any;
 }
@@ -38,6 +43,24 @@ export interface DeleteQueueOptions {
   ifUnused?: boolean;
   ifEmpty?: boolean;
 }
+
+export type QueueEventNames =
+  /** consumer was cancelled */
+  | 'consumer.cancel'
+  /** consumer was added */
+  | 'consume'
+  /** message was dead-lettered, payload includes `deadLetterExchange` name and message */
+  | 'dead-letter'
+  /** queue was deleted */
+  | 'delete'
+  /** queue is depleted */
+  | 'depleted'
+  /** message was queued */
+  | 'message'
+  /** queue is ready to receive new messages */
+  | 'ready'
+  /** queue is saturated, i.e. max capacity was reached */
+  | 'saturated';
 
 export interface ExchangeOptions {
   /** makes exchange durable, i.e. will be returned when getting state, defaults to true */
@@ -155,16 +178,9 @@ declare module '../src/Exchange.js' {
     readonly name: string;
     readonly type: import('#types').exchangeType;
     readonly bindingCount: number;
-    readonly bindings: Binding[];
+    readonly bindings: import('../src/Binding.js').Binding[];
     readonly stopped: boolean;
     readonly undeliveredCount: number;
-  }
-  interface Binding {
-    id: string;
-    pattern: string;
-    options: import('#types').BindingOptions;
-    exchange: ExchangeBase;
-    queue: import('../src/Queue.js').Queue;
   }
 }
 

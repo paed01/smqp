@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v12.0.0 - 2026-04-29
+
+- refactor types by using dts-buddy
+
 ## v11.0.1 - 2025-12-02
 
 - mitigate degraded performance as a result of refactoring consumer tag uniqueness

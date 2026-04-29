@@ -26,10 +26,14 @@ const kStopped = Symbol.for('stopped');
 function Queue(name, options, eventEmitter) {
   if (name && typeof name !== 'string') throw new TypeError('Queue name must be a string');else if (!name) name = `smq.qname-${(0, _shared.generateId)()}`;
   this[kName] = name;
+
+  /** @type {import('#types').QueueOptions} */
   this.options = {
     autoDelete: true,
     ...options
   };
+
+  /** @type {Message[]} */
   this.messages = [];
   this.events = eventEmitter;
   this[kConsumers] = [];
@@ -70,6 +74,13 @@ Object.defineProperties(Queue.prototype, {
     }
   }
 });
+
+/**
+ * Enqueue a message
+ * @param {import('#types').MessageFields} fields message fields
+ * @param {any} [content] message content
+ * @param {import('#types').MessageProperties} [properties] message properties
+ */
 Queue.prototype.queueMessage = function queueMessage(fields, content, properties) {
   if (fields && typeof fields !== 'object') throw new TypeError('fields must be an object');
   if (properties && typeof properties !== 'object') throw new TypeError('properties must be an object');
@@ -96,6 +107,11 @@ Queue.prototype.queueMessage = function queueMessage(fields, content, properties
   }
   return discarded ? 0 : this._consumeNext();
 };
+
+/**
+ * Evict first non-pending message; returns true if it was the supplied message
+ * @param {Message} [compareMessage] message to compare against the evicted one
+ */
 Queue.prototype.evictFirst = function evictFirst(compareMessage) {
   const evict = this.get();
   if (!evict) return;
@@ -116,6 +132,13 @@ Queue.prototype._consumeNext = function consumeNext() {
   }
   return consumed;
 };
+
+/**
+ * Add a consumer
+ * @param {import('#types').onMessage} onMessage message handler
+ * @param {import('#types').ConsumeOptions} [consumeOptions] optional consume options
+ * @param {any} [owner] forwarded to the message handler as the third arg
+ */
 Queue.prototype.consume = function consume(onMessage, consumeOptions, owner) {
   const consumers = this[kConsumers];
   if (consumers.length) {
@@ -134,6 +157,13 @@ Queue.prototype.consume = function consume(onMessage, consumeOptions, owner) {
   if (pendingMessages.length) consumer._push(pendingMessages);
   return consumer;
 };
+
+/**
+ * Assert consumer matching handler + options exists, create if absent
+ * @param {import('#types').onMessage} onMessage message handler
+ * @param {import('#types').ConsumeOptions} [consumeOptions] optional consume options
+ * @param {any} [owner] forwarded to the message handler as the third arg
+ */
 Queue.prototype.assertConsumer = function assertConsumer(onMessage, consumeOptions, owner) {
   const consumers = this[kConsumers];
   if (!consumers.length) return this.consume(onMessage, consumeOptions, owner);
@@ -150,6 +180,11 @@ Queue.prototype.assertConsumer = function assertConsumer(onMessage, consumeOptio
   }
   return this.consume(onMessage, consumeOptions, owner);
 };
+
+/**
+ * Get next message from queue
+ * @param {import('#types').ConsumeOptions} [options] optional consume options
+ */
 Queue.prototype.get = function getMessage(options) {
   const message = this._consumeMessages(1, {
     noAck: options?.noAck,
@@ -162,6 +197,12 @@ Queue.prototype.get = function getMessage(options) {
   }
   return message;
 };
+
+/**
+ * @private
+ * @param {number} n
+ * @param {import('#types').ConsumeOptions} consumeOptions
+ */
 Queue.prototype._consumeMessages = function consumeMessages(n, consumeOptions) {
   const msgs = [];
   if (this[kStopped] || !this[kAvailableCount] || !n) return msgs;
@@ -184,15 +225,42 @@ Queue.prototype._consumeMessages = function consumeMessages(n, consumeOptions) {
   }
   return msgs;
 };
+
+/**
+ * Acknowledge message
+ * @param {Message} message message to ack
+ * @param {boolean} [allUpTo] ack all messages up to and including this one
+ */
 Queue.prototype.ack = function ack(message, allUpTo) {
   if (this._onMessageConsumed(message, 'ack', allUpTo, false)) message[_Message.kPending] = false;
 };
+
+/**
+ * Reject message
+ * @param {Message} message message to nack
+ * @param {boolean} [allUpTo] nack all messages up to and including this one
+ * @param {boolean} [requeue] requeue nacked message(s), defaults to true
+ */
 Queue.prototype.nack = function nack(message, allUpTo, requeue = true) {
   if (this._onMessageConsumed(message, 'nack', allUpTo, requeue)) message[_Message.kPending] = false;
 };
+
+/**
+ * Reject message
+ * @param {Message} message message to reject
+ * @param {boolean} [requeue] requeue rejected message, defaults to true
+ */
 Queue.prototype.reject = function reject(message, requeue = true) {
   if (this._onMessageConsumed(message, 'nack', false, requeue)) message[_Message.kPending] = false;
 };
+
+/**
+ * @private
+ * @param {Message} message
+ * @param {string} operation
+ * @param {boolean} allUpTo
+ * @param {boolean} requeue
+ */
 Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operation, allUpTo, requeue) {
   if (this[kStopped]) return;
   const msgIdx = this._dequeueMessage(message);
@@ -254,11 +322,21 @@ Queue.prototype.ackAll = function ackAll() {
     msg.ack(false);
   }
 };
+
+/**
+ * Reject all pending messages
+ * @param {boolean} [requeue] requeue nacked messages, defaults to true
+ */
 Queue.prototype.nackAll = function nackAll(requeue = true) {
   for (const msg of this._getPendingMessages()) {
     msg.nack(false, requeue);
   }
 };
+
+/**
+ * @private
+ * @param {number} untilIndex
+ */
 Queue.prototype._getPendingMessages = function getPendingMessages(untilIndex) {
   const messages = this.messages;
   const l = messages.length;
@@ -272,6 +350,11 @@ Queue.prototype._getPendingMessages = function getPendingMessages(untilIndex) {
   }
   return result;
 };
+
+/**
+ * Peek at the next message without consuming it
+ * @param {boolean} [ignoreDelivered] skip pending messages
+ */
 Queue.prototype.peek = function peek(ignoreDelivered) {
   const message = this.messages[0];
   if (!message) return;
@@ -281,6 +364,12 @@ Queue.prototype.peek = function peek(ignoreDelivered) {
     if (!msg.pending) return msg;
   }
 };
+
+/**
+ * Cancel consumer by tag
+ * @param {string} consumerTag consumer tag
+ * @param {boolean} [requeue] requeue messages held by the consumer, defaults to true
+ */
 Queue.prototype.cancel = function cancel(consumerTag, requeue) {
   const consumers = this[kConsumers];
   const idx = consumers.findIndex(c => c.consumerTag === consumerTag);
@@ -289,12 +378,24 @@ Queue.prototype.cancel = function cancel(consumerTag, requeue) {
   this.unbindConsumer(consumer, requeue);
   return true;
 };
+
+/**
+ * Cancel consumer matching the given handler
+ * @param {import('#types').onMessage} onMessage handler previously passed to consume
+ * @param {boolean} [requeue] requeue messages held by the consumer, defaults to true
+ */
 Queue.prototype.dismiss = function dismiss(onMessage, requeue) {
   const consumers = this[kConsumers];
   const consumer = consumers.find(c => c.onMessage === onMessage);
   if (!consumer) return;
   this.unbindConsumer(consumer, requeue);
 };
+
+/**
+ * Unbind consumer from queue
+ * @param {Consumer} consumer consumer to unbind
+ * @param {boolean} [requeue] requeue messages held by the consumer, defaults to true
+ */
 Queue.prototype.unbindConsumer = function unbindConsumer(consumer, requeue = true) {
   const consumers = this[kConsumers];
   const idx = consumers.indexOf(consumer);
@@ -306,14 +407,33 @@ Queue.prototype.unbindConsumer = function unbindConsumer(consumer, requeue = tru
   this.emit('consumer.cancel', consumer);
   if (!consumers.length && this.options.autoDelete) return this.emit('delete', this);
 };
+
+/**
+ * Emit a queue event
+ * @param {string} eventName event name (without `queue.` prefix)
+ * @param {any} [content] event payload
+ */
 Queue.prototype.emit = function emit(eventName, content) {
   if (!this.events) return;
   this.events.emit(`queue.${eventName}`, content);
 };
+
+/**
+ * Subscribe to a queue event
+ * @param {import('#types').QueueEventNames | string} eventName event name (without `queue.` prefix); accepts known names or a routing pattern
+ * @param {Function} handler event handler
+ * @param {import('#types').ConsumeOptions} [options] optional consume options
+ */
 Queue.prototype.on = function on(eventName, handler, options) {
   if (!this.events) return;
   return this.events.on(`queue.${eventName}`, handler, options);
 };
+
+/**
+ * Unsubscribe from a queue event
+ * @param {import('#types').QueueEventNames | string} eventName event name previously passed to on
+ * @param {Function | { consumerTag?: string }} handler the handler used in on, or an object with the consumer tag
+ */
 Queue.prototype.off = function off(eventName, handler) {
   if (!this.events) return;
   return this.events.off(`queue.${eventName}`, handler);
@@ -329,6 +449,11 @@ Queue.prototype.purge = function purge() {
   if (!this.messages.length) this.emit('depleted', this);
   return toDelete.length;
 };
+
+/**
+ * @private
+ * @param {Message} message
+ */
 Queue.prototype._dequeueMessage = function dequeueMessage(message) {
   const messages = this.messages;
   const msgIdx = messages.indexOf(message);
@@ -338,6 +463,7 @@ Queue.prototype._dequeueMessage = function dequeueMessage(message) {
 };
 Queue.prototype.getState = function getState() {
   const msgs = this.messages;
+  /** @type {{name: string, options: import('#types').QueueOptions, messages?: import('./Message.js').SerializedMessage[] }} */
   const state = {
     name: this.name,
     options: {
@@ -355,6 +481,11 @@ Queue.prototype.getState = function getState() {
   }
   return state;
 };
+
+/**
+ * Recover queue from previously captured state
+ * @param {import('#types').QueueState} [state] queue state, omit to recover stopped queue in place
+ */
 Queue.prototype.recover = function recover(state) {
   this[kStopped] = false;
   const consumers = this[kConsumers];
@@ -390,6 +521,11 @@ Queue.prototype.recover = function recover(state) {
   }
   return this;
 };
+
+/**
+ * Delete queue
+ * @param {import('#types').DeleteQueueOptions} [options] optional delete guards
+ */
 Queue.prototype.delete = function deleteQueue(options) {
   const consumers = this[kConsumers];
   if (options?.ifUnused && consumers.length) return;
@@ -417,12 +553,25 @@ Queue.prototype.stop = function stop() {
     consumer.stop();
   }
 };
+
+/**
+ * @private
+ */
 Queue.prototype._getCapacity = function getCapacity() {
   if ('maxLength' in this.options) {
     return this.options.maxLength - this.messages.length;
   }
   return Infinity;
 };
+
+/**
+ * Queue consumer
+ * @param {Queue} queue queue this consumer reads from
+ * @param {import('#types').onMessage} onMessage message handler
+ * @param {import('#types').ConsumeOptions} [options] consume options
+ * @param {any} [owner] forwarded to the message handler as the third arg
+ * @param {{ emit(eventName: string, content?: any): any, on(pattern: string, handler: Function): any }} [eventEmitter] internal queue event bridge
+ */
 function Consumer(queue, onMessage, options, owner, eventEmitter) {
   if (typeof onMessage !== 'function') throw new TypeError('message callback is required and must be a function');
   const {
@@ -507,28 +656,57 @@ Consumer.prototype._consume = function consume() {
     if (this[kStopped]) break;
   }
 };
+
+/**
+ * Reject all messages held by this consumer
+ * @param {boolean} [requeue] requeue nacked messages, defaults to true
+ */
 Consumer.prototype.nackAll = function nackAll(requeue) {
   for (const msg of this[kInternalQueue].messages.slice()) {
     msg.content.nack(false, requeue);
   }
 };
+
+/** Acknowledge all messages held by this consumer */
 Consumer.prototype.ackAll = function ackAll() {
   for (const msg of this[kInternalQueue].messages.slice()) {
     msg.content.ack(false);
   }
 };
+
+/**
+ * Cancel consumer
+ * @param {boolean} [requeue] requeue messages held by the consumer, defaults to true
+ */
 Consumer.prototype.cancel = function cancel(requeue = true) {
   this.stop();
   if (!requeue) this.nackAll(requeue);
   this.emit('cancel', this);
 };
+
+/**
+ * Set consumer prefetch count
+ * @param {number} value new prefetch count
+ */
 Consumer.prototype.prefetch = function prefetch(value) {
   this.options.prefetch = this[kInternalQueue].options.maxLength = value;
 };
+
+/**
+ * Emit consumer event
+ * @param {string} eventName event name (without `consumer.` prefix)
+ * @param {any} [content] event payload
+ */
 Consumer.prototype.emit = function emit(eventName, content) {
   const routingKey = `consumer.${eventName}`;
   this.events.emit(routingKey, content);
 };
+
+/**
+ * Subscribe to consumer event
+ * @param {string} eventName event name (without `consumer.` prefix)
+ * @param {Function} handler event handler
+ */
 Consumer.prototype.on = function on(eventName, handler) {
   const pattern = `consumer.${eventName}`;
   return this.events.on(pattern, handler);
