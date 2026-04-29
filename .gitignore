@@ -37,3 +37,10 @@ package-lock.json
 .nyc_output
 
 *.log
+
+# ts
+*.d.ts.map
+
+# AI
+.claude
+AGENTS.md

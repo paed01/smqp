@@ -15,11 +15,16 @@ import {
 const kEntities = Symbol.for('entities');
 const kEventHandler = Symbol.for('eventHandler');
 
+/**
+ * Smqp message broker
+ * @param {any} [owner] optional broker owner, forwarded to message consumer
+ */
 export function Broker(owner) {
   if (!(this instanceof Broker)) {
     return new Broker(owner);
   }
   this.owner = owner;
+  /** @type {import('./Exchange.js').ExchangeBase} */
   const events = (this.events = new EventExchange('broker__events'));
   const entities = (this[kEntities] = new Map([
     ['exchanges', new Map()],
@@ -48,6 +53,14 @@ Object.defineProperties(Broker.prototype, {
   },
 });
 
+/**
+ * Subscribe to exchange via queue
+ * @param {string} exchangeName exhange name
+ * @param {string} pattern routing key pattern
+ * @param {string} queueName queue name
+ * @param {import('#types').onMessage} onMessage message handlers
+ * @param {import('#types').SubscribeOptions} [options] optional subscribe options
+ */
 Broker.prototype.subscribe = function subscribe(exchangeName, pattern, queueName, onMessage, options) {
   if (!exchangeName || !pattern || typeof onMessage !== 'function')
     throw new TypeError('exchange name, pattern, and message callback are required');
@@ -62,10 +75,29 @@ Broker.prototype.subscribe = function subscribe(exchangeName, pattern, queueName
   return queue.assertConsumer(onMessage, queueOptions, this.owner);
 };
 
+/**
+ * Subscribe to exchange via temporary, non-durable queue
+ * @param {string} exchangeName exchange name
+ * @param {string} pattern routing key pattern
+ * @param {import('#types').onMessage} onMessage message handler
+ * @param {import('#types').SubscribeOptions} [options] optional subscribe options
+ */
 Broker.prototype.subscribeTmp = function subscribeTmp(exchangeName, pattern, onMessage, options) {
   return this.subscribe(exchangeName, pattern, null, onMessage, { ...options, durable: false });
 };
 
+/**
+ * Subscribe once to first matching message, then auto-cancel.
+ *
+ * Only `consumerTag` and `priority` from `options` are honored. `noAck`, `autoDelete`,
+ * and `durable` are forced internally; queue-lifecycle and dead-letter options are ignored
+ * because the temporary queue is deleted after the first delivery.
+ *
+ * @param {string} exchangeName exchange name
+ * @param {string} pattern routing key pattern
+ * @param {import('#types').onMessage} onMessage message handler
+ * @param {import('#types').SubscribeOptions} [options] optional subscribe options
+ */
 Broker.prototype.subscribeOnce = function subscribeOnce(exchangeName, pattern, onMessage, options) {
   if (typeof onMessage !== 'function') throw new TypeError('message callback is required');
   if (options?.consumerTag) this.validateConsumerTag(options.consumerTag);
@@ -84,12 +116,23 @@ Broker.prototype.subscribeOnce = function subscribeOnce(exchangeName, pattern, o
   }
 };
 
+/**
+ * Cancel consumer matching queue + handler
+ * @param {string} queueName queue name
+ * @param {import('#types').onMessage} onMessage handler previously passed to subscribe
+ */
 Broker.prototype.unsubscribe = function unsubscribe(queueName, onMessage) {
   const queue = this.getQueue(queueName);
   if (!queue) return;
   queue.dismiss(onMessage);
 };
 
+/**
+ * Assert exchange exists, create if absent
+ * @param {string} exchangeName exchange name
+ * @param {import('#types').exchangeType} [type] exchange type, defaults to topic
+ * @param {import('#types').ExchangeOptions} [options] optional exchange options
+ */
 Broker.prototype.assertExchange = function assertExchange(exchangeName, type, options) {
   let exchange = this.getExchange(exchangeName);
   if (exchange) {
@@ -104,12 +147,25 @@ Broker.prototype.assertExchange = function assertExchange(exchangeName, type, op
   return exchange;
 };
 
+/**
+ * Bind queue to exchange with routing key pattern
+ * @param {string} queueName queue name
+ * @param {string} exchangeName exchange name
+ * @param {string} pattern routing key pattern
+ * @param {import('#types').BindingOptions} [bindOptions] optional binding options
+ */
 Broker.prototype.bindQueue = function bindQueue(queueName, exchangeName, pattern, bindOptions) {
   const exchange = this.getExchange(exchangeName);
   const queue = this.getQueue(queueName);
   return exchange.bindQueue(queue, pattern, bindOptions);
 };
 
+/**
+ * Unbind queue from exchange
+ * @param {string} queueName queue name
+ * @param {string} exchangeName exchange name
+ * @param {string} pattern routing key pattern
+ */
 Broker.prototype.unbindQueue = function unbindQueue(queueName, exchangeName, pattern) {
   const exchange = this.getExchange(exchangeName);
   if (!exchange) return;
@@ -118,12 +174,23 @@ Broker.prototype.unbindQueue = function unbindQueue(queueName, exchangeName, pat
   exchange.unbindQueue(queue, pattern);
 };
 
+/**
+ * Add consumer to queue
+ * @param {string} queueName queue name
+ * @param {import('#types').onMessage} onMessage message handler
+ * @param {import('#types').ConsumeOptions} [options] optional consume options
+ */
 Broker.prototype.consume = function consume(queueName, onMessage, options) {
   const queue = this.getQueue(queueName);
   if (!queue) throw new SmqpError(`Queue with name <${queueName}> was not found`, ERR_QUEUE_NOT_FOUND);
   return queue.consume(onMessage, options, this.owner);
 };
 
+/**
+ * Cancel consumer by tag
+ * @param {string} consumerTag consumer tag
+ * @param {boolean} [requeue] requeue messages held by the consumer, defaults to true
+ */
 Broker.prototype.cancel = function cancel(consumerTag, requeue = true) {
   const consumer = this.getConsumer(consumerTag);
   if (!consumer) return false;
@@ -144,16 +211,29 @@ Broker.prototype.getConsumers = function getConsumers() {
   return result;
 };
 
+/**
+ * Get consumer by tag
+ * @param {string} consumerTag consumer tag
+ */
 Broker.prototype.getConsumer = function getConsumer(consumerTag) {
   if (typeof consumerTag !== 'string') throw new TypeError('consumer tag must be a string');
   return this[kEntities].get('consumers').get(consumerTag);
 };
 
+/**
+ * Get exchange by name
+ * @param {string} exchangeName exchange name
+ */
 Broker.prototype.getExchange = function getExchange(exchangeName) {
   if (typeof exchangeName !== 'string') throw new TypeError('exchange name must be a string');
   return this[kEntities].get('exchanges').get(exchangeName);
 };
 
+/**
+ * Delete exchange
+ * @param {string} exchangeName exchange name
+ * @param {{ ifUnused?: boolean }} [options] only delete if no bindings remain
+ */
 Broker.prototype.deleteExchange = function deleteExchange(exchangeName, options) {
   const exchange = this.getExchange(exchangeName);
   if (!exchange || (options?.ifUnused && exchange.bindingCount)) return false;
@@ -163,12 +243,18 @@ Broker.prototype.deleteExchange = function deleteExchange(exchangeName, options)
   return true;
 };
 
+/**
+ * Stop broker with corresponding exchanges and queues, entities remain but does not accepts messages
+ */
 Broker.prototype.stop = function stop() {
   const entities = this[kEntities];
   for (const exchange of entities.get('exchanges').values()) exchange.stop();
   for (const queue of entities.get('queues').values()) queue.stop();
 };
 
+/**
+ * Close and clean-up all entities
+ */
 Broker.prototype.close = function close() {
   const entities = this[kEntities];
   for (const shovel of entities.get('shovels').values()) shovel.close();
@@ -176,6 +262,9 @@ Broker.prototype.close = function close() {
   for (const queue of entities.get('queues').values()) queue.close();
 };
 
+/**
+ * Danger! Resets all entities, stop, close and delete
+ */
 Broker.prototype.reset = function reset() {
   this.stop();
   this.close();
@@ -186,6 +275,10 @@ Broker.prototype.reset = function reset() {
   entities.get('shovels').clear();
 };
 
+/**
+ * Get broker state for persistence
+ * @param {boolean} [onlyWithContent] omit exchanges and queues without content
+ */
 Broker.prototype.getState = function getState(onlyWithContent) {
   const exchanges = this._getExchangeState(onlyWithContent);
   const queues = this._getQueuesState(onlyWithContent);
@@ -198,6 +291,10 @@ Broker.prototype.getState = function getState(onlyWithContent) {
   };
 };
 
+/**
+ * Recover broker from previously captured state
+ * @param {import('#types').BrokerState} [state] broker state, omit to recover stopped entities in place
+ */
 Broker.prototype.recover = function recover(state) {
   const boundGetQueue = this.getQueue.bind(this);
   if (state) {
@@ -219,6 +316,13 @@ Broker.prototype.recover = function recover(state) {
   return this;
 };
 
+/**
+ * Bind one exchange to another via internal shovel
+ * @param {string} source source exchange name
+ * @param {string} destination destination exchange name
+ * @param {string} [pattern] routing key pattern, defaults to #
+ * @param {import('#types').ShovelOptions} [args] optional shovel options
+ */
 Broker.prototype.bindExchange = function bindExchange(source, destination, pattern = '#', args) {
   const name = `e2e-${source}2${destination}-${pattern}`;
   const shovel = this.createShovel(
@@ -240,32 +344,60 @@ Broker.prototype.bindExchange = function bindExchange(source, destination, patte
   return new Exchange2Exchange(shovel);
 };
 
+/**
+ * Unbind exchange-to-exchange shovel
+ * @param {string} source source exchange name
+ * @param {string} destination destination exchange name
+ * @param {string} [pattern] routing key pattern, defaults to #
+ */
 Broker.prototype.unbindExchange = function unbindExchange(source, destination, pattern = '#') {
   const name = `e2e-${source}2${destination}-${pattern}`;
   return this.closeShovel(name);
 };
 
+/**
+ * Publish a message to an exchange
+ * @param {string} exchangeName exchange name
+ * @param {string} routingKey routing key
+ * @param {any} [content] message content
+ * @param {import('#types').MessageProperties} [properties] optional message properties
+ */
 Broker.prototype.publish = function publish(exchangeName, routingKey, content, properties) {
   const exchange = this.getExchange(exchangeName);
   if (!exchange) return;
   return exchange.publish(routingKey, content, properties);
 };
 
+/**
+ * Purge all non-pending messages from queue
+ * @param {string} queueName queue name
+ */
 Broker.prototype.purgeQueue = function purgeQueue(queueName) {
   const queue = this.getQueue(queueName);
   if (!queue) return;
   return queue.purge();
 };
 
+/**
+ * Send content directly to a queue, bypassing exchanges
+ * @param {string} queueName queue name
+ * @param {any} content message content
+ * @param {import('#types').MessageProperties} [options] optional message properties
+ */
 Broker.prototype.sendToQueue = function sendToQueue(queueName, content, options) {
   const queue = this.getQueue(queueName);
   if (!queue) throw new SmqpError(`Queue with name <${queueName}> was not found`, ERR_QUEUE_NOT_FOUND);
   return queue.queueMessage({}, content, options);
 };
 
+/**
+ * @param {boolean} [onlyWithContent] skip queues without messages
+ */
 Broker.prototype._getQueuesState = function getQueuesState(onlyWithContent) {
   let result;
-  for (const queue of this[kEntities].get('queues').values()) {
+  /** @type {Set<import('./Queue.js').Queue>} */
+  const queues = this[kEntities].get('queues').values();
+  for (const queue of queues) {
     if (!queue.options.durable) continue;
     if (onlyWithContent && !queue.messageCount) continue;
     if (!result) result = [];
@@ -274,9 +406,14 @@ Broker.prototype._getQueuesState = function getQueuesState(onlyWithContent) {
   return result;
 };
 
+/**
+ * @param {boolean} [onlyWithContent] skip exchanges without undelivered messages
+ */
 Broker.prototype._getExchangeState = function getExchangeState(onlyWithContent) {
   let result;
-  for (const exchange of this[kEntities].get('exchanges').values()) {
+  /** @type {Set<import('./Exchange.js').ExchangeBase>} */
+  const exhanges = this[kEntities].get('exchanges').values();
+  for (const exchange of exhanges) {
     if (!exchange.options.durable) continue;
     if (onlyWithContent && !exchange.undeliveredCount) continue;
     if (!result) result = [];
@@ -285,6 +422,11 @@ Broker.prototype._getExchangeState = function getExchangeState(onlyWithContent) 
   return result;
 };
 
+/**
+ * Create queue
+ * @param {string} [queueName] queue name, defaults to a generated name
+ * @param {import('#types').QueueOptions} [options] optional queue options
+ */
 Broker.prototype.createQueue = function createQueue(queueName, options) {
   if (queueName && typeof queueName !== 'string') throw new TypeError('queue name must be a string');
   else if (!queueName) queueName = `smq.qname-${generateId()}`;
@@ -298,11 +440,20 @@ Broker.prototype.createQueue = function createQueue(queueName, options) {
   return queue;
 };
 
+/**
+ * Get queue by name
+ * @param {string} queueName queue name
+ */
 Broker.prototype.getQueue = function getQueue(queueName) {
   if (!queueName || typeof queueName !== 'string') throw new TypeError('queue name must be a string');
   return this[kEntities].get('queues').get(queueName);
 };
 
+/**
+ * Assert queue exists, create if absent
+ * @param {string} [queueName] queue name, defaults to a generated name
+ * @param {import('#types').QueueOptions} [options] optional queue options
+ */
 Broker.prototype.assertQueue = function assertQueue(queueName, options) {
   if (queueName && typeof queueName !== 'string') throw new TypeError('queue name must be a string');
   else if (!queueName) return this.createQueue(null, options);
@@ -315,12 +466,22 @@ Broker.prototype.assertQueue = function assertQueue(queueName, options) {
   return queue;
 };
 
+/**
+ * Delete queue
+ * @param {string} queueName queue name
+ * @param {import('#types').DeleteQueueOptions} [options] optional delete guards
+ */
 Broker.prototype.deleteQueue = function deleteQueue(queueName, options) {
   const queue = this.getQueue(queueName);
   if (!queue) return;
   return queue.delete(options);
 };
 
+/**
+ * Get one message from queue
+ * @param {string} queueName queue name
+ * @param {import('#types').ConsumeOptions} [options] optional consume options
+ */
 Broker.prototype.get = function getMessageFromQueue(queueName, options) {
   const queue = this.getQueue(queueName);
   if (!queue) return;
@@ -328,30 +489,62 @@ Broker.prototype.get = function getMessageFromQueue(queueName, options) {
   return queue.get({ noAck: options?.noAck });
 };
 
+/**
+ * Acknowledge message
+ * @param {import('./Message.js').Message} message message to ack
+ * @param {boolean} [allUpTo] ack all messages up to and including this one
+ */
 Broker.prototype.ack = function ack(message, allUpTo) {
   message.ack(allUpTo);
 };
 
+/** Acknowledge all outstanding messages across all queues */
 Broker.prototype.ackAll = function ackAll() {
   for (const queue of this[kEntities].get('queues').values()) queue.ackAll();
 };
 
+/**
+ * Reject message
+ * @param {import('./Message.js').Message} message message to nack
+ * @param {boolean} [allUpTo] nack all messages up to and including this one
+ * @param {boolean} [requeue] requeue nacked messages, defaults to true
+ */
 Broker.prototype.nack = function nack(message, allUpTo, requeue) {
   message.nack(allUpTo, requeue);
 };
 
+/**
+ * Reject all outstanding messages across all queues
+ * @param {boolean} [requeue] requeue nacked messages, defaults to true
+ */
 Broker.prototype.nackAll = function nackAll(requeue) {
   for (const queue of this[kEntities].get('queues').values()) queue.nackAll(requeue);
 };
 
+/**
+ * Reject message
+ * @param {import('./Message.js').Message} message message to reject
+ * @param {boolean} [requeue] requeue rejected message, defaults to true
+ */
 Broker.prototype.reject = function reject(message, requeue) {
   message.reject(requeue);
 };
 
+/**
+ * Validate that a consumer tag is unused; throws if occupied
+ * @param {string} consumerTag consumer tag to validate
+ */
 Broker.prototype.validateConsumerTag = function validateConsumerTag(consumerTag) {
   return this[kEventHandler].validateConsumerTag('' + consumerTag);
 };
 
+/**
+ * Create shovel between source and destination exchanges
+ * @param {string} name unique shovel name
+ * @param {import('#types').ShovelSource} source source spec
+ * @param {import('#types').ShovelDestination} destination destination spec
+ * @param {import('#types').ShovelOptions} [options] optional shovel options
+ */
 Broker.prototype.createShovel = function createShovel(name, source, destination, options) {
   const shovels = this[kEntities].get('shovels');
   if (shovels.has(name)) throw new SmqpError(`Shovel name must be unique, ${name} is occupied`, ERR_SHOVEL_NAME_CONFLICT);
@@ -361,6 +554,10 @@ Broker.prototype.createShovel = function createShovel(name, source, destination,
   return shovel;
 };
 
+/**
+ * Close shovel by name
+ * @param {string} name shovel name
+ */
 Broker.prototype.closeShovel = function closeShovel(name) {
   const shovel = this.getShovel(name);
   if (shovel) {
@@ -370,14 +567,25 @@ Broker.prototype.closeShovel = function closeShovel(name) {
   return false;
 };
 
+/**
+ * Get shovel by name
+ * @param {string} name shovel name
+ */
 Broker.prototype.getShovel = function getShovel(name) {
   return this[kEntities].get('shovels').get(name);
 };
 
+/** List all shovels */
 Broker.prototype.getShovels = function getShovels() {
   return [...this[kEntities].get('shovels').values()];
 };
 
+/**
+ * Subscribe to broker event
+ * @param {string} eventName event name pattern
+ * @param {(event: { name: string } & Record<string, any>) => void} callback event callback
+ * @param {import('#types').ConsumeOptions} [options] optional consume options
+ */
 Broker.prototype.on = function on(eventName, callback, options) {
   return this.events.on(eventName, getEventCallback(), { ...options, origin: callback });
 
@@ -391,6 +599,11 @@ Broker.prototype.on = function on(eventName, callback, options) {
   }
 };
 
+/**
+ * Unsubscribe from broker event
+ * @param {string} eventName event name previously passed to on
+ * @param {Function | { consumerTag?: string }} callbackOrObject the callback used in on, or an object with the consumer tag
+ */
 Broker.prototype.off = function off(eventName, callbackOrObject) {
   const { consumerTag } = callbackOrObject;
   for (const binding of this.events.bindings) {

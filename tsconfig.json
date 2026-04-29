@@ -1,9 +1,9 @@
 {
-  "include": ["src/**/*", "types"],
+  "include": ["src/**/*", "types/interfaces.d.ts"],
   "compilerOptions": {
     "emitDeclarationOnly": true,
     "sourceMap": false,
-    "rootDir": "src",
+    "rootDir": ".",
     "lib": ["es2017"],
     "target": "es2017",
     "outDir": "./tmp/ignore",
@@ -23,7 +23,7 @@
     "noUnusedParameters": true,
     "typeRoots": ["./node_modules/@types"],
     "paths": {
-      "types": ["./types/types.js"]
+      "#types": ["./types/interfaces.d.ts"]
     }
   }
 }

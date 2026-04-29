@@ -26,9 +26,10 @@
     "url": "https://github.com/paed01/smqp/issues"
   },
   "files": [
-    "types",
+    "dist",
     "src",
-    "dist"
+    "types/index.d.ts",
+    "types/index.d.ts.map"
   ],
   "scripts": {
     "test": "mocha",
@@ -37,7 +38,8 @@
     "test:md": "texample ./README.md,API.md",
     "cov:html": "c8 -r html -r text mocha",
     "dist": "babel src/**.js -d dist",
-    "prepack": "npm run dist",
+    "types": "node ./scripts/build-types.js",
+    "prepack": "npm run dist && npm run types",
     "toc": "node ./scripts/generate-api-toc.js",
     "lint": "eslint . --cache && prettier . -c --cache"
   },
@@ -64,6 +66,7 @@
     "c8": "^10.1.2",
     "chai": "^6.2.0",
     "chronokinesis": "^8.0.0",
+    "dts-buddy": "^0.7.0",
     "eslint": "^9.10.0",
     "markdown-toc": "^1.2.0",
     "mocha": "^11.0.1",

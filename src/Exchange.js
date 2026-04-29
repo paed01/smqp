@@ -8,6 +8,12 @@ const kStopped = Symbol.for('stopped');
 const kBindings = Symbol.for('bindings');
 const kDeliveryQueue = Symbol.for('deliveryQueue');
 
+/**
+ * Exchange
+ * @param {string} name required exchange name
+ * @param {import('#types').exchangeType} [type] optional type, defaults to topic
+ * @param {import('#types').ExchangeOptions} [options] optional exchange options
+ */
 export function Exchange(name, type = 'topic', options) {
   if (!name || typeof name !== 'string') throw new TypeError('Exchange name is required and must be a string');
 
@@ -16,11 +22,22 @@ export function Exchange(name, type = 'topic', options) {
   return new ExchangeBase(name, type, options, eventExchange);
 }
 
+/**
+ * Event exchange
+ * @param {string} [name] optional event exchange name, defaults to smq.ename-<random>
+ */
 export function EventExchange(name) {
   if (!name) name = `smq.ename-${generateId()}`;
   return new ExchangeBase(name, 'topic', { durable: false, autoDelete: true });
 }
 
+/**
+ * Exchange
+ * @param {string} name name
+ * @param {import('#types').exchangeType} type
+ * @param {import('#types').ExchangeOptions} [options]
+ * @param {ExchangeBase} [eventExchange]
+ */
 function ExchangeBase(name, type, options, eventExchange) {
   this[kName] = name;
   this[kType] = type;
@@ -269,6 +286,13 @@ ExchangeBase.prototype.closeBinding = function closeBinding(binding) {
   if (!bindings.length && this.options.autoDelete) this.emit('delete', this);
 };
 
+/**
+ *
+ * @param {ExchangeBase} exchange
+ * @param {import('./Queue.js').Queue} queue
+ * @param {string} pattern message routing key pattern
+ * @param {import('#types').BindingOptions} [bindOptions]
+ */
 function Binding(exchange, queue, pattern, bindOptions) {
   this.id = `${queue.name}/${pattern}`;
   this.options = { priority: 0, ...bindOptions };
@@ -282,14 +306,24 @@ function Binding(exchange, queue, pattern, bindOptions) {
   });
 }
 
+/**
+ * Test routing key against pattern
+ * @param {string} routingKey message routing key
+ */
 Binding.prototype.testPattern = function testPattern(routingKey) {
   return this._compiledPattern.test(routingKey);
 };
 
+/**
+ * Close binding
+ */
 Binding.prototype.close = function closeBinding() {
   this.exchange.unbindQueue(this.queue, this.pattern);
 };
 
+/**
+ * Get binding state
+ */
 Binding.prototype.getState = function getBindingState() {
   return {
     id: this.id,

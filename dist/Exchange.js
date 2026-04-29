@@ -13,12 +13,24 @@ const kType = Symbol.for('type');
 const kStopped = Symbol.for('stopped');
 const kBindings = Symbol.for('bindings');
 const kDeliveryQueue = Symbol.for('deliveryQueue');
+
+/**
+ * Exchange
+ * @param {string} name required exchange name
+ * @param {import('#types').exchangeType} [type] optional type, defaults to topic
+ * @param {import('#types').ExchangeOptions} [options] optional exchange options
+ */
 function Exchange(name, type = 'topic', options) {
   if (!name || typeof name !== 'string') throw new TypeError('Exchange name is required and must be a string');
   if (type !== 'topic' && type !== 'direct') throw new TypeError('Exchange type must be one of topic or direct');
   const eventExchange = new EventExchange(`${name}__events`);
   return new ExchangeBase(name, type, options, eventExchange);
 }
+
+/**
+ * Event exchange
+ * @param {string} [name] optional event exchange name, defaults to smq.ename-<random>
+ */
 function EventExchange(name) {
   if (!name) name = `smq.ename-${(0, _shared.generateId)()}`;
   return new ExchangeBase(name, 'topic', {
@@ -26,6 +38,14 @@ function EventExchange(name) {
     autoDelete: true
   });
 }
+
+/**
+ * Exchange
+ * @param {string} name name
+ * @param {import('#types').exchangeType} type
+ * @param {import('#types').ExchangeOptions} [options]
+ * @param {ExchangeBase} [eventExchange]
+ */
 function ExchangeBase(name, type, options, eventExchange) {
   this[kName] = name;
   this[kType] = type;
@@ -267,6 +287,14 @@ ExchangeBase.prototype.closeBinding = function closeBinding(binding) {
   binding.close();
   if (!bindings.length && this.options.autoDelete) this.emit('delete', this);
 };
+
+/**
+ *
+ * @param {ExchangeBase} exchange
+ * @param {import('./Queue.js').Queue} queue
+ * @param {string} pattern message routing key pattern
+ * @param {import('#types').BindingOptions} [bindOptions]
+ */
 function Binding(exchange, queue, pattern, bindOptions) {
   this.id = `${queue.name}/${pattern}`;
   this.options = {
@@ -281,12 +309,25 @@ function Binding(exchange, queue, pattern, bindOptions) {
     this.close();
   });
 }
+
+/**
+ * Test routing key against pattern
+ * @param {string} routingKey message routing key
+ */
 Binding.prototype.testPattern = function testPattern(routingKey) {
   return this._compiledPattern.test(routingKey);
 };
+
+/**
+ * Close binding
+ */
 Binding.prototype.close = function closeBinding() {
   this.exchange.unbindQueue(this.queue, this.pattern);
 };
+
+/**
+ * Get binding state
+ */
 Binding.prototype.getState = function getBindingState() {
   return {
     id: this.id,

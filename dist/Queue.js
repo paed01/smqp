@@ -16,6 +16,13 @@ const kInternalQueue = Symbol.for('internalQueue');
 const kIsReady = Symbol.for('isReady');
 const kAvailableCount = Symbol.for('availableCount');
 const kStopped = Symbol.for('stopped');
+
+/**
+ *
+ * @param {string} name
+ * @param {import('#types').QueueOptions} options
+ * @param {import('./Exchange.js').EventExchange} eventEmitter
+ */
 function Queue(name, options, eventEmitter) {
   if (name && typeof name !== 'string') throw new TypeError('Queue name must be a string');else if (!name) name = `smq.qname-${(0, _shared.generateId)()}`;
   this[kName] = name;
