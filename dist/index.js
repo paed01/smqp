@@ -48,7 +48,12 @@ Object.defineProperty(exports, "Shovel", {
     return _Shovel.Shovel;
   }
 });
-exports.default = void 0;
+Object.defineProperty(exports, "default", {
+  enumerable: true,
+  get: function () {
+    return _Broker.Broker;
+  }
+});
 Object.defineProperty(exports, "getRoutingKeyPattern", {
   enumerable: true,
   get: function () {
@@ -73,4 +78,3 @@ Object.keys(_Errors).forEach(function (key) {
   });
 });
 var _shared = require("./shared.js");
-var _default = exports.default = _Broker.Broker;

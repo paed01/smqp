@@ -24,7 +24,7 @@ export function Broker(owner) {
     return new Broker(owner);
   }
   this.owner = owner;
-  /** @type {import('./Exchange.js').ExchangeBase} */
+  /** @type {import('#types').ExchangeEventEmitter} */
   const events = (this.events = new EventExchange('broker__events'));
   const entities = (this[kEntities] = new Map([
     ['exchanges', new Map()],
@@ -198,15 +198,12 @@ Broker.prototype.cancel = function cancel(consumerTag, requeue = true) {
   return true;
 };
 
+/** List all consumers as serializable projections */
 Broker.prototype.getConsumers = function getConsumers() {
+  /** @type {ReturnType<import('./Queue.js').Consumer['toJSON']>[]} */
   const result = [];
   for (const consumer of this[kEntities].get('consumers').values()) {
-    result.push({
-      queue: consumer.queue.name,
-      consumerTag: consumer.options.consumerTag,
-      ready: consumer.ready,
-      options: { ...consumer.options },
-    });
+    result.push(consumer.toJSON());
   }
   return result;
 };
@@ -214,6 +211,7 @@ Broker.prototype.getConsumers = function getConsumers() {
 /**
  * Get consumer by tag
  * @param {string} consumerTag consumer tag
+ * @returns {import('./Queue.js').Consumer | undefined}
  */
 Broker.prototype.getConsumer = function getConsumer(consumerTag) {
   if (typeof consumerTag !== 'string') throw new TypeError('consumer tag must be a string');
@@ -223,6 +221,7 @@ Broker.prototype.getConsumer = function getConsumer(consumerTag) {
 /**
  * Get exchange by name
  * @param {string} exchangeName exchange name
+ * @returns {import('./Exchange.js').ExchangeBase | undefined}
  */
 Broker.prototype.getExchange = function getExchange(exchangeName) {
   if (typeof exchangeName !== 'string') throw new TypeError('exchange name must be a string');
@@ -445,6 +444,7 @@ Broker.prototype.createQueue = function createQueue(queueName, options) {
 /**
  * Get queue by name
  * @param {string} queueName queue name
+ * @returns {import('./Queue.js').Queue | undefined}
  */
 Broker.prototype.getQueue = function getQueue(queueName) {
   if (!queueName || typeof queueName !== 'string') throw new TypeError('queue name must be a string');
@@ -572,12 +572,16 @@ Broker.prototype.closeShovel = function closeShovel(name) {
 /**
  * Get shovel by name
  * @param {string} name shovel name
+ * @returns {import('./Shovel.js').Shovel | undefined}
  */
 Broker.prototype.getShovel = function getShovel(name) {
   return this[kEntities].get('shovels').get(name);
 };
 
-/** List all shovels */
+/**
+ * List all shovels
+ * @returns {import('./Shovel.js').Shovel[]}
+ */
 Broker.prototype.getShovels = function getShovels() {
   return [...this[kEntities].get('shovels').values()];
 };

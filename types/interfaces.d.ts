@@ -1,5 +1,16 @@
 export type onMessage = (routingKey: string, message: import('../src/Message.js').Message, owner: any) => void;
 
+/**
+ * Minimal event-emitter shape used as the `eventEmitter` argument of `Queue`, `Consumer`, and `Shovel`.
+ * `ExchangeBase` and `EventExchange` instances satisfy this structurally; the `Queue` constructor only
+ * needs `emit`/`on`/`off`, so this narrows the type away from the full `ExchangeBase` surface.
+ */
+export interface ExchangeEventEmitter {
+  emit(eventName: string, content?: any): any;
+  on(pattern: string, handler: Function, options?: ConsumeOptions): any;
+  off(pattern: string, handler: Function): any;
+}
+
 export type exchangeType = 'topic' | 'direct';
 
 export interface ConsumeOptions {

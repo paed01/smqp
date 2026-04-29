@@ -31,7 +31,7 @@ EndMatchRoutingKeyPattern.prototype.test = function test(routingKey) {
  * @returns {RoutingKeyPattern}
  *
  * @typedef {object} RoutingKeyPattern
- * @property {typeof RegExp.test} test function to test routing key pattern
+ * @property {(this: RoutingKeyPattern, routingKey: string) => boolean} test method to test a routing key against the pattern; receiver-bound — destructuring is unsupported
  */
 function getRoutingKeyPattern(pattern) {
   const len = pattern.length;

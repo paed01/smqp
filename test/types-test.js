@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { buildTypes } from '../scripts/build-types.js';
+import { createBundle } from 'dts-buddy';
 
 describe('generated types bundle', () => {
   let dts;
@@ -10,7 +10,11 @@ describe('generated types bundle', () => {
     this.timeout(20000);
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'smqp-dts-'));
     const output = path.join(dir, 'index.d.ts');
-    await buildTypes(output);
+    await createBundle({
+      project: 'tsconfig.json',
+      output,
+      modules: { smqp: 'src/index.js' },
+    });
     dts = await fs.readFile(output, 'utf8');
     await fs.rm(dir, { recursive: true, force: true });
   });
@@ -147,6 +151,66 @@ describe('generated types bundle', () => {
 
     it('prefetch carries typed params', () => {
       expect(dts).to.match(/prefetch\(value: number\)/);
+    });
+  });
+
+  describe('private state does not leak', () => {
+    it('Message does not expose [kPending] symbol-keyed property', () => {
+      expect(dts).to.not.match(/\[kPending\]:/);
+    });
+
+    it('Message does not expose [kOnConsumed] symbol-keyed property', () => {
+      expect(dts).to.not.match(/\[kOnConsumed\]:/);
+    });
+
+    it('Shovel does not expose Symbol.for-keyed properties', () => {
+      expect(dts).to.not.match(/\[kSourceBroker\]:/);
+      expect(dts).to.not.match(/\[kEventHandlers\]:/);
+      expect(dts).to.not.match(/\[kE2EShovel\]:/);
+    });
+  });
+
+  describe('Shovel method signatures', () => {
+    it('Shovel constructor carries typed params', () => {
+      expect(dts).to.match(/constructor\(name: string, source: ShovelSource, destination: ShovelDestination, options\?: ShovelOptions\)/);
+    });
+
+    it('Shovel.on carries typed params', () => {
+      expect(dts).to.match(/on\(eventName: string, handler: Function, options\?: ConsumeOptions\)/);
+    });
+
+    it('Exchange2Exchange.on carries typed params', () => {
+      expect(dts).to.match(/on\(eventName: string, handler: Function\)/);
+    });
+  });
+
+  describe('RoutingKeyPattern.test cannot be destructured', () => {
+    it('test signature carries explicit this: RoutingKeyPattern', () => {
+      expect(dts).to.match(/test:\s*\(this: RoutingKeyPattern, routingKey: string\) => boolean/);
+    });
+  });
+
+  describe('underscore-prefixed prototype methods are private', () => {
+    it('all internal _-methods are emitted as private', () => {
+      const internals = [
+        '_onTopicMessage',
+        '_onDirectMessage',
+        '_emitReturn',
+        '_consumeNext',
+        '_consumeMessages',
+        '_onMessageConsumed',
+        '_getPendingMessages',
+        '_dequeueMessage',
+        '_getCapacity',
+        '_push',
+        '_messageHandler',
+        '_onShovelMessage',
+        '_getQueuesState',
+        '_getExchangeState',
+        '_clearPending',
+      ];
+      const missing = internals.filter((name) => !dts.includes(`private ${name}`));
+      expect(missing, `missing private marker for: ${missing.join(', ')}`).to.have.lengthOf(0);
     });
   });
 });

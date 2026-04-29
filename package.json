@@ -38,8 +38,8 @@
     "test:md": "texample ./README.md,API.md",
     "cov:html": "c8 -r html -r text mocha",
     "dist": "dts-buddy && babel src/**.js -d dist",
-    "types": "node ./scripts/build-types.js",
-    "prepack": "npm run dist && npm run types",
+    "types": "dts-buddy",
+    "prepack": "npm run dist",
     "toc": "node ./scripts/generate-api-toc.js",
     "lint": "eslint . --cache && prettier . -c --cache"
   },

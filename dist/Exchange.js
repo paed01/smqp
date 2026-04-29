@@ -106,6 +106,13 @@ Object.defineProperties(ExchangeBase.prototype, {
     }
   }
 });
+
+/**
+ * Publish a message through the exchange
+ * @param {string} routingKey routing key
+ * @param {any} [content] message content
+ * @param {import('#types').MessageProperties} [properties] optional message properties
+ */
 ExchangeBase.prototype.publish = function publish(routingKey, content, properties) {
   if (this[kStopped]) return;
   if (!this[kBindings].length) return this._emitReturn(routingKey, content, properties);
@@ -116,6 +123,8 @@ ExchangeBase.prototype.publish = function publish(routingKey, content, propertie
     properties
   });
 };
+
+/** @private */
 ExchangeBase.prototype._onTopicMessage = function topic(routingKey, message) {
   const publishedMsg = message.content;
   message.ack();
@@ -135,7 +144,7 @@ ExchangeBase.prototype._onTopicMessage = function topic(routingKey, message) {
 };
 
 /**
- * @ignore
+ * @private
  * @param {string} routingKey
  * @param {Message} message
  */
@@ -165,6 +174,8 @@ ExchangeBase.prototype._onDirectMessage = function direct(routingKey, message) {
   }, publishedMsg.content, publishedMsg.properties);
   return 1;
 };
+
+/** @private */
 ExchangeBase.prototype._emitReturn = function emitReturn(routingKey, content, properties) {
   if (!this.events || !properties) return;
   if (properties.confirm) {
@@ -180,6 +191,13 @@ ExchangeBase.prototype._emitReturn = function emitReturn(routingKey, content, pr
     }, content, properties));
   }
 };
+
+/**
+ * Bind a queue to this exchange with a routing key pattern
+ * @param {import('./Queue.js').Queue} queue queue to bind
+ * @param {string} pattern routing key pattern
+ * @param {import('#types').BindingOptions} [bindOptions] optional binding options
+ */
 ExchangeBase.prototype.bindQueue = function bindQueue(queue, pattern, bindOptions) {
   const bindings = this[kBindings];
   for (const binding of bindings) {
@@ -191,6 +209,12 @@ ExchangeBase.prototype.bindQueue = function bindQueue(queue, pattern, bindOption
   }
   return binding;
 };
+
+/**
+ * Unbind a queue from this exchange
+ * @param {import('./Queue.js').Queue} queue queue previously bound
+ * @param {string} pattern routing key pattern
+ */
 ExchangeBase.prototype.unbindQueue = function unbindQueue(queue, pattern) {
   for (const binding of this[kBindings]) {
     if (binding.queue === queue && binding.pattern === pattern) {
@@ -198,6 +222,11 @@ ExchangeBase.prototype.unbindQueue = function unbindQueue(queue, pattern) {
     }
   }
 };
+
+/**
+ * Unbind every binding pointing at the named queue
+ * @param {string} queueName queue name
+ */
 ExchangeBase.prototype.unbindQueueByName = function unbindQueueByName(queueName) {
   for (const binding of this[kBindings]) {
     if (binding.queue.name === queueName) this.closeBinding(binding);
@@ -238,6 +267,12 @@ ExchangeBase.prototype.getState = function getState() {
 ExchangeBase.prototype.stop = function stop() {
   this[kStopped] = true;
 };
+
+/**
+ * Recover exchange from previously captured state
+ * @param {import('#types').ExchangeState} [state] exchange state, omit to recover stopped exchange in place
+ * @param {(name: string) => import('./Queue.js').Queue} [getQueue] callback to resolve a queue by name (used during binding restore)
+ */
 ExchangeBase.prototype.recover = function recover(state, getQueue) {
   this[kStopped] = false;
   if (!state) return this;
@@ -259,15 +294,34 @@ ExchangeBase.prototype.recover = function recover(state, getQueue) {
   }
   return this;
 };
+
+/**
+ * Find a binding by queue name and pattern
+ * @param {string} queueName queue name
+ * @param {string} pattern routing key pattern
+ */
 ExchangeBase.prototype.getBinding = function getBinding(queueName, pattern) {
   for (const binding of this[kBindings]) {
     if (binding.queue.name === queueName && binding.pattern === pattern) return binding;
   }
 };
+
+/**
+ * Emit an exchange event (or, if no event sub-exchange, publish on the exchange itself)
+ * @param {string} eventName event name (without `exchange.` prefix)
+ * @param {any} [content] event payload
+ */
 ExchangeBase.prototype.emit = function emit(eventName, content) {
   if (this.events) return this.events.publish(`exchange.${eventName}`, content);
   return this.publish(eventName, content);
 };
+
+/**
+ * Subscribe to an exchange event
+ * @param {string} pattern event name pattern (without `exchange.` prefix)
+ * @param {import('#types').onMessage} handler event handler
+ * @param {import('#types').ConsumeOptions} [consumeOptions] optional consume options
+ */
 ExchangeBase.prototype.on = function on(pattern, handler, consumeOptions) {
   if (this.events) return this.events.on(`exchange.${pattern}`, handler, consumeOptions);
   const eventQueue = new _Queue.Queue(null, {
@@ -285,6 +339,12 @@ ExchangeBase.prototype.on = function on(pattern, handler, consumeOptions) {
     noAck: true
   }, this);
 };
+
+/**
+ * Unsubscribe from an exchange event
+ * @param {string} pattern event name pattern previously passed to on
+ * @param {import('#types').onMessage | { consumerTag?: string }} handler the handler used in on, or an object with the consumer tag
+ */
 ExchangeBase.prototype.off = function off(pattern, handler) {
   if (this.events) return this.events.off(`exchange.${pattern}`, handler);
   const {
@@ -296,6 +356,11 @@ ExchangeBase.prototype.off = function off(pattern, handler) {
     }
   }
 };
+
+/**
+ * Remove a single binding from this exchange
+ * @param {import('./Binding.js').Binding} binding binding to close
+ */
 ExchangeBase.prototype.closeBinding = function closeBinding(binding) {
   const bindings = this[kBindings];
   const idx = bindings.indexOf(binding);

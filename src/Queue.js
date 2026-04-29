@@ -1,5 +1,5 @@
 import { generateId, sortByPriority } from './shared.js';
-import { kPending, Message } from './Message.js';
+import { Message } from './Message.js';
 import { SmqpError, ERR_EXCLUSIVE_CONFLICT, ERR_EXCLUSIVE_NOT_ALLOWED } from './Errors.js';
 
 const kName = Symbol.for('name');
@@ -12,10 +12,10 @@ const kAvailableCount = Symbol.for('availableCount');
 const kStopped = Symbol.for('stopped');
 
 /**
- *
- * @param {string} name
- * @param {import('#types').QueueOptions} options
- * @param {import('./Exchange.js').EventExchange} eventEmitter
+ * Queue
+ * @param {string} [name] optional, but recommended queue name, defaults to `smq.qname-<random>`
+ * @param {import('#types').QueueOptions} [options] queue options
+ * @param {import('#types').ExchangeEventEmitter} [eventEmitter] optional event emitter
  */
 export function Queue(name, options, eventEmitter) {
   if (name && typeof name !== 'string') throw new TypeError('Queue name must be a string');
@@ -32,6 +32,7 @@ export function Queue(name, options, eventEmitter) {
   this[kStopped] = false;
   this[kAvailableCount] = 0;
   this[kExclusive] = false;
+  /** @private */
   this._onMessageConsumed = this._onMessageConsumed.bind(this);
 }
 
@@ -115,6 +116,7 @@ Queue.prototype.evictFirst = function evictFirst(compareMessage) {
   return evict === compareMessage;
 };
 
+/** @private */
 Queue.prototype._consumeNext = function consumeNext() {
   if (this[kStopped] || !this[kAvailableCount]) return;
 
@@ -172,6 +174,7 @@ Queue.prototype.consume = function consume(onMessage, consumeOptions, owner) {
  * @param {any} [owner] forwarded to the message handler as the third arg
  */
 Queue.prototype.assertConsumer = function assertConsumer(onMessage, consumeOptions, owner) {
+  /** @type {Consumer[]} */
   const consumers = this[kConsumers];
   if (!consumers.length) return this.consume(onMessage, consumeOptions, owner);
   for (const consumer of consumers) {
@@ -199,7 +202,7 @@ Queue.prototype.get = function getMessage(options) {
   if (!message) return false;
   if (options?.noAck) {
     this._dequeueMessage(message);
-    message[kPending] = false;
+    message._clearPending();
   }
 
   return message;
@@ -244,7 +247,7 @@ Queue.prototype._consumeMessages = function consumeMessages(n, consumeOptions) {
  * @param {boolean} [allUpTo] ack all messages up to and including this one
  */
 Queue.prototype.ack = function ack(message, allUpTo) {
-  if (this._onMessageConsumed(message, 'ack', allUpTo, false)) message[kPending] = false;
+  if (this._onMessageConsumed(message, 'ack', allUpTo, false)) message._clearPending();
 };
 
 /**
@@ -254,7 +257,7 @@ Queue.prototype.ack = function ack(message, allUpTo) {
  * @param {boolean} [requeue] requeue nacked message(s), defaults to true
  */
 Queue.prototype.nack = function nack(message, allUpTo, requeue = true) {
-  if (this._onMessageConsumed(message, 'nack', allUpTo, requeue)) message[kPending] = false;
+  if (this._onMessageConsumed(message, 'nack', allUpTo, requeue)) message._clearPending();
 };
 
 /**
@@ -263,7 +266,7 @@ Queue.prototype.nack = function nack(message, allUpTo, requeue = true) {
  * @param {boolean} [requeue] requeue rejected message, defaults to true
  */
 Queue.prototype.reject = function reject(message, requeue = true) {
-  if (this._onMessageConsumed(message, 'nack', false, requeue)) message[kPending] = false;
+  if (this._onMessageConsumed(message, 'nack', false, requeue)) message._clearPending();
 };
 
 /**
@@ -492,7 +495,7 @@ Queue.prototype._dequeueMessage = function dequeueMessage(message) {
 
 Queue.prototype.getState = function getState() {
   const msgs = this.messages;
-  /** @type {{name: string, options: import('#types').QueueOptions, messages?: import('./Message.js').SerializedMessage[] }} */
+  /** @type {{name: string, options: import('#types').QueueOptions, messages?: import('./Message.js').MessageEnvelope[] }} */
   const state = {
     name: this.name,
     options: { ...this.options },
@@ -599,7 +602,7 @@ Queue.prototype._getCapacity = function getCapacity() {
  * @param {import('#types').onMessage} onMessage message handler
  * @param {import('#types').ConsumeOptions} [options] consume options
  * @param {any} [owner] forwarded to the message handler as the third arg
- * @param {{ emit(eventName: string, content?: any): any, on(pattern: string, handler: Function): any }} [eventEmitter] internal queue event bridge
+ * @param {import('#types').ExchangeEventEmitter} [eventEmitter] internal queue event bridge
  */
 export function Consumer(queue, onMessage, options, owner, eventEmitter) {
   if (typeof onMessage !== 'function') throw new TypeError('message callback is required and must be a function');
@@ -660,6 +663,17 @@ Object.defineProperties(Consumer.prototype, {
   },
 });
 
+/** Project consumer state for serialization (used by `Broker.getConsumers` and `JSON.stringify`) */
+Consumer.prototype.toJSON = function toJSON() {
+  return {
+    queue: this.queue.name,
+    consumerTag: this.consumerTag,
+    ready: this.ready,
+    options: { ...this.options },
+  };
+};
+
+/** @private */
 Consumer.prototype._push = function push(messages) {
   const internalQueue = this[kInternalQueue];
   for (const message of messages) {
@@ -675,6 +689,7 @@ Consumer.prototype._push = function push(messages) {
   }
 };
 
+/** @private */
 Consumer.prototype._consume = function consume() {
   const internalQ = this[kInternalQueue];
   const consumerTag = this[kName];

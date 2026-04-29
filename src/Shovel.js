@@ -1,17 +1,34 @@
 import { EventExchange } from './Exchange.js';
 import { SmqpError, ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND, ERR_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND } from './Errors.js';
 
+/** @type {symbol} */
 const kName = Symbol.for('name');
+/** @type {symbol} */
 const kBrokerInternal = Symbol.for('brokerInternal');
+/** @type {symbol} */
 const kCloneMessage = Symbol.for('cloneMessage');
+/** @type {symbol} */
 const kClosed = Symbol.for('closed');
+/** @type {symbol} */
 const kConsumerTag = Symbol.for('consumerTag');
+/** @type {symbol} */
 const kDestinationExchange = Symbol.for('destinationExchange');
+/** @type {symbol} */
 const kEventHandlers = Symbol.for('eventHandlers');
+/** @type {symbol} */
 const kSourceBroker = Symbol.for('sourceBroker');
+/** @type {symbol} */
 const kSourceExchange = Symbol.for('sourceExchange');
+/** @type {symbol} */
 const kE2EShovel = Symbol.for('shovel');
 
+/**
+ * Shovel — pipe messages from a source exchange to a destination exchange
+ * @param {string} name unique shovel name
+ * @param {import('#types').ShovelSource} source source spec
+ * @param {import('#types').ShovelDestination} destination destination spec
+ * @param {import('#types').ShovelOptions} [options] optional shovel options
+ */
 export function Shovel(name, source, destination, options) {
   if (!name || typeof name !== 'string') throw new TypeError('Shovel name is required and must be a string');
 
@@ -41,6 +58,7 @@ export function Shovel(name, source, destination, options) {
   this[kName] = name;
   this.source = { ...source, pattern: routingKeyPattern };
   this.destination = { ...destination };
+  /** @type {import('#types').ExchangeEventEmitter} */
   this.events = new EventExchange('shovel__events');
 
   const consumerTag = (this[kConsumerTag] = source.consumerTag || `smq.shoveltag-${name}`);
@@ -86,18 +104,35 @@ Object.defineProperties(Shovel.prototype, {
   },
 });
 
+/**
+ * Emit shovel event
+ * @param {string} eventName event name (without `shovel.` prefix)
+ * @param {any} [content] event payload
+ */
 Shovel.prototype.emit = function emit(eventName, content) {
   this.events.emit(`shovel.${eventName}`, content);
 };
 
+/**
+ * Subscribe to shovel event
+ * @param {string} eventName event name (without `shovel.` prefix)
+ * @param {Function} handler event handler
+ * @param {import('#types').ConsumeOptions} [options] optional consume options
+ */
 Shovel.prototype.on = function on(eventName, handler, options) {
   return this.events.on(`shovel.${eventName}`, handler, options);
 };
 
+/**
+ * Unsubscribe from shovel event
+ * @param {string} eventName event name previously passed to on
+ * @param {Function | { consumerTag?: string }} handler the handler used in on, or an object with the consumer tag
+ */
 Shovel.prototype.off = function off(eventName, handler) {
   return this.events.off(`shovel.${eventName}`, handler);
 };
 
+/** Close shovel and cancel its source consumer */
 Shovel.prototype.close = function closeShovel() {
   if (this[kClosed]) return;
   this[kClosed] = true;
@@ -109,6 +144,7 @@ Shovel.prototype.close = function closeShovel() {
   this[kSourceBroker].cancel(this[kConsumerTag]);
 };
 
+/** @private */
 Shovel.prototype._messageHandler = function messageHandler(message) {
   const cloneMessage = this[kCloneMessage];
   if (!cloneMessage) return message;
@@ -127,6 +163,7 @@ Shovel.prototype._messageHandler = function messageHandler(message) {
   };
 };
 
+/** @private */
 Shovel.prototype._onShovelMessage = function onShovelMessage(routingKey, message) {
   const destinationExchange = this[kDestinationExchange];
   if (!destinationExchange.bindingCount && !message.properties.mandatory) return message.ack();
@@ -138,6 +175,10 @@ Shovel.prototype._onShovelMessage = function onShovelMessage(routingKey, message
   message.ack();
 };
 
+/**
+ * Exchange-to-exchange shovel wrapper, returned by `broker.bindExchange`
+ * @param {Shovel} shovel underlying shovel
+ */
 export function Exchange2Exchange(shovel) {
   this[kE2EShovel] = shovel;
 }
@@ -175,10 +216,16 @@ Object.defineProperties(Exchange2Exchange.prototype, {
   },
 });
 
-Exchange2Exchange.prototype.on = function e2eon(...args) {
-  return this[kE2EShovel].on(...args);
+/**
+ * Subscribe to underlying shovel events
+ * @param {string} eventName event name (without `shovel.` prefix)
+ * @param {Function} handler event handler
+ */
+Exchange2Exchange.prototype.on = function e2eon(eventName, handler) {
+  return this[kE2EShovel].on(eventName, handler);
 };
 
+/** Close the underlying shovel */
 Exchange2Exchange.prototype.close = function e2eclose() {
   return this[kE2EShovel].close();
 };
