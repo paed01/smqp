@@ -20,6 +20,14 @@ EndMatchRoutingKeyPattern.prototype.test = function test(routingKey) {
   return !routingKey.indexOf(this._match);
 };
 
+/**
+ * Get routing key pattern
+ * @param {string} pattern routing key pattern
+ * @returns {RoutingKeyPattern}
+ *
+ * @typedef {object} RoutingKeyPattern
+ * @property {(this: RoutingKeyPattern, routingKey: string) => boolean} test method to test a routing key against the pattern; receiver-bound — destructuring is unsupported
+ */
 export function getRoutingKeyPattern(pattern) {
   const len = pattern.length;
   const hashIdx = pattern.indexOf('#');

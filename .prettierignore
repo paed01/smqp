@@ -2,3 +2,5 @@ dist/
 node_modules/
 coverage/
 tmp/
+types/index.d.ts
+types/index.d.ts.map

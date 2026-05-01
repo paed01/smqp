@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v12.0.0 - 2026-05-01
+
+- build commonjs with rollup into one file, namely dist/index.cjs
+- refactor types by using jsdoc typing and dts-buddy, should probably be closer to the truth but be aware
+- development is now performed in node 22 since eslint dropped support for previous versions
+
 ## v11.0.1 - 2025-12-02
 
 - mitigate degraded performance as a result of refactoring consumer tag uniqueness

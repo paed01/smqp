@@ -13,7 +13,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v6
         with:
@@ -23,4 +23,6 @@ jobs:
       - name: Update npm
         run: npm install -g npm@latest
       - run: npm i
-      - run: npm publish
+      - run: npm publish $VERSION_TAG
+        env:
+          VERSION_TAG: ${{ endsWith(github.ref_name, '-rc') && '--tag rc' || '' }}
