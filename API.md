@@ -39,7 +39,9 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [`broker.reject(message[, requeue])`](#brokerrejectmessage-requeue)
   - [`broker.createShovel(name, source, destination[, options])`](#brokercreateshovelname-source-destination-options)
   - [`broker.getShovel(name)`](#brokergetshovelname)
+  - [`broker.getShovels()`](#brokergetshovels)
   - [`broker.closeShovel(name)`](#brokercloseshovelname)
+  - [`broker.validateConsumerTag(consumerTag)`](#brokervalidateconsumertagconsumertag)
   - [`broker.on(eventName, callback[, options])`](#brokeroneventname-callback-options)
   - [`broker.off(eventName, callbackOrObject)`](#brokeroffeventname-callbackorobject)
   - [`broker.prefetch(count)`](#brokerprefetchcount)
@@ -96,6 +98,9 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [`shovel.close()`](#shovelclose)
   - [`shovel.on(eventName, callback[, options])`](#shoveloneventname-callback-options)
   - [`shovel.off(eventName, callbackOrObject)`](#shoveloffeventname-callbackorobject)
+- [Exchange2Exchange](#exchange2exchange)
+  - [`exchange2exchange.on(eventName, handler)`](#exchange2exchangeoneventname-handler)
+  - [`exchange2exchange.close()`](#exchange2exchangeclose)
 - [SmqpError](#smqperror)
   - [`error.code`](#errorcode)
 - [`getRoutingKeyPattern(pattern)`](#getroutingkeypatternpattern)
@@ -129,6 +134,7 @@ To make sure the exchange, and or queue has the desired behaviour, please use [`
   - `autoDelete`: boolean, defaults to `true`, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down
   - `consumerTag`: unique consumer tag
   - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange
+  - `deadLetterRoutingKey`: optional string, override routing key when publishing dead-lettered messages
   - `durable`: boolean, defaults to `true`, makes exchange and queue durable, i.e. will be returned when getting state
   - `exclusive`: boolean, queue is exclusively consumed
   - `noAck`: boolean, set to `true` if there is no need to acknowledge message
@@ -166,6 +172,7 @@ Asserts exchange and creates a temporary queue with random name, i.e. not durabl
   - `autoDelete`: boolean, defaults to `true`, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down
   - `consumerTag`: unique consumer tag
   - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange
+  - `deadLetterRoutingKey`: optional string, override routing key when publishing dead-lettered messages
   - **`durable`**: set to `false` with no option to override
   - `noAck`: boolean, set to `true` if there is no need to acknowledge message
   - `prefetch`: integer, defaults to `1`, number of messages to consume at a time
@@ -173,16 +180,12 @@ Asserts exchange and creates a temporary queue with random name, i.e. not durabl
 
 ### `broker.subscribeOnce(exchangeName, pattern, onMessage[, options])`
 
-Same as `subscribeTmp` and will immediately close consumer when first message arrive.
+Same as `subscribeTmp` and will immediately close consumer when first message arrive. Accepts the same option object as [`broker.subscribe`](#brokersubscribeexchangename-pattern-queuename-onmessage-options), but only `consumerTag` and `priority` are honored — `noAck`, `autoDelete`, and `durable` are forced internally, and queue-lifecycle / dead-letter options are ignored because the temporary queue is deleted after the first delivery.
 
 - `exchangeName`: exchange name
 - `pattern`: queue binding pattern
 - `onMessage`: message callback
-- `options`:
-  - `consumerTag`: unique consumer tag
-  - `priority`: integer, defaults to `0`, higher value gets messages first
-
-Oh, btw, option `noAck` will be set to `true` so there is no need to ack message in message callback.
+- `options`: optional object, see above
 
 ### `broker.unsubscribe(queueName, onMessage)`
 
@@ -243,16 +246,7 @@ Arguments:
   - `priority`: optional binding priority
   - `cloneMessage`: clone message function called with shoveled message
 
-Returns:
-
-- `name`: name of e2e binding
-- `source`: source exchange name
-- `destination`: destination exchange name
-- `pattern`: pattern
-- `queue`: name of source e2e queue
-- `consumerTag`: consumer tag for temporary source e2e queue
-- `on(eventName, handler)`: listen for shovel events, returns event consumer
-- `close()`: close e2e binding
+Returns an [Exchange2Exchange](#exchange2exchange) wrapper.
 
 ### `broker.unbindExchange(source, destination[, pattern])`
 
@@ -273,6 +267,8 @@ Assert a queue into existence.
   - `durable`: boolean, defaults to `true`, makes queue durable, i.e. will be returned when getting state
   - `autoDelete`: boolean, defaults to `true`, the queue will be removed when all consumers are down
   - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange if non-existing
+  - `deadLetterRoutingKey`: optional string, override routing key when publishing dead-lettered messages
+  - `maxLength`: integer, drop the oldest non-pending message when the queue would exceed this length
   - `messageTtl`: integer, expire message after milliseconds, [see Message Eviction](#message-eviction)
 
 Returns [Queue](#queue).
@@ -330,6 +326,8 @@ Create queue with name. Throws if queue already exists.
   - `durable`: boolean, defaults to `true`, makes queue durable, i.e. will be returned when getting state
   - `autoDelete`: boolean, defaults to `true`, the queue will be removed when all consumers are down
   - `deadLetterExchange`: string, name of dead letter exchange. Will be asserted as topic exchange if non-existing
+  - `deadLetterRoutingKey`: optional string, override routing key when publishing dead-lettered messages
+  - `maxLength`: integer, drop the oldest non-pending message when the queue would exceed this length
   - `messageTtl`: integer, expire message after milliseconds, [see Message Eviction](#message-eviction)
 
 Returns [Queue](#queue).
@@ -369,7 +367,7 @@ Return serializable object containing durable exchanges, bindings, and durable q
 
 ### `broker.recover([state])`
 
-Recovers exchanges, bindings, and queues with messages. A state may be passed, preferably from [`getState()`](#brokergetstate).
+Recovers exchanges, bindings, and queues with messages. A state may be passed, preferably from [`getState()`](#brokergetstate). With no argument, restarts stopped exchanges and queues in place.
 
 ### `broker.purgeQueue(queueName)`
 
@@ -391,7 +389,11 @@ Arguments:
 
 - `queueName`: name of queue
 - `options`: optional object with options
+  - `consumerTag`: optional consumer tag to attach to the consumed message
+  - `exclusive`: boolean, takes the queue exclusively for this read
   - `noAck`: optional boolean, defaults to `false`
+  - `prefetch`: integer, currently passes through but only one message is ever returned
+  - `priority`: integer, defaults to `0`
 
 ### `broker.ack(message[, allUpTo])`
 
@@ -452,9 +454,17 @@ Get shovel by name.
 
 Returns [Shovel](#new-shovelname-source-destination-options).
 
+### `broker.getShovels()`
+
+List all active shovels owned by this broker. Returns an array of [Shovel](#new-shovelname-source-destination-options) instances.
+
 ### `broker.closeShovel(name)`
 
 Close shovel by name.
+
+### `broker.validateConsumerTag(consumerTag)`
+
+Throws [`SmqpError`](#smqperror) with code `ERR_SMQP_CONSUMER_TAG_CONFLICT` if the tag is already taken on this broker, otherwise returns `true`. Mainly useful when constructing a consumer tag manually before calling `subscribe`/`consume`.
 
 ### `broker.on(eventName, callback[, options])`
 
@@ -522,7 +532,7 @@ broker.off('return', { consumerTag: 'my-event-consumertag' });
 
 ### `broker.prefetch(count)`
 
-Noop, only placeholder.
+Noop, only placeholder — accepts a `count` argument for amqp-shape compatibility but ignores it.
 
 ### `broker.reset()`
 
@@ -540,6 +550,7 @@ Properties:
 - `bindingCount`: getter for number of bindings
 - `bindings`: getter for list of [bindings](#binding)
 - `stopped`: boolean for if the exchange is stopped
+- `undeliveredCount`: getter for number of messages held in the exchange's internal delivery queue (not yet routed)
 
 ### `exchange.bindQueue(queue, pattern[, bindOptions])`
 
@@ -600,6 +611,8 @@ Recover exchange.
 
 ### `exchange.stop()`
 
+Stop the exchange. Subsequent `publish` calls are silently dropped until [`exchange.recover()`](#exchangerecoverstate-getqueue) is called.
+
 ### `exchange.unbindQueue(queue, pattern)`
 
 Unbind queue from exchange.
@@ -652,6 +665,7 @@ Properties:
 - `messages`: actual messages array, probably a good idea to not mess with, but it's there
 - `messageCount`: message count
 - `consumerCount`: consumer count
+- `consumers`: snapshot array of [consumer](#consumer) instances currently bound to the queue
 - `stopped`: is stopped
 - `exclusive`: is exclusively consumed
 - `maxLength`: get or set max length of queue
@@ -782,6 +796,8 @@ Queue message.
 
 ### `queue.recover([state])`
 
+Recover queue, optionally from a previous [`queue.getState()`](#queuegetstate). With no argument, requeues messages held by current consumers and resumes consumption.
+
 ### `queue.reject(message[, requeue = true])`
 
 ### `queue.stop()`
@@ -840,7 +856,11 @@ What it is all about - convey messages.
   - `messageId`: unique message id
   - `persistent`: persist message, if unset queue option durable prevails
   - `timestamp`: `Date.now()`
-  - `expiration`: Expire message after milliseconds
+  - `expiration`: expire message after milliseconds
+  - `ttl`: absolute expiry timestamp (`timestamp + expiration`), set automatically when `expiration` is provided
+  - `mandatory`: boolean, if `true` the publishing exchange emits `return` when the message isn't routed to any queue
+  - `source-exchange`: present on shovelled / e2e-routed messages, names the originating exchange
+  - `shovel-name`: present on cross-broker shovelled messages, names the shovel
 - `get pending()`: boolean indicating that the message is awaiting ack (true) or is acked/nacked (false)
 
 ### `message.ack([allUpTo])`
@@ -961,6 +981,27 @@ Arguments:
 - `eventName`: name of event
 - `callbackOrObject`: event callback function to off or object with basically one property:
   - `consumerTag`: optional event consumer tag to off
+
+## Exchange2Exchange
+
+In-broker exchange-to-exchange shovel wrapper returned by [`broker.bindExchange`](#brokerbindexchangesource-destination-pattern-args). Thin facade over an internal [Shovel](#new-shovelname-source-destination-options).
+
+**Properties** (all readonly):
+
+- `name`: e2e binding name
+- `source`: source exchange name
+- `destination`: destination exchange name
+- `pattern`: binding pattern
+- `queue`: name of the source e2e queue
+- `consumerTag`: consumer tag of the source e2e consumer
+
+### `exchange2exchange.on(eventName, handler)`
+
+Listen for events from the underlying shovel. Returns the event [consumer](#consumer).
+
+### `exchange2exchange.close()`
+
+Close the e2e binding (closes the underlying shovel).
 
 ## SmqpError
 
