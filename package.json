@@ -7,15 +7,17 @@
     "name": "Pål Edman",
     "url": "https://github.com/paed01"
   },
-  "main": "./dist/index.js",
   "module": "./src/index.js",
+  "main": "./dist/index.cjs",
+  "browser": "./dist/smqp.cjs",
   "jsnext:main": "./src/index.js",
   "sideEffects": false,
   "types": "./types/index.d.ts",
   "exports": {
     "types": "./types/index.d.ts",
     "import": "./src/index.js",
-    "require": "./dist/index.js"
+    "require": "./dist/index.cjs",
+    "browser": "./dist/smqp.cjs"
   },
   "license": "MIT",
   "repository": {
@@ -31,16 +33,19 @@
     "types/index.d.ts",
     "types/index.d.ts.map"
   ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "test": "mocha",
-    "test:lcov": "c8 -r lcov mocha --exit && npm run lint",
+    "test:lcov": "c8 -r lcov mocha --exit",
     "posttest": "npm run dist && npm run lint && npm run toc && npm run test:md",
     "test:md": "texample ./README.md,API.md",
     "cov:html": "c8 -r html -r text mocha",
-    "dist": "dts-buddy && babel src/**.js -d dist",
+    "dist": "rollup -c && dts-buddy && npm run toc",
     "types": "dts-buddy",
-    "prepack": "npm run dist",
-    "toc": "node ./scripts/generate-api-toc.js",
+    "prepublishOnly": "npm run dist",
+    "toc": "node ./scripts/toc.js API.md",
     "lint": "eslint . --cache && prettier . -c --cache"
   },
   "keywords": [
@@ -57,20 +62,21 @@
     "nack",
     "reject",
     "topic",
-    "direct"
+    "direct",
+    "independent"
   ],
   "devDependencies": {
-    "@babel/cli": "^7.24.1",
-    "@babel/core": "^7.24.4",
-    "@babel/preset-env": "^7.24.4",
+    "@eslint/js": "^9.39.4",
+    "@rollup/plugin-commonjs": "^29.0.2",
     "c8": "^10.1.2",
     "chai": "^6.2.0",
     "chronokinesis": "^8.0.0",
     "dts-buddy": "^0.7.0",
-    "eslint": "^9.10.0",
-    "markdown-toc": "^1.2.0",
+    "eslint": "^10.2.1",
+    "globals": "^17.5.0",
     "mocha": "^11.0.1",
     "prettier": "^3.2.5",
+    "rollup": "^4.60.2",
     "texample": "^1.0.0"
   }
 }

@@ -78,7 +78,7 @@ export default [
     languageOptions: {
       parserOptions: {
         sourceType: 'module',
-        ecmaVersion: 2020,
+        ecmaVersion: 2025,
       },
       globals: {
         ...globals['shared-node-browser'],
@@ -92,6 +92,9 @@ export default [
       globals: {
         ...globals.node,
       },
+    },
+    rules: {
+      'no-process-exit': 0,
     },
   },
   {
