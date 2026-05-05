@@ -5,8 +5,6 @@ const kPending = Symbol.for('pending');
 /** @type {symbol} */
 const kOnConsumed = Symbol.for('onConsumed');
 
-/** @typedef {Pick<Message, 'fields' | 'content' | 'properties'>} MessageEnvelope */
-
 /**
  * What it is all about - message
  * @param {import('#types').MessageFields} fields

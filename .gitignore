@@ -43,6 +43,6 @@ package-lock.json
 
 # AI
 .claude
-AGENTS.md
+CLAUDE.md
 
 dist/

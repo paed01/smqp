@@ -204,6 +204,7 @@ describe('Shovel', () => {
       expect(message.properties).to.have.property('type', 'shoveled');
       expect(message.properties).to.have.property('source-exchange', 'source-events');
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(_routingKey, msg) {
         messages.push(msg);
       }

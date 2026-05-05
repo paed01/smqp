@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { createBundle } from 'dts-buddy';
+import { buildTypes } from '../scripts/build-types.js';
 
 describe('generated types bundle', () => {
   let dts;
@@ -10,12 +10,7 @@ describe('generated types bundle', () => {
     this.timeout(20000);
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'smqp-dts-'));
     const output = path.join(dir, 'index.d.ts');
-    await createBundle({
-      project: 'tsconfig.json',
-      output,
-      modules: { smqp: 'src/index.js' },
-    });
-    dts = await fs.readFile(output, 'utf8');
+    dts = await buildTypes(output);
     await fs.rm(dir, { recursive: true, force: true });
   });
 
@@ -86,6 +81,39 @@ describe('generated types bundle', () => {
     it('exports Broker as default', () => {
       expect(dts).to.match(/export default (function|class) Broker_1/);
     });
+
+    const sharedTypes = [
+      'MessageEnvelope',
+      'MessageFields',
+      'MessageProperties',
+      'ConsumeOptions',
+      'SubscribeOptions',
+      'QueueOptions',
+      'QueueState',
+      'QueueEventNames',
+      'DeleteQueueOptions',
+      'ExchangeOptions',
+      'ExchangeState',
+      'ExchangeEventEmitter',
+      'exchangeType',
+      'BindingOptions',
+      'BindingState',
+      'BrokerState',
+      'ShovelSource',
+      'ShovelDestination',
+      'ShovelOptions',
+      'onMessage',
+    ];
+
+    it('exposes each shared type as a public export', () => {
+      const missing = sharedTypes.filter((name) => !new RegExp(`export (interface|type) ${name}\\b`).test(dts));
+      expect(missing, `not exported: ${missing.join(', ')}`).to.have.lengthOf(0);
+    });
+
+    it('does not leak _1-suffixed shared-type aliases', () => {
+      const stray = sharedTypes.filter((name) => new RegExp(`\\b${name}_1\\b`).test(dts));
+      expect(stray, `unconsolidated aliases: ${stray.join(', ')}`).to.have.lengthOf(0);
+    });
   });
 
   describe('Broker method signatures', () => {
@@ -107,8 +135,10 @@ describe('generated types bundle', () => {
       expect(dts).to.match(/ack\(message: Message, allUpTo\?: boolean\)/);
     });
 
-    it('createShovel carries typed params', () => {
-      expect(dts).to.match(/createShovel\(name: string, source: ShovelSource, destination: ShovelDestination, options\?: ShovelOptions\)/);
+    it('createShovel source omits broker (broker is supplied by the caller broker)', () => {
+      expect(dts).to.match(
+        /createShovel\(name: string, source: Omit<ShovelSource, "broker">, destination: ShovelDestination, options\?: ShovelOptions\)/
+      );
     });
   });
 

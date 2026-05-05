@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v12.0.0 - 2026-05-05
+
+- fix `broker.createShovel` typings: source no longer requires `broker`
+- expose shared types (`MessageEnvelope`, `MessageProperties`, `ConsumeOptions`, `ShovelSource`, etc.) as importable members of `smqp` — previously they were bundled as private declarations
+- type ~~`MessageMessage`~~ is renamed to `MessageEnvelope`
+
 ## v12.0.0 - 2026-05-01
 
 - build commonjs with rollup into one file, namely dist/index.cjs

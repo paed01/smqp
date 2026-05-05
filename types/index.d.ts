@@ -1,287 +1,5 @@
 declare module 'smqp' {
 	/**
-	 * What it is all about - message
-	 * 
-	 */
-	export function Message(fields: MessageFields, content?: any, properties?: MessageProperties, onConsumed?: CallableFunction): void;
-	export class Message {
-		
-		/**
-		 * What it is all about - message
-		 * 
-		 */
-		constructor(fields: MessageFields, content?: any, properties?: MessageProperties, onConsumed?: CallableFunction);
-		/**
-		 * Message fields
-		 * */
-		fields: MessageFields;
-		/**
-		 * Message content
-		 * */
-		content: any;
-		/**
-		 * Message properties
-		 * */
-		properties: MessageProperties;
-		get pending(): any;
-		/**
-		 * Acknowledge message
-		 * @param allUpTo all outstanding messages prior to and including the given message shall be considered acknowledged. If false, or omitted, only the message supplied is acknowledged. Defaults to false
-		 */
-		ack(allUpTo?: boolean): void;
-		/**
-		 * Reject message
-		 * @param allUpTo all outstanding messages prior to and including the given message shall be considered rejected. If false, or omitted, only the message supplied is rejected. Defaults to false
-		 * @param requeue put the message or messages back on the queue, defaults to true
-		 */
-		nack(allUpTo?: boolean, requeue?: boolean): void;
-		/**
-		 * Reject message
-		 * @param requeue put the message back on the queue, defaults to true
-		 */
-		reject(requeue?: boolean): void;
-		private _consume;
-		private _clearPending;
-	}
-	type MessageEnvelope = Pick<Message, "fields" | "content" | "properties">;
-	/**
-	 * Shovel — pipe messages from a source exchange to a destination exchange
-	 * @param name unique shovel name
-	 * @param source source spec
-	 * @param destination destination spec
-	 * @param options optional shovel options
-	 */
-	export function Shovel(name: string, source: ShovelSource, destination: ShovelDestination, options?: ShovelOptions): Shovel | undefined;
-	export class Shovel {
-		/**
-		 * Shovel — pipe messages from a source exchange to a destination exchange
-		 * @param name unique shovel name
-		 * @param source source spec
-		 * @param destination destination spec
-		 * @param options optional shovel options
-		 */
-		constructor(name: string, source: ShovelSource, destination: ShovelDestination, options?: ShovelOptions);
-		source: {
-			pattern: string;
-			broker: Broker_1;
-			exchange: string;
-			priority?: number;
-			queue?: string;
-			consumerTag?: string;
-		} | undefined;
-		destination: {
-			broker: Broker_1;
-			exchange: string;
-			exchangeKey?: string;
-			publishProperties?: Record<string, any>;
-		} | undefined;
-		
-		events: ExchangeEventEmitter;
-		/**
-		 * Emit shovel event
-		 * @param eventName event name (without `shovel.` prefix)
-		 * @param content event payload
-		 */
-		emit(eventName: string, content?: any): void;
-		/**
-		 * Subscribe to shovel event
-		 * @param eventName event name (without `shovel.` prefix)
-		 * @param handler event handler
-		 * @param options optional consume options
-		 */
-		on(eventName: string, handler: Function, options?: ConsumeOptions): any;
-		/**
-		 * Unsubscribe from shovel event
-		 * @param eventName event name previously passed to on
-		 * @param handler the handler used in on, or an object with the consumer tag
-		 */
-		off(eventName: string, handler: Function | {
-			consumerTag?: string;
-		}): any;
-		/** Close shovel and cancel its source consumer */
-		close(): void;
-		private _messageHandler;
-		private _onShovelMessage;
-		readonly name: string;
-		readonly closed: boolean;
-		readonly consumerTag: string;
-	}
-	/**
-	 * Exchange-to-exchange shovel wrapper, returned by `broker.bindExchange`
-	 * @param shovel underlying shovel
-	 */
-	function Exchange2Exchange(shovel: Shovel): void;
-	class Exchange2Exchange {
-		/**
-		 * Exchange-to-exchange shovel wrapper, returned by `broker.bindExchange`
-		 * @param shovel underlying shovel
-		 */
-		constructor(shovel: Shovel);
-		/**
-		 * Subscribe to underlying shovel events
-		 * @param eventName event name (without `shovel.` prefix)
-		 * @param handler event handler
-		 */
-		on(eventName: string, handler: Function): any;
-		/** Close the underlying shovel */
-		close(): any;
-		readonly name: string;
-		readonly source: string;
-		readonly destination: string;
-		readonly pattern: string;
-		readonly queue: string;
-		readonly consumerTag: string;
-	}
-	/**
-	 * Exchange
-	 * @param name required exchange name
-	 * @param type optional type, defaults to topic
-	 * @param options optional exchange options
-	 */
-	export function Exchange(name: string, type?: exchangeType, options?: ExchangeOptions): ExchangeBase;
-	/**
-	 * Exchange
-	 * @param name name
-	 * 
-	 */
-	function ExchangeBase(name: string, type: exchangeType, options?: ExchangeOptions, eventExchange?: ExchangeBase): void;
-	class ExchangeBase {
-		/**
-		 * Exchange
-		 * @param name name
-		 * 
-		 */
-		constructor(name: string, type: exchangeType, options?: ExchangeOptions, eventExchange?: ExchangeBase);
-		
-		options: ExchangeOptions;
-		events: ExchangeBase | undefined;
-		/**
-		 * Publish a message through the exchange
-		 * @param routingKey routing key
-		 * @param content message content
-		 * @param properties optional message properties
-		 */
-		publish(routingKey: string, content?: any, properties?: MessageProperties): any;
-		private _onTopicMessage;
-		private _onDirectMessage;
-		private _emitReturn;
-		/**
-		 * Bind a queue to this exchange with a routing key pattern
-		 * @param queue queue to bind
-		 * @param pattern routing key pattern
-		 * @param bindOptions optional binding options
-		 */
-		bindQueue(queue: Queue, pattern: string, bindOptions?: BindingOptions): any;
-		/**
-		 * Unbind a queue from this exchange
-		 * @param queue queue previously bound
-		 * @param pattern routing key pattern
-		 */
-		unbindQueue(queue: Queue, pattern: string): void;
-		/**
-		 * Unbind every binding pointing at the named queue
-		 * @param queueName queue name
-		 */
-		unbindQueueByName(queueName: string): void;
-		close(): void;
-		getState(): {
-			bindings?: {
-				id: string;
-				options: {
-					priority: number;
-				};
-				queueName: string;
-				pattern: string;
-			}[] | undefined;
-			deliveryQueue?: {
-				name: string;
-				options: QueueOptions;
-				messages?: MessageEnvelope[];
-			} | undefined;
-			name: string;
-			type: exchangeType;
-			options: {
-				[x: string]: any;
-				durable?: boolean;
-				autoDelete?: boolean;
-			};
-		};
-		stop(): void;
-		/**
-		 * Recover exchange from previously captured state
-		 * @param state exchange state, omit to recover stopped exchange in place
-		 * @param getQueue callback to resolve a queue by name (used during binding restore)
-		 */
-		recover(state?: ExchangeState, getQueue?: (name: string) => Queue): this | undefined;
-		/**
-		 * Find a binding by queue name and pattern
-		 * @param queueName queue name
-		 * @param pattern routing key pattern
-		 */
-		getBinding(queueName: string, pattern: string): any;
-		/**
-		 * Emit an exchange event (or, if no event sub-exchange, publish on the exchange itself)
-		 * @param eventName event name (without `exchange.` prefix)
-		 * @param content event payload
-		 */
-		emit(eventName: string, content?: any): any;
-		/**
-		 * Subscribe to an exchange event
-		 * @param pattern event name pattern (without `exchange.` prefix)
-		 * @param handler event handler
-		 * @param consumeOptions optional consume options
-		 */
-		on(pattern: string, handler: onMessage, consumeOptions?: ConsumeOptions): any;
-		/**
-		 * Unsubscribe from an exchange event
-		 * @param pattern event name pattern previously passed to on
-		 * @param handler the handler used in on, or an object with the consumer tag
-		 */
-		off(pattern: string, handler: onMessage | {
-			consumerTag?: string;
-		}): any;
-		/**
-		 * Remove a single binding from this exchange
-		 * @param binding binding to close
-		 */
-		closeBinding(binding: Binding): void;
-		readonly name: string;
-		readonly type: exchangeType;
-		readonly bindingCount: number;
-		readonly bindings: Binding[];
-		readonly stopped: boolean;
-		readonly undeliveredCount: number;
-	}
-	export class SmqpError extends Error {
-		constructor(message: any, code: any);
-		type: string;
-		code: any;
-	}
-	export const ERR_CONSUMER_TAG_CONFLICT: "ERR_SMQP_CONSUMER_TAG_CONFLICT";
-	export const ERR_EXCHANGE_TYPE_MISMATCH: "ERR_SMQP_EXCHANGE_TYPE_MISMATCH";
-	export const ERR_EXCLUSIVE_CONFLICT: "ERR_SMQP_EXCLUSIVE_CONFLICT";
-	export const ERR_EXCLUSIVE_NOT_ALLOWED: "ERR_SMQP_EXCLUSIVE_NOT_ALLOWED";
-	export const ERR_QUEUE_DURABLE_MISMATCH: "ERR_SMQP_QUEUE_DURABLE_MISMATCH";
-	export const ERR_QUEUE_NAME_CONFLICT: "ERR_SMQP_QUEUE_NAME_CONFLICT";
-	export const ERR_QUEUE_NOT_FOUND: "ERR_SMQP_QUEUE_NOT_FOUND";
-	export const ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND: "ERR_SMQP_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND";
-	export const ERR_SHOVEL_NAME_CONFLICT: "ERR_SMQP_SHOVEL_NAME_CONFLICT";
-	export const ERR_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND: "ERR_SMQP_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND";
-	/**
-	 * Get routing key pattern
-	 * @param pattern routing key pattern
-	 * */
-	export function getRoutingKeyPattern(pattern: string): RoutingKeyPattern;
-	/**
-	 * Get routing key pattern
-	 */
-	type RoutingKeyPattern = {
-		/**
-		 * method to test a routing key against the pattern; receiver-bound — destructuring is unsupported
-		 */
-		test: (this: RoutingKeyPattern, routingKey: string) => boolean;
-	};
-	/**
 	 * Smqp message broker
 	 * @param owner optional broker owner, forwarded to message consumer
 	 */
@@ -548,11 +266,11 @@ declare module 'smqp' {
 		/**
 		 * Create shovel between source and destination exchanges
 		 * @param name unique shovel name
-		 * @param source source spec
+		 * @param source source spec; the source broker is this broker
 		 * @param destination destination spec
 		 * @param options optional shovel options
 		 */
-		createShovel(name: string, source: ShovelSource, destination: ShovelDestination, options?: ShovelOptions): Shovel;
+		createShovel(name: string, source: Omit<ShovelSource, "broker">, destination: ShovelDestination, options?: ShovelOptions): Shovel;
 		/**
 		 * Close shovel by name
 		 * @param name shovel name
@@ -588,6 +306,241 @@ declare module 'smqp' {
 		readonly exchangeCount: number;
 		readonly queueCount: number;
 		readonly consumerCount: number;
+	}
+  export type onMessage = (routingKey: string, message: Message, owner: any) => void;
+
+  /**
+   * Minimal event-emitter shape used as the `eventEmitter` argument of `Queue`, `Consumer`, and `Shovel`.
+   * `ExchangeBase` and `EventExchange` instances satisfy this structurally; the `Queue` constructor only
+   * needs `emit`/`on`/`off`, so this narrows the type away from the full `ExchangeBase` surface.
+   */
+  export interface ExchangeEventEmitter {
+	emit(eventName: string, content?: any): any;
+	on(pattern: string, handler: Function, options?: ConsumeOptions): any;
+	off(pattern: string, handler: Function): any;
+  }
+
+  export type exchangeType = 'topic' | 'direct';
+
+  export interface ConsumeOptions {
+	/** set to true if there is no need to acknowledge message, message is immediately consumed */
+	noAck?: boolean;
+	/** unique consumer tag */
+	consumerTag?: string;
+	/** queue is exclusively consumed */
+	exclusive?: boolean;
+	/** defaults to 1, number of messages to consume at a time */
+	prefetch?: number;
+	/** defaults to 0, higher value gets messages first */
+	priority?: number;
+	[x: string]: any;
+  }
+
+  export interface SubscribeOptions extends ConsumeOptions {
+	/** defaults to true, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down */
+	autoDelete?: boolean;
+	/** defaults to true, makes exchange and queue durable, i.e. will be returned when getting state */
+	durable?: boolean;
+	/** dead letter exchange */
+	deadLetterExchange?: string;
+	/** publish dead letter with routing key */
+	deadLetterRoutingKey?: string;
+  }
+
+  export interface QueueOptions {
+	/** remove queue when last consumer leaves, defaults to true */
+	autoDelete?: boolean;
+	/** makes queue durable, i.e. will be returned when getting state */
+	durable?: boolean;
+	messageTtl?: number;
+	maxLength?: number;
+	deadLetterExchange?: string;
+	deadLetterRoutingKey?: string;
+	[x: string]: any;
+  }
+
+  export interface DeleteQueueOptions {
+	ifUnused?: boolean;
+	ifEmpty?: boolean;
+  }
+
+  export type QueueEventNames =
+	/** consumer was cancelled */
+	| 'consumer.cancel'
+	/** consumer was added */
+	| 'consume'
+	/** message was dead-lettered, payload includes `deadLetterExchange` name and message */
+	| 'dead-letter'
+	/** queue was deleted */
+	| 'delete'
+	/** queue is depleted */
+	| 'depleted'
+	/** message was queued */
+	| 'message'
+	/** queue is ready to receive new messages */
+	| 'ready'
+	/** queue is saturated, i.e. max capacity was reached */
+	| 'saturated';
+
+  export interface ExchangeOptions {
+	/** makes exchange durable, i.e. will be returned when getting state, defaults to true */
+	durable?: boolean;
+	/** remove exchange when all bindings are gone, defaults to true */
+	autoDelete?: boolean;
+	[x: string]: any;
+  }
+
+  export interface BindingOptions {
+	priority?: number;
+	[x: string]: any;
+  }
+
+  export interface BindingState {
+	id: string;
+	options: BindingOptions;
+	queueName: string;
+	pattern: string;
+  }
+
+  export interface QueueState {
+	name: string;
+	options: QueueOptions;
+	messages?: MessageEnvelope[];
+  }
+
+  export interface ExchangeState {
+	name: string;
+	type: exchangeType;
+	options: ExchangeOptions;
+	bindings?: BindingState[];
+	/** undelivered message queue */
+	deliveryQueue?: QueueState;
+  }
+
+  export interface BrokerState {
+	exchanges?: ExchangeState[];
+	queues?: QueueState[];
+  }
+
+  export interface MessageFields extends Record<string, any> {
+	/** published through exchange */
+	exchange?: string;
+	/** published with routing key, if any */
+	routingKey?: string;
+	/** identifying the consumer for which the message is destined */
+	consumerTag?: string;
+	/** message has been redelivered, i.e. nacked or recovered */
+	redelivered?: boolean;
+  }
+
+  export interface MessageProperties extends Record<string, any> {
+	/** unique identifier for the message */
+	messageId?: string;
+	/** integer, expire message after milliseconds */
+	expiration?: number;
+	/** integer, message time to live in milliseconds */
+	ttl?: number;
+	/** Date.now() when message was sent */
+	timestamp?: number;
+	/** indicating if message is mandatory. True emits return if not routed to any queue */
+	mandatory?: boolean;
+	/** persist message, if unset queue option durable prevails */
+	persistent?: boolean;
+	/** shovel or e2e message source exchange */
+	'source-exchange'?: string;
+	/** shovel name */
+	'shovel-name'?: string;
+  }
+
+  export interface MessageEnvelope {
+	fields: MessageFields;
+	content?: any;
+	properties: MessageProperties;
+  }
+
+  export interface ShovelOptions {
+	cloneMessage?: (message: MessageEnvelope) => MessageEnvelope;
+	[x: string]: any;
+  }
+
+  export interface ShovelSource {
+	/** source broker */
+	broker: Broker_1;
+	/** source exchange name */
+	exchange: string;
+	pattern?: string;
+	priority?: number;
+	queue?: string;
+	consumerTag?: string;
+  }
+
+  export interface ShovelDestination {
+	/** destination broker */
+	broker: Broker_1;
+	/** destination exchange */
+	exchange: string;
+	/** optional destination exchange routing key, defaults to original message's routing key */
+	exchangeKey?: string;
+	/** optional object with message properties to overwrite when shovelling messages */
+	publishProperties?: Record<string, any>;
+  }
+	export class SmqpError extends Error {
+		constructor(message: any, code: any);
+		type: string;
+		code: any;
+	}
+	export const ERR_CONSUMER_TAG_CONFLICT: "ERR_SMQP_CONSUMER_TAG_CONFLICT";
+	export const ERR_EXCHANGE_TYPE_MISMATCH: "ERR_SMQP_EXCHANGE_TYPE_MISMATCH";
+	export const ERR_EXCLUSIVE_CONFLICT: "ERR_SMQP_EXCLUSIVE_CONFLICT";
+	export const ERR_EXCLUSIVE_NOT_ALLOWED: "ERR_SMQP_EXCLUSIVE_NOT_ALLOWED";
+	export const ERR_QUEUE_DURABLE_MISMATCH: "ERR_SMQP_QUEUE_DURABLE_MISMATCH";
+	export const ERR_QUEUE_NAME_CONFLICT: "ERR_SMQP_QUEUE_NAME_CONFLICT";
+	export const ERR_QUEUE_NOT_FOUND: "ERR_SMQP_QUEUE_NOT_FOUND";
+	export const ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND: "ERR_SMQP_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND";
+	export const ERR_SHOVEL_NAME_CONFLICT: "ERR_SMQP_SHOVEL_NAME_CONFLICT";
+	export const ERR_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND: "ERR_SMQP_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND";
+	/**
+	 * What it is all about - message
+	 * 
+	 */
+	export function Message(fields: MessageFields, content?: any, properties?: MessageProperties, onConsumed?: CallableFunction): void;
+	export class Message {
+		/**
+		 * What it is all about - message
+		 * 
+		 */
+		constructor(fields: MessageFields, content?: any, properties?: MessageProperties, onConsumed?: CallableFunction);
+		/**
+		 * Message fields
+		 * */
+		fields: MessageFields;
+		/**
+		 * Message content
+		 * */
+		content: any;
+		/**
+		 * Message properties
+		 * */
+		properties: MessageProperties;
+		get pending(): any;
+		/**
+		 * Acknowledge message
+		 * @param allUpTo all outstanding messages prior to and including the given message shall be considered acknowledged. If false, or omitted, only the message supplied is acknowledged. Defaults to false
+		 */
+		ack(allUpTo?: boolean): void;
+		/**
+		 * Reject message
+		 * @param allUpTo all outstanding messages prior to and including the given message shall be considered rejected. If false, or omitted, only the message supplied is rejected. Defaults to false
+		 * @param requeue put the message or messages back on the queue, defaults to true
+		 */
+		nack(allUpTo?: boolean, requeue?: boolean): void;
+		/**
+		 * Reject message
+		 * @param requeue put the message back on the queue, defaults to true
+		 */
+		reject(requeue?: boolean): void;
+		private _consume;
+		private _clearPending;
 	}
 	/**
 	 * Queue
@@ -826,183 +779,228 @@ declare module 'smqp' {
 		readonly messageCount: number;
 		readonly queueName: string;
 	}
-  type onMessage = (routingKey: string, message: Message, owner: any) => void;
-
-  /**
-   * Minimal event-emitter shape used as the `eventEmitter` argument of `Queue`, `Consumer`, and `Shovel`.
-   * `ExchangeBase` and `EventExchange` instances satisfy this structurally; the `Queue` constructor only
-   * needs `emit`/`on`/`off`, so this narrows the type away from the full `ExchangeBase` surface.
-   */
-  interface ExchangeEventEmitter {
-	emit(eventName: string, content?: any): any;
-	on(pattern: string, handler: Function, options?: ConsumeOptions): any;
-	off(pattern: string, handler: Function): any;
-  }
-
-  type exchangeType = 'topic' | 'direct';
-
-  interface ConsumeOptions {
-	/** set to true if there is no need to acknowledge message, message is immediately consumed */
-	noAck?: boolean;
-	/** unique consumer tag */
-	consumerTag?: string;
-	/** queue is exclusively consumed */
-	exclusive?: boolean;
-	/** defaults to 1, number of messages to consume at a time */
-	prefetch?: number;
-	/** defaults to 0, higher value gets messages first */
-	priority?: number;
-	[x: string]: any;
-  }
-
-  interface SubscribeOptions extends ConsumeOptions {
-	/** defaults to true, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down */
-	autoDelete?: boolean;
-	/** defaults to true, makes exchange and queue durable, i.e. will be returned when getting state */
-	durable?: boolean;
-	/** dead letter exchange */
-	deadLetterExchange?: string;
-	/** publish dead letter with routing key */
-	deadLetterRoutingKey?: string;
-  }
-
-  interface QueueOptions {
-	/** remove queue when last consumer leaves, defaults to true */
-	autoDelete?: boolean;
-	/** makes queue durable, i.e. will be returned when getting state */
-	durable?: boolean;
-	messageTtl?: number;
-	maxLength?: number;
-	deadLetterExchange?: string;
-	deadLetterRoutingKey?: string;
-	[x: string]: any;
-  }
-
-  interface DeleteQueueOptions {
-	ifUnused?: boolean;
-	ifEmpty?: boolean;
-  }
-
-  type QueueEventNames =
-	/** consumer was cancelled */
-	| 'consumer.cancel'
-	/** consumer was added */
-	| 'consume'
-	/** message was dead-lettered, payload includes `deadLetterExchange` name and message */
-	| 'dead-letter'
-	/** queue was deleted */
-	| 'delete'
-	/** queue is depleted */
-	| 'depleted'
-	/** message was queued */
-	| 'message'
-	/** queue is ready to receive new messages */
-	| 'ready'
-	/** queue is saturated, i.e. max capacity was reached */
-	| 'saturated';
-
-  interface ExchangeOptions {
-	/** makes exchange durable, i.e. will be returned when getting state, defaults to true */
-	durable?: boolean;
-	/** remove exchange when all bindings are gone, defaults to true */
-	autoDelete?: boolean;
-	[x: string]: any;
-  }
-
-  interface BindingOptions {
-	priority?: number;
-	[x: string]: any;
-  }
-
-  interface BindingState {
-	id: string;
-	options: BindingOptions;
-	queueName: string;
-	pattern: string;
-  }
-
-  interface QueueState {
-	name: string;
-	options: QueueOptions;
-	messages?: MessageEnvelope_1[];
-  }
-
-  interface ExchangeState {
-	name: string;
-	type: exchangeType;
-	options: ExchangeOptions;
-	bindings?: BindingState[];
-	/** undelivered message queue */
-	deliveryQueue?: QueueState;
-  }
-
-  interface BrokerState {
-	exchanges?: ExchangeState[];
-	queues?: QueueState[];
-  }
-
-  interface MessageFields extends Record<string, any> {
-	/** published through exchange */
-	exchange?: string;
-	/** published with routing key, if any */
-	routingKey?: string;
-	/** identifying the consumer for which the message is destined */
-	consumerTag?: string;
-	/** message has been redelivered, i.e. nacked or recovered */
-	redelivered?: boolean;
-  }
-
-  interface MessageProperties extends Record<string, any> {
-	/** unique identifier for the message */
-	messageId?: string;
-	/** integer, expire message after milliseconds */
-	expiration?: number;
-	/** integer, message time to live in milliseconds */
-	ttl?: number;
-	/** Date.now() when message was sent */
-	timestamp?: number;
-	/** indicating if message is mandatory. True emits return if not routed to any queue */
-	mandatory?: boolean;
-	/** persist message, if unset queue option durable prevails */
-	persistent?: boolean;
-	/** shovel or e2e message source exchange */
-	'source-exchange'?: string;
-	/** shovel name */
-	'shovel-name'?: string;
-  }
-
-  interface MessageEnvelope_1 {
-	fields: MessageFields;
-	content?: any;
-	properties: MessageProperties;
-  }
-
-  interface ShovelOptions {
-	cloneMessage?: (message: MessageEnvelope_1) => MessageEnvelope_1;
-	[x: string]: any;
-  }
-
-  interface ShovelSource {
-	/** source broker */
-	broker: Broker_1;
-	/** source exchange name */
-	exchange: string;
-	pattern?: string;
-	priority?: number;
-	queue?: string;
-	consumerTag?: string;
-  }
-
-  interface ShovelDestination {
-	/** destination broker */
-	broker: Broker_1;
-	/** destination exchange */
-	exchange: string;
-	/** optional destination exchange routing key, defaults to original message's routing key */
-	exchangeKey?: string;
-	/** optional object with message properties to overwrite when shovelling messages */
-	publishProperties?: Record<string, any>;
-  }
+	/**
+	 * Shovel — pipe messages from a source exchange to a destination exchange
+	 * @param name unique shovel name
+	 * @param source source spec
+	 * @param destination destination spec
+	 * @param options optional shovel options
+	 */
+	export function Shovel(name: string, source: ShovelSource, destination: ShovelDestination, options?: ShovelOptions): Shovel | undefined;
+	export class Shovel {
+		/**
+		 * Shovel — pipe messages from a source exchange to a destination exchange
+		 * @param name unique shovel name
+		 * @param source source spec
+		 * @param destination destination spec
+		 * @param options optional shovel options
+		 */
+		constructor(name: string, source: ShovelSource, destination: ShovelDestination, options?: ShovelOptions);
+		source: {
+			pattern: string;
+			broker: Broker_1;
+			exchange: string;
+			priority?: number;
+			queue?: string;
+			consumerTag?: string;
+		} | undefined;
+		destination: {
+			broker: Broker_1;
+			exchange: string;
+			exchangeKey?: string;
+			publishProperties?: Record<string, any>;
+		} | undefined;
+		
+		events: ExchangeEventEmitter;
+		/**
+		 * Emit shovel event
+		 * @param eventName event name (without `shovel.` prefix)
+		 * @param content event payload
+		 */
+		emit(eventName: string, content?: any): void;
+		/**
+		 * Subscribe to shovel event
+		 * @param eventName event name (without `shovel.` prefix)
+		 * @param handler event handler
+		 * @param options optional consume options
+		 */
+		on(eventName: string, handler: Function, options?: ConsumeOptions): any;
+		/**
+		 * Unsubscribe from shovel event
+		 * @param eventName event name previously passed to on
+		 * @param handler the handler used in on, or an object with the consumer tag
+		 */
+		off(eventName: string, handler: Function | {
+			consumerTag?: string;
+		}): any;
+		/** Close shovel and cancel its source consumer */
+		close(): void;
+		private _messageHandler;
+		private _onShovelMessage;
+		readonly name: string;
+		readonly closed: boolean;
+		readonly consumerTag: string;
+	}
+	/**
+	 * Exchange-to-exchange shovel wrapper, returned by `broker.bindExchange`
+	 * @param shovel underlying shovel
+	 */
+	function Exchange2Exchange(shovel: Shovel): void;
+	class Exchange2Exchange {
+		/**
+		 * Exchange-to-exchange shovel wrapper, returned by `broker.bindExchange`
+		 * @param shovel underlying shovel
+		 */
+		constructor(shovel: Shovel);
+		/**
+		 * Subscribe to underlying shovel events
+		 * @param eventName event name (without `shovel.` prefix)
+		 * @param handler event handler
+		 */
+		on(eventName: string, handler: Function): any;
+		/** Close the underlying shovel */
+		close(): any;
+		readonly name: string;
+		readonly source: string;
+		readonly destination: string;
+		readonly pattern: string;
+		readonly queue: string;
+		readonly consumerTag: string;
+	}
+	/**
+	 * Exchange
+	 * @param name required exchange name
+	 * @param type optional type, defaults to topic
+	 * @param options optional exchange options
+	 */
+	export function Exchange(name: string, type?: exchangeType, options?: ExchangeOptions): ExchangeBase;
+	/**
+	 * Exchange
+	 * @param name name
+	 * 
+	 */
+	function ExchangeBase(name: string, type: exchangeType, options?: ExchangeOptions, eventExchange?: ExchangeBase): void;
+	class ExchangeBase {
+		/**
+		 * Exchange
+		 * @param name name
+		 * 
+		 */
+		constructor(name: string, type: exchangeType, options?: ExchangeOptions, eventExchange?: ExchangeBase);
+		
+		options: ExchangeOptions;
+		events: ExchangeBase | undefined;
+		/**
+		 * Publish a message through the exchange
+		 * @param routingKey routing key
+		 * @param content message content
+		 * @param properties optional message properties
+		 */
+		publish(routingKey: string, content?: any, properties?: MessageProperties): any;
+		private _onTopicMessage;
+		private _onDirectMessage;
+		private _emitReturn;
+		/**
+		 * Bind a queue to this exchange with a routing key pattern
+		 * @param queue queue to bind
+		 * @param pattern routing key pattern
+		 * @param bindOptions optional binding options
+		 */
+		bindQueue(queue: Queue, pattern: string, bindOptions?: BindingOptions): any;
+		/**
+		 * Unbind a queue from this exchange
+		 * @param queue queue previously bound
+		 * @param pattern routing key pattern
+		 */
+		unbindQueue(queue: Queue, pattern: string): void;
+		/**
+		 * Unbind every binding pointing at the named queue
+		 * @param queueName queue name
+		 */
+		unbindQueueByName(queueName: string): void;
+		close(): void;
+		getState(): {
+			bindings?: {
+				id: string;
+				options: {
+					priority: number;
+				};
+				queueName: string;
+				pattern: string;
+			}[] | undefined;
+			deliveryQueue?: {
+				name: string;
+				options: QueueOptions;
+				messages?: MessageEnvelope[];
+			} | undefined;
+			name: string;
+			type: exchangeType;
+			options: {
+				[x: string]: any;
+				durable?: boolean;
+				autoDelete?: boolean;
+			};
+		};
+		stop(): void;
+		/**
+		 * Recover exchange from previously captured state
+		 * @param state exchange state, omit to recover stopped exchange in place
+		 * @param getQueue callback to resolve a queue by name (used during binding restore)
+		 */
+		recover(state?: ExchangeState, getQueue?: (name: string) => Queue): this | undefined;
+		/**
+		 * Find a binding by queue name and pattern
+		 * @param queueName queue name
+		 * @param pattern routing key pattern
+		 */
+		getBinding(queueName: string, pattern: string): any;
+		/**
+		 * Emit an exchange event (or, if no event sub-exchange, publish on the exchange itself)
+		 * @param eventName event name (without `exchange.` prefix)
+		 * @param content event payload
+		 */
+		emit(eventName: string, content?: any): any;
+		/**
+		 * Subscribe to an exchange event
+		 * @param pattern event name pattern (without `exchange.` prefix)
+		 * @param handler event handler
+		 * @param consumeOptions optional consume options
+		 */
+		on(pattern: string, handler: onMessage, consumeOptions?: ConsumeOptions): any;
+		/**
+		 * Unsubscribe from an exchange event
+		 * @param pattern event name pattern previously passed to on
+		 * @param handler the handler used in on, or an object with the consumer tag
+		 */
+		off(pattern: string, handler: onMessage | {
+			consumerTag?: string;
+		}): any;
+		/**
+		 * Remove a single binding from this exchange
+		 * @param binding binding to close
+		 */
+		closeBinding(binding: Binding): void;
+		readonly name: string;
+		readonly type: exchangeType;
+		readonly bindingCount: number;
+		readonly bindings: Binding[];
+		readonly stopped: boolean;
+		readonly undeliveredCount: number;
+	}
+	/**
+	 * Get routing key pattern
+	 * @param pattern routing key pattern
+	 * */
+	export function getRoutingKeyPattern(pattern: string): RoutingKeyPattern;
+	/**
+	 * Get routing key pattern
+	 */
+	type RoutingKeyPattern = {
+		/**
+		 * method to test a routing key against the pattern; receiver-bound — destructuring is unsupported
+		 */
+		test: (this: RoutingKeyPattern, routingKey: string) => boolean;
+	};
 	/**
 	 *
 	 * @param pattern message routing key pattern

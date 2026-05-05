@@ -543,7 +543,7 @@ Broker.prototype.validateConsumerTag = function validateConsumerTag(consumerTag)
 /**
  * Create shovel between source and destination exchanges
  * @param {string} name unique shovel name
- * @param {import('#types').ShovelSource} source source spec
+ * @param {Omit<import('#types').ShovelSource, 'broker'>} source source spec; the source broker is this broker
  * @param {import('#types').ShovelDestination} destination destination spec
  * @param {import('#types').ShovelOptions} [options] optional shovel options
  */

@@ -495,7 +495,7 @@ Queue.prototype._dequeueMessage = function dequeueMessage(message) {
 
 Queue.prototype.getState = function getState() {
   const msgs = this.messages;
-  /** @type {{name: string, options: import('#types').QueueOptions, messages?: import('./Message.js').MessageEnvelope[] }} */
+  /** @type {{name: string, options: import('#types').QueueOptions, messages?: import('#types').MessageEnvelope[] }} */
   const state = {
     name: this.name,
     options: { ...this.options },
