@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v13.0.0 - 2026-05-10
+
+### Breaking
+
+- drop default export of `Broker` — use `import { Broker } from 'smqp'`. For the ts-script-kids out there squinting at `Broker_1` in the `.d.ts`: that was the dual default+named export forcing tsc to disambiguate. Now it's just `Broker`.
+- drop the CJS footer that made `module.exports` the bare `Broker` callable. Use `const { Broker } = require('smqp')`; `const Broker = require('smqp')` no longer returns a callable.
+
 ## v12.0.0 - 2026-05-05
 
 - fix `broker.createShovel` typings: source no longer requires `broker`

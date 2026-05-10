@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "12.0.1",
+  "version": "13.0.0",
   "type": "module",
   "description": "Synchronous message queueing package",
   "author": {
@@ -47,7 +47,7 @@
     "posttest": "npm run dist && npm run lint && npm run toc && npm run test:md",
     "test:md": "texample ./README.md,API.md",
     "cov:html": "c8 -r html -r text mocha",
-    "dist": "rollup -c && node ./scripts/build-types.js && npm run toc",
+    "dist": "rollup -c && node ./scripts/build-types.js && node ./scripts/smoke-cjs.js && npm run toc",
     "types": "node ./scripts/build-types.js",
     "prepublishOnly": "npm run dist",
     "toc": "node ./scripts/toc.js API.md",

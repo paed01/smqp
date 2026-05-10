@@ -1,4 +1,4 @@
-import Broker from 'smqp';
+import { Broker } from 'smqp';
 
 describe('misc test', () => {
   /** @type {import('../types/Broker.js').Broker} */

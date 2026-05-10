@@ -33,7 +33,7 @@ describe('generated types bundle', () => {
   }
 
   const expectations = {
-    Broker_1: ['exchangeCount: number', 'queueCount: number', 'consumerCount: number'],
+    Broker: ['exchangeCount: number', 'queueCount: number', 'consumerCount: number'],
     ExchangeBase: [
       'name: string',
       'bindingCount: number',
@@ -74,12 +74,13 @@ describe('generated types bundle', () => {
   }
 
   describe('module exports', () => {
-    it('re-exports Broker as a named export (build-types.js patch)', () => {
-      expect(dts).to.include('export { Broker_1 as Broker };');
+    it('exposes Broker as a named export with no _1 alias', () => {
+      expect(dts).to.match(/export (function|class) Broker\b/);
+      expect(dts).to.not.match(/\bBroker_1\b/);
     });
 
-    it('exports Broker as default', () => {
-      expect(dts).to.match(/export default (function|class) Broker_1/);
+    it('does not export Broker (or anything else) as default', () => {
+      expect(dts).to.not.include('export default');
     });
 
     const sharedTypes = [

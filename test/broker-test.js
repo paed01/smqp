@@ -6,7 +6,7 @@ import { Broker, Queue, Consumer, Exchange, SmqpError, Shovel, Message } from 's
 describe('Broker', () => {
   describe('api', () => {
     it('has the expected export', () => {
-      expect(smqp.default === Broker, 'default Broker').to.be.true;
+      expect(smqp.default, 'default export').to.be.undefined;
       expect(smqp.Broker === Broker, 'Broker').to.be.true;
       expect(smqp.Queue === Queue, 'Queue').to.be.true;
       expect(smqp.Consumer === Consumer, 'Consumer').to.be.true;

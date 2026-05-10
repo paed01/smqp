@@ -14,7 +14,6 @@ export default {
       file: pkg.exports.require,
       format: 'cjs',
       exports: 'named',
-      footer: 'module.exports = Object.assign(exports.default, exports);',
     },
   ],
 };

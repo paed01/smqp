@@ -1,10 +1,202 @@
 declare module 'smqp' {
+  export type onMessage = (routingKey: string, message: Message, owner: any) => void;
+
+  /**
+   * Minimal event-emitter shape used as the `eventEmitter` argument of `Queue`, `Consumer`, and `Shovel`.
+   * `ExchangeBase` and `EventExchange` instances satisfy this structurally; the `Queue` constructor only
+   * needs `emit`/`on`/`off`, so this narrows the type away from the full `ExchangeBase` surface.
+   */
+  export interface ExchangeEventEmitter {
+	emit(eventName: string, content?: any): any;
+	on(pattern: string, handler: Function, options?: ConsumeOptions): any;
+	off(pattern: string, handler: Function): any;
+  }
+
+  export type exchangeType = 'topic' | 'direct';
+
+  export interface ConsumeOptions {
+	/** set to true if there is no need to acknowledge message, message is immediately consumed */
+	noAck?: boolean;
+	/** unique consumer tag */
+	consumerTag?: string;
+	/** queue is exclusively consumed */
+	exclusive?: boolean;
+	/** defaults to 1, number of messages to consume at a time */
+	prefetch?: number;
+	/** defaults to 0, higher value gets messages first */
+	priority?: number;
+	[x: string]: any;
+  }
+
+  export interface SubscribeOptions extends ConsumeOptions {
+	/** defaults to true, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down */
+	autoDelete?: boolean;
+	/** defaults to true, makes exchange and queue durable, i.e. will be returned when getting state */
+	durable?: boolean;
+	/** dead letter exchange */
+	deadLetterExchange?: string;
+	/** publish dead letter with routing key */
+	deadLetterRoutingKey?: string;
+  }
+
+  export interface QueueOptions {
+	/** remove queue when last consumer leaves, defaults to true */
+	autoDelete?: boolean;
+	/** makes queue durable, i.e. will be returned when getting state */
+	durable?: boolean;
+	messageTtl?: number;
+	maxLength?: number;
+	deadLetterExchange?: string;
+	deadLetterRoutingKey?: string;
+	[x: string]: any;
+  }
+
+  export interface DeleteQueueOptions {
+	ifUnused?: boolean;
+	ifEmpty?: boolean;
+  }
+
+  export type QueueEventNames =
+	/** consumer was cancelled */
+	| 'consumer.cancel'
+	/** consumer was added */
+	| 'consume'
+	/** message was dead-lettered, payload includes `deadLetterExchange` name and message */
+	| 'dead-letter'
+	/** queue was deleted */
+	| 'delete'
+	/** queue is depleted */
+	| 'depleted'
+	/** message was queued */
+	| 'message'
+	/** queue is ready to receive new messages */
+	| 'ready'
+	/** queue is saturated, i.e. max capacity was reached */
+	| 'saturated';
+
+  export interface ExchangeOptions {
+	/** makes exchange durable, i.e. will be returned when getting state, defaults to true */
+	durable?: boolean;
+	/** remove exchange when all bindings are gone, defaults to true */
+	autoDelete?: boolean;
+	[x: string]: any;
+  }
+
+  export interface BindingOptions {
+	priority?: number;
+	[x: string]: any;
+  }
+
+  export interface BindingState {
+	id: string;
+	options: BindingOptions;
+	queueName: string;
+	pattern: string;
+  }
+
+  export interface QueueState {
+	name: string;
+	options: QueueOptions;
+	messages?: MessageEnvelope[];
+  }
+
+  export interface ExchangeState {
+	name: string;
+	type: exchangeType;
+	options: ExchangeOptions;
+	bindings?: BindingState[];
+	/** undelivered message queue */
+	deliveryQueue?: QueueState;
+  }
+
+  export interface BrokerState {
+	exchanges?: ExchangeState[];
+	queues?: QueueState[];
+  }
+
+  export interface MessageFields extends Record<string, any> {
+	/** published through exchange */
+	exchange?: string;
+	/** published with routing key, if any */
+	routingKey?: string;
+	/** identifying the consumer for which the message is destined */
+	consumerTag?: string;
+	/** message has been redelivered, i.e. nacked or recovered */
+	redelivered?: boolean;
+  }
+
+  export interface MessageProperties extends Record<string, any> {
+	/** unique identifier for the message */
+	messageId?: string;
+	/** integer, expire message after milliseconds */
+	expiration?: number;
+	/** integer, message time to live in milliseconds */
+	ttl?: number;
+	/** Date.now() when message was sent */
+	timestamp?: number;
+	/** indicating if message is mandatory. True emits return if not routed to any queue */
+	mandatory?: boolean;
+	/** persist message, if unset queue option durable prevails */
+	persistent?: boolean;
+	/** shovel or e2e message source exchange */
+	'source-exchange'?: string;
+	/** shovel name */
+	'shovel-name'?: string;
+  }
+
+  export interface MessageEnvelope {
+	fields: MessageFields;
+	content?: any;
+	properties: MessageProperties;
+  }
+
+  export interface ShovelOptions {
+	cloneMessage?: (message: MessageEnvelope) => MessageEnvelope;
+	[x: string]: any;
+  }
+
+  export interface ShovelSource {
+	/** source broker */
+	broker: Broker;
+	/** source exchange name */
+	exchange: string;
+	pattern?: string;
+	priority?: number;
+	queue?: string;
+	consumerTag?: string;
+  }
+
+  export interface ShovelDestination {
+	/** destination broker */
+	broker: Broker;
+	/** destination exchange */
+	exchange: string;
+	/** optional destination exchange routing key, defaults to original message's routing key */
+	exchangeKey?: string;
+	/** optional object with message properties to overwrite when shovelling messages */
+	publishProperties?: Record<string, any>;
+  }
+	export class SmqpError extends Error {
+		constructor(message: any, code: any);
+		type: string;
+		code: any;
+	}
+	export const ERR_CONSUMER_TAG_CONFLICT: "ERR_SMQP_CONSUMER_TAG_CONFLICT";
+	export const ERR_EXCHANGE_TYPE_MISMATCH: "ERR_SMQP_EXCHANGE_TYPE_MISMATCH";
+	export const ERR_EXCLUSIVE_CONFLICT: "ERR_SMQP_EXCLUSIVE_CONFLICT";
+	export const ERR_EXCLUSIVE_NOT_ALLOWED: "ERR_SMQP_EXCLUSIVE_NOT_ALLOWED";
+	export const ERR_QUEUE_DURABLE_MISMATCH: "ERR_SMQP_QUEUE_DURABLE_MISMATCH";
+	export const ERR_QUEUE_NAME_CONFLICT: "ERR_SMQP_QUEUE_NAME_CONFLICT";
+	export const ERR_QUEUE_NOT_FOUND: "ERR_SMQP_QUEUE_NOT_FOUND";
+	export const ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND: "ERR_SMQP_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND";
+	export const ERR_SHOVEL_NAME_CONFLICT: "ERR_SMQP_SHOVEL_NAME_CONFLICT";
+	export const ERR_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND: "ERR_SMQP_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND";
 	/**
 	 * Smqp message broker
 	 * @param owner optional broker owner, forwarded to message consumer
 	 */
-	export default function Broker_1(owner?: any): Broker_1 | undefined;
-	export default class Broker_1 {
+	export function Broker(owner?: any): Broker | undefined;
+	export class Broker {
 		/**
 		 * Smqp message broker
 		 * @param owner optional broker owner, forwarded to message consumer
@@ -307,198 +499,6 @@ declare module 'smqp' {
 		readonly queueCount: number;
 		readonly consumerCount: number;
 	}
-  export type onMessage = (routingKey: string, message: Message, owner: any) => void;
-
-  /**
-   * Minimal event-emitter shape used as the `eventEmitter` argument of `Queue`, `Consumer`, and `Shovel`.
-   * `ExchangeBase` and `EventExchange` instances satisfy this structurally; the `Queue` constructor only
-   * needs `emit`/`on`/`off`, so this narrows the type away from the full `ExchangeBase` surface.
-   */
-  export interface ExchangeEventEmitter {
-	emit(eventName: string, content?: any): any;
-	on(pattern: string, handler: Function, options?: ConsumeOptions): any;
-	off(pattern: string, handler: Function): any;
-  }
-
-  export type exchangeType = 'topic' | 'direct';
-
-  export interface ConsumeOptions {
-	/** set to true if there is no need to acknowledge message, message is immediately consumed */
-	noAck?: boolean;
-	/** unique consumer tag */
-	consumerTag?: string;
-	/** queue is exclusively consumed */
-	exclusive?: boolean;
-	/** defaults to 1, number of messages to consume at a time */
-	prefetch?: number;
-	/** defaults to 0, higher value gets messages first */
-	priority?: number;
-	[x: string]: any;
-  }
-
-  export interface SubscribeOptions extends ConsumeOptions {
-	/** defaults to true, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down */
-	autoDelete?: boolean;
-	/** defaults to true, makes exchange and queue durable, i.e. will be returned when getting state */
-	durable?: boolean;
-	/** dead letter exchange */
-	deadLetterExchange?: string;
-	/** publish dead letter with routing key */
-	deadLetterRoutingKey?: string;
-  }
-
-  export interface QueueOptions {
-	/** remove queue when last consumer leaves, defaults to true */
-	autoDelete?: boolean;
-	/** makes queue durable, i.e. will be returned when getting state */
-	durable?: boolean;
-	messageTtl?: number;
-	maxLength?: number;
-	deadLetterExchange?: string;
-	deadLetterRoutingKey?: string;
-	[x: string]: any;
-  }
-
-  export interface DeleteQueueOptions {
-	ifUnused?: boolean;
-	ifEmpty?: boolean;
-  }
-
-  export type QueueEventNames =
-	/** consumer was cancelled */
-	| 'consumer.cancel'
-	/** consumer was added */
-	| 'consume'
-	/** message was dead-lettered, payload includes `deadLetterExchange` name and message */
-	| 'dead-letter'
-	/** queue was deleted */
-	| 'delete'
-	/** queue is depleted */
-	| 'depleted'
-	/** message was queued */
-	| 'message'
-	/** queue is ready to receive new messages */
-	| 'ready'
-	/** queue is saturated, i.e. max capacity was reached */
-	| 'saturated';
-
-  export interface ExchangeOptions {
-	/** makes exchange durable, i.e. will be returned when getting state, defaults to true */
-	durable?: boolean;
-	/** remove exchange when all bindings are gone, defaults to true */
-	autoDelete?: boolean;
-	[x: string]: any;
-  }
-
-  export interface BindingOptions {
-	priority?: number;
-	[x: string]: any;
-  }
-
-  export interface BindingState {
-	id: string;
-	options: BindingOptions;
-	queueName: string;
-	pattern: string;
-  }
-
-  export interface QueueState {
-	name: string;
-	options: QueueOptions;
-	messages?: MessageEnvelope[];
-  }
-
-  export interface ExchangeState {
-	name: string;
-	type: exchangeType;
-	options: ExchangeOptions;
-	bindings?: BindingState[];
-	/** undelivered message queue */
-	deliveryQueue?: QueueState;
-  }
-
-  export interface BrokerState {
-	exchanges?: ExchangeState[];
-	queues?: QueueState[];
-  }
-
-  export interface MessageFields extends Record<string, any> {
-	/** published through exchange */
-	exchange?: string;
-	/** published with routing key, if any */
-	routingKey?: string;
-	/** identifying the consumer for which the message is destined */
-	consumerTag?: string;
-	/** message has been redelivered, i.e. nacked or recovered */
-	redelivered?: boolean;
-  }
-
-  export interface MessageProperties extends Record<string, any> {
-	/** unique identifier for the message */
-	messageId?: string;
-	/** integer, expire message after milliseconds */
-	expiration?: number;
-	/** integer, message time to live in milliseconds */
-	ttl?: number;
-	/** Date.now() when message was sent */
-	timestamp?: number;
-	/** indicating if message is mandatory. True emits return if not routed to any queue */
-	mandatory?: boolean;
-	/** persist message, if unset queue option durable prevails */
-	persistent?: boolean;
-	/** shovel or e2e message source exchange */
-	'source-exchange'?: string;
-	/** shovel name */
-	'shovel-name'?: string;
-  }
-
-  export interface MessageEnvelope {
-	fields: MessageFields;
-	content?: any;
-	properties: MessageProperties;
-  }
-
-  export interface ShovelOptions {
-	cloneMessage?: (message: MessageEnvelope) => MessageEnvelope;
-	[x: string]: any;
-  }
-
-  export interface ShovelSource {
-	/** source broker */
-	broker: Broker_1;
-	/** source exchange name */
-	exchange: string;
-	pattern?: string;
-	priority?: number;
-	queue?: string;
-	consumerTag?: string;
-  }
-
-  export interface ShovelDestination {
-	/** destination broker */
-	broker: Broker_1;
-	/** destination exchange */
-	exchange: string;
-	/** optional destination exchange routing key, defaults to original message's routing key */
-	exchangeKey?: string;
-	/** optional object with message properties to overwrite when shovelling messages */
-	publishProperties?: Record<string, any>;
-  }
-	export class SmqpError extends Error {
-		constructor(message: any, code: any);
-		type: string;
-		code: any;
-	}
-	export const ERR_CONSUMER_TAG_CONFLICT: "ERR_SMQP_CONSUMER_TAG_CONFLICT";
-	export const ERR_EXCHANGE_TYPE_MISMATCH: "ERR_SMQP_EXCHANGE_TYPE_MISMATCH";
-	export const ERR_EXCLUSIVE_CONFLICT: "ERR_SMQP_EXCLUSIVE_CONFLICT";
-	export const ERR_EXCLUSIVE_NOT_ALLOWED: "ERR_SMQP_EXCLUSIVE_NOT_ALLOWED";
-	export const ERR_QUEUE_DURABLE_MISMATCH: "ERR_SMQP_QUEUE_DURABLE_MISMATCH";
-	export const ERR_QUEUE_NAME_CONFLICT: "ERR_SMQP_QUEUE_NAME_CONFLICT";
-	export const ERR_QUEUE_NOT_FOUND: "ERR_SMQP_QUEUE_NOT_FOUND";
-	export const ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND: "ERR_SMQP_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND";
-	export const ERR_SHOVEL_NAME_CONFLICT: "ERR_SMQP_SHOVEL_NAME_CONFLICT";
-	export const ERR_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND: "ERR_SMQP_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND";
 	/**
 	 * What it is all about - message
 	 * 
@@ -798,14 +798,14 @@ declare module 'smqp' {
 		constructor(name: string, source: ShovelSource, destination: ShovelDestination, options?: ShovelOptions);
 		source: {
 			pattern: string;
-			broker: Broker_1;
+			broker: Broker;
 			exchange: string;
 			priority?: number;
 			queue?: string;
 			consumerTag?: string;
 		} | undefined;
 		destination: {
-			broker: Broker_1;
+			broker: Broker;
 			exchange: string;
 			exchangeKey?: string;
 			publishProperties?: Record<string, any>;
@@ -1047,7 +1047,7 @@ declare module 'smqp' {
 		};
 	}
 
-	export { Broker_1 as Broker };
+	export {};
 }
 
 //# sourceMappingURL=index.d.ts.map
