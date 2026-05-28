@@ -277,6 +277,7 @@ Broker.prototype.reset = function reset() {
 /**
  * Get broker state for persistence
  * @param {boolean} [onlyWithContent] omit exchanges and queues without content
+ * @returns {import('#types').BrokerState | undefined}
  */
 Broker.prototype.getState = function getState(onlyWithContent) {
   const exchanges = this._getExchangeState(onlyWithContent);
@@ -535,6 +536,8 @@ Broker.prototype.reject = function reject(message, requeue) {
 /**
  * Validate that a consumer tag is unused; throws if occupied
  * @param {string} consumerTag consumer tag to validate
+ * @throws {import('./Errors.js').SmqpError}
+ * @returns {boolean} is consumer tag available
  */
 Broker.prototype.validateConsumerTag = function validateConsumerTag(consumerTag) {
   return this[kEventHandler].validateConsumerTag('' + consumerTag);
@@ -609,6 +612,7 @@ Broker.prototype.on = function on(eventName, callback, options) {
  * Unsubscribe from broker event
  * @param {string} eventName event name previously passed to on
  * @param {Function | { consumerTag?: string }} callbackOrObject the callback used in on, or an object with the consumer tag
+ * @returns {undefined}
  */
 Broker.prototype.off = function off(eventName, callbackOrObject) {
   const { consumerTag } = callbackOrObject;
@@ -640,6 +644,12 @@ BrokerEventHandler.prototype.listen = function listen(emitter) {
   emitter.on('#', this.handler);
 };
 
+/**
+ * Validate consumer tag
+ * @param {string} consumerTag
+ * @throws {SmqpError}
+ * @returns is consumer tag available
+ */
 BrokerEventHandler.prototype.validateConsumerTag = function validateConsumerTag(consumerTag) {
   if (this.entities.get('consumers').has(consumerTag)) {
     throw new SmqpError(`Consumer tag must be unique, ${consumerTag} is occupied`, ERR_CONSUMER_TAG_CONFLICT);

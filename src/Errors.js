@@ -1,4 +1,8 @@
 export class SmqpError extends Error {
+  /**
+   * @param {string} message Error message
+   * @param {string} code Error code
+   */
   constructor(message, code) {
     super(message);
     this.type = this.name = this.constructor.name;

@@ -493,6 +493,10 @@ Queue.prototype._dequeueMessage = function dequeueMessage(message) {
   return msgIdx;
 };
 
+/**
+ * Snapshot queue state
+ * @returns {import('#types').QueueState}
+ */
 Queue.prototype.getState = function getState() {
   const msgs = this.messages;
   /** @type {{name: string, options: import('#types').QueueOptions, messages?: import('#types').MessageEnvelope[] }} */
@@ -663,7 +667,10 @@ Object.defineProperties(Consumer.prototype, {
   },
 });
 
-/** Project consumer state for serialization (used by `Broker.getConsumers` and `JSON.stringify`) */
+/**
+ * Project consumer state for serialization (used by `Broker.getConsumers` and `JSON.stringify`)
+ * @returns {import('#types').ConsumerState}
+ */
 Consumer.prototype.toJSON = function toJSON() {
   return {
     queue: this.queue.name,

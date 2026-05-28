@@ -220,6 +220,7 @@ Object.defineProperties(Exchange2Exchange.prototype, {
  * Subscribe to underlying shovel events
  * @param {string} eventName event name (without `shovel.` prefix)
  * @param {Function} handler event handler
+ * @returns {import('./Queue.js').Consumer}
  */
 Exchange2Exchange.prototype.on = function e2eon(eventName, handler) {
   return this[kE2EShovel].on(eventName, handler);
@@ -227,5 +228,5 @@ Exchange2Exchange.prototype.on = function e2eon(eventName, handler) {
 
 /** Close the underlying shovel */
 Exchange2Exchange.prototype.close = function e2eclose() {
-  return this[kE2EShovel].close();
+  this[kE2EShovel].close();
 };

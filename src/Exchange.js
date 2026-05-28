@@ -95,6 +95,7 @@ Object.defineProperties(ExchangeBase.prototype, {
  * @param {string} routingKey routing key
  * @param {any} [content] message content
  * @param {import('#types').MessageProperties} [properties] optional message properties
+ * @returns {number | undefined} number of consumed messages
  */
 ExchangeBase.prototype.publish = function publish(routingKey, content, properties) {
   if (this[kStopped]) return;
@@ -181,6 +182,7 @@ ExchangeBase.prototype._emitReturn = function emitReturn(routingKey, content, pr
  * @param {import('./Queue.js').Queue} queue queue to bind
  * @param {string} pattern routing key pattern
  * @param {import('#types').BindingOptions} [bindOptions] optional binding options
+ * @returns {import('./Binding.js').Binding}
  */
 ExchangeBase.prototype.bindQueue = function bindQueue(queue, pattern, bindOptions) {
   const bindings = this[kBindings];
@@ -229,6 +231,10 @@ ExchangeBase.prototype.close = function close() {
   deliveryQueue.close();
 };
 
+/**
+ * Get state
+ * @returns {import('#types').ExchangeState}
+ */
 ExchangeBase.prototype.getState = function getState() {
   /** @type {ReturnType<Binding['getState']>[]} */
   const bindingsState = [];
@@ -282,6 +288,7 @@ ExchangeBase.prototype.recover = function recover(state, getQueue) {
  * Find a binding by queue name and pattern
  * @param {string} queueName queue name
  * @param {string} pattern routing key pattern
+ * @returns {import('../src/Binding.js').Binding}
  */
 ExchangeBase.prototype.getBinding = function getBinding(queueName, pattern) {
   for (const binding of this[kBindings]) {
@@ -304,6 +311,7 @@ ExchangeBase.prototype.emit = function emit(eventName, content) {
  * @param {string} pattern event name pattern (without `exchange.` prefix)
  * @param {import('#types').onMessage} handler event handler
  * @param {import('#types').ConsumeOptions} [consumeOptions] optional consume options
+ * @returns {import('./Queue.js').Consumer}
  */
 ExchangeBase.prototype.on = function on(pattern, handler, consumeOptions) {
   if (this.events) return this.events.on(`exchange.${pattern}`, handler, consumeOptions);
@@ -323,6 +331,7 @@ ExchangeBase.prototype.on = function on(pattern, handler, consumeOptions) {
  * Unsubscribe from an exchange event
  * @param {string} pattern event name pattern previously passed to on
  * @param {import('#types').onMessage | { consumerTag?: string }} handler the handler used in on, or an object with the consumer tag
+ * @returns {undefined}
  */
 ExchangeBase.prototype.off = function off(pattern, handler) {
   if (this.events) return this.events.off(`exchange.${pattern}`, handler);

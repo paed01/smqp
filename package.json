@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "13.0.0",
+  "version": "13.0.1",
   "type": "module",
   "description": "Synchronous message queueing package",
   "author": {
@@ -47,8 +47,8 @@
     "posttest": "npm run dist && npm run lint && npm run toc && npm run test:md",
     "test:md": "texample ./README.md,API.md",
     "cov:html": "c8 -r html -r text mocha",
-    "dist": "rollup -c && node ./scripts/build-types.js && node ./scripts/smoke-cjs.js && npm run toc",
-    "types": "node ./scripts/build-types.js",
+    "dist": "rollup -c && npm run build:types && node ./scripts/smoke-cjs.js && npm run toc",
+    "build:types": "node ./scripts/build-types.js",
     "prepublishOnly": "npm run dist",
     "toc": "node ./scripts/toc.js API.md",
     "lint": "eslint . --cache && prettier . -c --cache"
@@ -84,7 +84,7 @@
     "c8": "^11.0.0",
     "chai": "^6.2.0",
     "chronokinesis": "^8.0.0",
-    "dts-buddy": "^0.7.0",
+    "dts-buddy": "^0.8.0",
     "eslint": "^10.2.1",
     "globals": "^17.5.0",
     "mocha": "^11.0.1",

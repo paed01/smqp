@@ -6,9 +6,9 @@ export type onMessage = (routingKey: string, message: import('../src/Message.js'
  * needs `emit`/`on`/`off`, so this narrows the type away from the full `ExchangeBase` surface.
  */
 export interface ExchangeEventEmitter {
-  emit(eventName: string, content?: any): any;
-  on(pattern: string, handler: Function, options?: ConsumeOptions): any;
-  off(pattern: string, handler: Function): any;
+  emit(eventName: string, content?: any): void;
+  on(pattern: string, handler: Function, options?: ConsumeOptions): import('../src/Queue.js').Consumer;
+  off(pattern: string, handler: Function): undefined;
 }
 
 export type exchangeType = 'topic' | 'direct';
@@ -97,6 +97,14 @@ export interface QueueState {
   name: string;
   options: QueueOptions;
   messages?: MessageEnvelope[];
+}
+
+export interface ConsumerState {
+  /** Consuming queue name */
+  queue: string;
+  consumerTag: string;
+  ready: boolean;
+  options: ConsumeOptions;
 }
 
 export interface ExchangeState {

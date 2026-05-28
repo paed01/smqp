@@ -38,6 +38,7 @@ Binding.prototype.close = function closeBinding() {
 
 /**
  * Get binding state
+ * @returns {import('#types').BindingState}
  */
 Binding.prototype.getState = function getBindingState() {
   return {

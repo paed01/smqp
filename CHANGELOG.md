@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v13.0.1 - 2026-05-28
+
+- fix some type declarations
+
 ## v13.0.0 - 2026-05-10
 
 ### Breaking

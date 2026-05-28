@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npx mocha --grep "<pattern>"` — run a single `describe`/`it` by name.
 - `npm run lint` — ESLint (cached) + Prettier check. Always run before declaring work done.
 - `npm run dist` — runs `scripts/build-types.js` (regenerates `types/index.d.ts`), then Babel-compiles `src/` → `dist/` (CommonJS build for the `require` export).
-- `npm run types` — runs `scripts/build-types.js`, which invokes `dts-buddy` against the hand-written entry `types/bundle.d.ts`. That entry re-exports runtime classes from `src/*.js` and shared interfaces from `types/interfaces.d.ts`, so each name is single-declared and the bundle is free of `Foo_1` aliases. Re-run whenever you change a public API shape, add a JSDoc type, or edit `types/interfaces.d.ts` / `types/bundle.d.ts`. (`dist` and `prepack` already run it.)
+- `npm run build:types` — runs `scripts/build-types.js`, which invokes `dts-buddy` against the hand-written entry `types/bundle.d.ts`. That entry re-exports runtime classes from `src/*.js` and shared interfaces from `types/interfaces.d.ts`, so each name is single-declared and the bundle is free of `Foo_1` aliases. Re-run whenever you change a public API shape, add a JSDoc type, or edit `types/interfaces.d.ts` / `types/bundle.d.ts`. (`dist` and `prepack` already run it.)
 - `npm run toc` — regenerate the TOC and version banner in `API.md` / `README.md` via `scripts/generate-api-toc.js`. Run this whenever you add, rename, or remove a documented API heading.
 - `npm run test:md` — execute the code blocks in `README.md` and `API.md` via `texample`. Doc examples are real tests; broken examples fail this step.
 - `npm run posttest` runs `dist`, `lint`, `toc`, and `test:md` in sequence — the same chain CI enforces.
@@ -72,7 +72,7 @@ Because delivery is synchronous, a publish call returns only after every downstr
 
 ### Types
 
-Public types are bundled into `types/index.d.ts` by `dts-buddy` (run via `npm run types`). The pipeline has two inputs:
+Public types are bundled into `types/index.d.ts` by `dts-buddy` (run via `npm run build:types`). The pipeline has two inputs:
 
 1. **JSDoc inference from `src/*.js`** — TypeScript reads JSDoc on functions, classes, and prototype assignments and infers declarations. This handles methods, parameters, and return types.
 2. **`types/interfaces.d.ts`** — the only hand-maintained types file (paired with the small `types/bundle.d.ts` entry). It contains:
@@ -83,7 +83,7 @@ Public types are bundled into `types/index.d.ts` by `dts-buddy` (run via `npm ru
 
 **Default to inferred return types; reach for `@returns` only when inference can't reach the right type without runtime cost.** TS infers most return types accurately from JSDoc-typed parameters and the function body — duplicating the inferred type with `@returns` adds noise. Use `@returns` only in cases where inference is blocked (e.g., reading from a `Map<string, any>` whose values you know but TS doesn't), and prefer it over introducing a local `/** @type {...} */ const x = ...; return x;` cast: the JSDoc-only form keeps the implementation a one-liner with no extra allocation. The four `Broker.get<Entity>` methods are the canonical example — they sit on the broker's lookup hot path and the entities Map is `Map<string, Map<any, any>>`, so an explicit `@returns {Queue | undefined}` is both leaner at runtime and clearer than a local-cast wrapper.
 
-`tsconfig.json` is also strict (`strict: true`, `noImplicitThis: true`); `npx tsc --noEmit` is the standalone type check. When you add or change a public API in `src/`, update `API.md`, then run `npm run toc` and `npm run types`.
+`tsconfig.json` is also strict (`strict: true`, `noImplicitThis: true`); `npx tsc --noEmit` is the standalone type check. When you add or change a public API in `src/`, update `API.md`, then run `npm run toc` and `npm run build:types`.
 
 The `interfaces.d.ts` file must NOT carry side-effect imports (`import '../src/Foo.js'`) at the top — doing so causes dts-buddy to treat the augmented source files as ambient and append their full per-file `.d.ts` after the bundled `declare module 'smqp'` block, which produces invalid duplicate declarations for consumers. Reference cross-module types via `import('../src/Foo.js').Bar` inside type positions instead.
 
