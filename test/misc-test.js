@@ -1,7 +1,7 @@
 import { Broker } from 'smqp';
 
 describe('misc test', () => {
-  /** @type {import('../types/Broker.js').Broker} */
+  /** @type {import('smqp').Broker} */
   let broker;
   describe('message order when publishing to other exchange in message handler (format functionality in bpmn-engine)', () => {
     beforeEach(() => {

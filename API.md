@@ -448,6 +448,32 @@ Returns [Shovel](#new-shovelname-source-destination-options).
 
 Shovel is closed if either source- or destination exchange is closed, or source consumer is canceled.
 
+A shovel binds its source queue with a single `pattern`. To forward more than one routing key, either widen the pattern with topic wildcards (`order.*`, `#`) or add extra bindings to the shovel's source queue — the queue name is exposed as `shovel.source.queue` and the shovel's consumer drains whatever lands there:
+
+```javascript
+import { Broker } from 'smqp';
+
+const source = new Broker();
+source.assertExchange('orders', 'topic');
+
+const destination = new Broker();
+destination.assertExchange('mirror', 'topic');
+
+const shovel = source.createShovel(
+  'orders-mirror',
+  { exchange: 'orders', pattern: 'order.created' },
+  { broker: destination, exchange: 'mirror' }
+);
+
+// add another routing key to the existing shovel
+source.bindQueue(shovel.source.queue, 'orders', 'shipment.dispatched');
+
+destination.subscribeTmp('mirror', '#', (routingKey) => console.log({ shovelled: routingKey }), { noAck: true });
+
+source.publish('orders', 'order.created', 'a');
+source.publish('orders', 'shipment.dispatched', 'b');
+```
+
 ### `broker.getShovel(name)`
 
 Get shovel by name.
