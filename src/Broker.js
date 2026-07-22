@@ -12,8 +12,8 @@ import {
   ERR_QUEUE_NOT_FOUND,
 } from './Errors.js';
 
-const kEntities = Symbol.for('entities');
-const kEventHandler = Symbol.for('eventHandler');
+const K_ENTITIES = Symbol.for('entities');
+const K_EVENT_HANDLER = Symbol.for('eventHandler');
 
 /**
  * Smqp message broker
@@ -26,29 +26,32 @@ export function Broker(owner) {
   this.owner = owner;
   /** @type {import('#types').ExchangeEventEmitter} */
   const events = (this.events = new EventExchange('broker__events'));
-  const entities = (this[kEntities] = new Map([
+
+  /** @internal */
+  this[K_ENTITIES] = new Map([
     ['exchanges', new Map()],
     ['queues', new Map()],
     ['consumers', new Map()],
     ['shovels', new Map()],
-  ]));
-  this[kEventHandler] = new BrokerEventHandler(events, entities);
+  ]);
+  /** @internal */
+  this[K_EVENT_HANDLER] = new BrokerEventHandler(events, this[K_ENTITIES]);
 }
 
 Object.defineProperties(Broker.prototype, {
   exchangeCount: {
     get() {
-      return this[kEntities].get('exchanges').size;
+      return this[K_ENTITIES].get('exchanges').size;
     },
   },
   queueCount: {
     get() {
-      return this[kEntities].get('queues').size;
+      return this[K_ENTITIES].get('queues').size;
     },
   },
   consumerCount: {
     get() {
-      return this[kEntities].get('consumers').size;
+      return this[K_ENTITIES].get('consumers').size;
     },
   },
 });
@@ -141,8 +144,8 @@ Broker.prototype.assertExchange = function assertExchange(exchangeName, type, op
   }
 
   exchange = new Exchange(exchangeName, type || 'topic', options);
-  this[kEventHandler].listen(exchange.events);
-  this[kEntities].get('exchanges').set(exchangeName, exchange);
+  this[K_EVENT_HANDLER].listen(exchange.events);
+  this[K_ENTITIES].get('exchanges').set(exchangeName, exchange);
 
   return exchange;
 };
@@ -202,7 +205,7 @@ Broker.prototype.cancel = function cancel(consumerTag, requeue = true) {
 Broker.prototype.getConsumers = function getConsumers() {
   /** @type {ReturnType<import('./Queue.js').Consumer['toJSON']>[]} */
   const result = [];
-  for (const consumer of this[kEntities].get('consumers').values()) {
+  for (const consumer of this[K_ENTITIES].get('consumers').values()) {
     result.push(consumer.toJSON());
   }
   return result;
@@ -215,17 +218,17 @@ Broker.prototype.getConsumers = function getConsumers() {
  */
 Broker.prototype.getConsumer = function getConsumer(consumerTag) {
   if (typeof consumerTag !== 'string') throw new TypeError('consumer tag must be a string');
-  return this[kEntities].get('consumers').get(consumerTag);
+  return this[K_ENTITIES].get('consumers').get(consumerTag);
 };
 
 /**
  * Get exchange by name
  * @param {string} exchangeName exchange name
- * @returns {import('./Exchange.js').ExchangeBase | undefined}
+ * @returns {import('./Exchange.js').ExchangeBase}
  */
 Broker.prototype.getExchange = function getExchange(exchangeName) {
   if (typeof exchangeName !== 'string') throw new TypeError('exchange name must be a string');
-  return this[kEntities].get('exchanges').get(exchangeName);
+  return this[K_ENTITIES].get('exchanges').get(exchangeName);
 };
 
 /**
@@ -237,7 +240,7 @@ Broker.prototype.deleteExchange = function deleteExchange(exchangeName, options)
   const exchange = this.getExchange(exchangeName);
   if (!exchange || (options?.ifUnused && exchange.bindingCount)) return false;
 
-  this[kEntities].get('exchanges').delete(exchangeName);
+  this[K_ENTITIES].get('exchanges').delete(exchangeName);
   exchange.close();
   return true;
 };
@@ -246,7 +249,7 @@ Broker.prototype.deleteExchange = function deleteExchange(exchangeName, options)
  * Stop broker with corresponding exchanges and queues, entities remain but does not accepts messages
  */
 Broker.prototype.stop = function stop() {
-  const entities = this[kEntities];
+  const entities = this[K_ENTITIES];
   for (const exchange of entities.get('exchanges').values()) exchange.stop();
   for (const queue of entities.get('queues').values()) queue.stop();
 };
@@ -255,7 +258,7 @@ Broker.prototype.stop = function stop() {
  * Close and clean-up all entities
  */
 Broker.prototype.close = function close() {
-  const entities = this[kEntities];
+  const entities = this[K_ENTITIES];
   for (const shovel of entities.get('shovels').values()) shovel.close();
   for (const exchange of entities.get('exchanges').values()) exchange.close();
   for (const queue of entities.get('queues').values()) queue.close();
@@ -267,7 +270,7 @@ Broker.prototype.close = function close() {
 Broker.prototype.reset = function reset() {
   this.stop();
   this.close();
-  const entities = this[kEntities];
+  const entities = this[K_ENTITIES];
   entities.get('exchanges').clear();
   entities.get('queues').clear();
   entities.get('consumers').clear();
@@ -276,8 +279,16 @@ Broker.prototype.reset = function reset() {
 
 /**
  * Get broker state for persistence
- * @param {boolean} [onlyWithContent] omit exchanges and queues without content
+ * @overload
+ * @returns {import('#types').BrokerState}
+ *
+ * @overload
+ * @param {true} onlyWithContent omit exchanges and queues without content
  * @returns {import('#types').BrokerState | undefined}
+
+* @overload
+ * @param {false} onlyWithContent omit exchanges and queues without content
+ * @returns {import('#types').BrokerState}
  */
 Broker.prototype.getState = function getState(onlyWithContent) {
   const exchanges = this._getExchangeState(onlyWithContent);
@@ -304,7 +315,7 @@ Broker.prototype.recover = function recover(state) {
     if (state.exchanges)
       for (const eState of state.exchanges) this.assertExchange(eState.name, eState.type, eState.options).recover(eState, boundGetQueue);
   } else {
-    const entities = this[kEntities];
+    const entities = this[K_ENTITIES];
     for (const queue of entities.get('queues').values()) {
       if (queue.stopped) queue.recover();
     }
@@ -397,7 +408,7 @@ Broker.prototype.sendToQueue = function sendToQueue(queueName, content, options)
 Broker.prototype._getQueuesState = function getQueuesState(onlyWithContent) {
   let result;
   /** @type {Set<import('./Queue.js').Queue>} */
-  const queues = this[kEntities].get('queues').values();
+  const queues = this[K_ENTITIES].get('queues').values();
   for (const queue of queues) {
     if (!queue.options.durable) continue;
     if (onlyWithContent && !queue.messageCount) continue;
@@ -414,7 +425,7 @@ Broker.prototype._getQueuesState = function getQueuesState(onlyWithContent) {
 Broker.prototype._getExchangeState = function getExchangeState(onlyWithContent) {
   let result;
   /** @type {Set<import('./Exchange.js').ExchangeBase>} */
-  const exhanges = this[kEntities].get('exchanges').values();
+  const exhanges = this[K_ENTITIES].get('exchanges').values();
   for (const exchange of exhanges) {
     if (!exchange.options.durable) continue;
     if (onlyWithContent && !exchange.undeliveredCount) continue;
@@ -426,7 +437,7 @@ Broker.prototype._getExchangeState = function getExchangeState(onlyWithContent) 
 
 /**
  * Create queue
- * @param {string} [queueName] queue name, defaults to a generated name
+ * @param {string | null | undefined} [queueName] queue name, defaults to a generated name
  * @param {import('#types').QueueOptions} [options] optional queue options
  */
 Broker.prototype.createQueue = function createQueue(queueName, options) {
@@ -435,10 +446,10 @@ Broker.prototype.createQueue = function createQueue(queueName, options) {
   else if (this.getQueue(queueName)) throw new SmqpError(`Queue named ${queueName} already exists`, ERR_QUEUE_NAME_CONFLICT);
 
   const queueEmitter = new EventExchange(`${queueName}__events`);
-  this[kEventHandler].listen(queueEmitter);
+  this[K_EVENT_HANDLER].listen(queueEmitter);
   const queue = new Queue(queueName, options, queueEmitter);
 
-  this[kEntities].get('queues').set(queueName, queue);
+  this[K_ENTITIES].get('queues').set(queueName, queue);
   return queue;
 };
 
@@ -449,7 +460,7 @@ Broker.prototype.createQueue = function createQueue(queueName, options) {
  */
 Broker.prototype.getQueue = function getQueue(queueName) {
   if (!queueName || typeof queueName !== 'string') throw new TypeError('queue name must be a string');
-  return this[kEntities].get('queues').get(queueName);
+  return this[K_ENTITIES].get('queues').get(queueName);
 };
 
 /**
@@ -503,7 +514,7 @@ Broker.prototype.ack = function ack(message, allUpTo) {
 
 /** Acknowledge all outstanding messages across all queues */
 Broker.prototype.ackAll = function ackAll() {
-  for (const queue of this[kEntities].get('queues').values()) queue.ackAll();
+  for (const queue of this[K_ENTITIES].get('queues').values()) queue.ackAll();
 };
 
 /**
@@ -521,7 +532,7 @@ Broker.prototype.nack = function nack(message, allUpTo, requeue) {
  * @param {boolean} [requeue] requeue nacked messages, defaults to true
  */
 Broker.prototype.nackAll = function nackAll(requeue) {
-  for (const queue of this[kEntities].get('queues').values()) queue.nackAll(requeue);
+  for (const queue of this[K_ENTITIES].get('queues').values()) queue.nackAll(requeue);
 };
 
 /**
@@ -540,7 +551,7 @@ Broker.prototype.reject = function reject(message, requeue) {
  * @returns {boolean} is consumer tag available
  */
 Broker.prototype.validateConsumerTag = function validateConsumerTag(consumerTag) {
-  return this[kEventHandler].validateConsumerTag('' + consumerTag);
+  return this[K_EVENT_HANDLER].validateConsumerTag('' + consumerTag);
 };
 
 /**
@@ -551,10 +562,10 @@ Broker.prototype.validateConsumerTag = function validateConsumerTag(consumerTag)
  * @param {import('#types').ShovelOptions} [options] optional shovel options
  */
 Broker.prototype.createShovel = function createShovel(name, source, destination, options) {
-  const shovels = this[kEntities].get('shovels');
+  const shovels = this[K_ENTITIES].get('shovels');
   if (shovels.has(name)) throw new SmqpError(`Shovel name must be unique, ${name} is occupied`, ERR_SHOVEL_NAME_CONFLICT);
   const shovel = new Shovel(name, { ...source, broker: this }, destination, options);
-  this[kEventHandler].listen(shovel.events);
+  this[K_EVENT_HANDLER].listen(shovel.events);
   shovels.set(name, shovel);
   return shovel;
 };
@@ -578,7 +589,7 @@ Broker.prototype.closeShovel = function closeShovel(name) {
  * @returns {import('./Shovel.js').Shovel | undefined}
  */
 Broker.prototype.getShovel = function getShovel(name) {
-  return this[kEntities].get('shovels').get(name);
+  return this[K_ENTITIES].get('shovels').get(name);
 };
 
 /**
@@ -586,7 +597,7 @@ Broker.prototype.getShovel = function getShovel(name) {
  * @returns {import('./Shovel.js').Shovel[]}
  */
 Broker.prototype.getShovels = function getShovels() {
-  return [...this[kEntities].get('shovels').values()];
+  return [...this[K_ENTITIES].get('shovels').values()];
 };
 
 /**

@@ -1,9 +1,7 @@
 import { generateId } from './shared.js';
 
-/** @type {symbol} */
-const kPending = Symbol.for('pending');
-/** @type {symbol} */
-const kOnConsumed = Symbol.for('onConsumed');
+const K_PENDING = Symbol.for('pending');
+const K_ON_CONSUMED = Symbol.for('onConsumed');
 
 /**
  * What it is all about - message
@@ -13,9 +11,10 @@ const kOnConsumed = Symbol.for('onConsumed');
  * @param {CallableFunction} [onConsumed]
  */
 export function Message(fields, content, properties, onConsumed) {
-  /** @private */
-  this[kOnConsumed] = [null, onConsumed];
-  this[kPending] = false;
+  /** @internal */
+  this[K_ON_CONSUMED] = [null, onConsumed];
+  /** @internal */
+  this[K_PENDING] = false;
 
   const mproperties = {
     ...properties,
@@ -46,8 +45,9 @@ export function Message(fields, content, properties, onConsumed) {
 }
 
 Object.defineProperty(Message.prototype, 'pending', {
+  /** @returns {boolean} */
   get() {
-    return this[kPending];
+    return this[K_PENDING];
   },
 });
 
@@ -56,11 +56,11 @@ Object.defineProperty(Message.prototype, 'pending', {
  * @param {boolean} [allUpTo] all outstanding messages prior to and including the given message shall be considered acknowledged. If false, or omitted, only the message supplied is acknowledged. Defaults to false
  */
 Message.prototype.ack = function ack(allUpTo) {
-  if (!this[kPending]) return;
-  for (const fn of this[kOnConsumed]) {
+  if (!this[K_PENDING]) return;
+  for (const fn of this[K_ON_CONSUMED]) {
     if (fn) fn(this, 'ack', allUpTo);
   }
-  this[kPending] = false;
+  this[K_PENDING] = false;
 };
 
 /**
@@ -69,11 +69,11 @@ Message.prototype.ack = function ack(allUpTo) {
  * @param {boolean} [requeue] put the message or messages back on the queue, defaults to true
  */
 Message.prototype.nack = function nack(allUpTo, requeue = true) {
-  if (!this[kPending]) return;
-  for (const fn of this[kOnConsumed]) {
+  if (!this[K_PENDING]) return;
+  for (const fn of this[K_ON_CONSUMED]) {
     if (fn) fn(this, 'nack', allUpTo, requeue);
   }
-  this[kPending] = false;
+  this[K_PENDING] = false;
 };
 
 /**
@@ -86,12 +86,12 @@ Message.prototype.reject = function reject(requeue = true) {
 
 /** @private */
 Message.prototype._consume = function consume(consumerTag, consumedCb) {
-  this[kPending] = true;
+  this[K_PENDING] = true;
   this.fields.consumerTag = consumerTag;
-  this[kOnConsumed][0] = consumedCb;
+  this[K_ON_CONSUMED][0] = consumedCb;
 };
 
 /** @private */
 Message.prototype._clearPending = function clearPending() {
-  this[kPending] = false;
+  this[K_PENDING] = false;
 };

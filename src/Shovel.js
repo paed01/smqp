@@ -1,26 +1,16 @@
 import { EventExchange } from './Exchange.js';
 import { SmqpError, ERR_SHOVEL_DESTINATION_EXCHANGE_NOT_FOUND, ERR_SHOVEL_SOURCE_EXCHANGE_NOT_FOUND } from './Errors.js';
+import { K_NAME } from './constants.js';
 
-/** @type {symbol} */
-const kName = Symbol.for('name');
-/** @type {symbol} */
-const kBrokerInternal = Symbol.for('brokerInternal');
-/** @type {symbol} */
-const kCloneMessage = Symbol.for('cloneMessage');
-/** @type {symbol} */
-const kClosed = Symbol.for('closed');
-/** @type {symbol} */
-const kConsumerTag = Symbol.for('consumerTag');
-/** @type {symbol} */
-const kDestinationExchange = Symbol.for('destinationExchange');
-/** @type {symbol} */
-const kEventHandlers = Symbol.for('eventHandlers');
-/** @type {symbol} */
-const kSourceBroker = Symbol.for('sourceBroker');
-/** @type {symbol} */
-const kSourceExchange = Symbol.for('sourceExchange');
-/** @type {symbol} */
-const kE2EShovel = Symbol.for('shovel');
+const K_BROKER_INTERNAL = Symbol.for('brokerInternal');
+const K_CLONE_MESSAGE = Symbol.for('cloneMessage');
+const K_CLOSED = Symbol.for('closed');
+const K_CONSUMER_TAG = Symbol.for('consumerTag');
+const K_DESTINATION_EXCHANGE = Symbol.for('destinationExchange');
+const K_EVENT_HANDLERS = Symbol.for('eventHandlers');
+const K_SOURCE_BROKER = Symbol.for('sourceBroker');
+const K_SOURCE_EXCHANGE = Symbol.for('sourceExchange');
+const K_E2E_SHOVEL = Symbol.for('shovel');
 
 /**
  * Shovel — pipe messages from a source exchange to a destination exchange
@@ -52,25 +42,34 @@ export function Shovel(name, source, destination, options) {
     return new Shovel(name, source, destination, options);
   }
 
-  this[kBrokerInternal] = sourceBroker === destinationBroker;
+  /** @internal */
+  this[K_BROKER_INTERNAL] = sourceBroker === destinationBroker;
   const routingKeyPattern = pattern || '#';
 
-  this[kName] = name;
+  /** @internal */
+  this[K_NAME] = name;
   this.source = { ...source, pattern: routingKeyPattern };
   this.destination = { ...destination };
   /** @type {import('#types').ExchangeEventEmitter} */
   this.events = new EventExchange('shovel__events');
 
-  const consumerTag = (this[kConsumerTag] = source.consumerTag || `smq.shoveltag-${name}`);
-  this[kClosed] = false;
-  this[kSourceBroker] = sourceBroker;
-  this[kSourceExchange] = sourceExchange;
-  this[kDestinationExchange] = destinationExchange;
-  this[kCloneMessage] = options?.cloneMessage;
+  const consumerTag = source.consumerTag || `smq.shoveltag-${name}`;
+  /** @internal */
+  this[K_CONSUMER_TAG] = consumerTag;
+  /** @internal */
+  this[K_CLOSED] = false;
+  /** @internal */
+  this[K_SOURCE_BROKER] = sourceBroker;
+  /** @internal */
+  this[K_SOURCE_EXCHANGE] = sourceExchange;
+  /** @internal */
+  this[K_DESTINATION_EXCHANGE] = destinationExchange;
+  /** @internal */
+  this[K_CLONE_MESSAGE] = options?.cloneMessage;
 
   const boundClose = this.close.bind(this);
 
-  const eventHandlers = (this[kEventHandlers] = new Set([
+  const eventHandlers = (this[K_EVENT_HANDLERS] = new Set([
     sourceExchange.on('delete', boundClose),
     destinationExchange.on('delete', boundClose),
   ]));
@@ -89,17 +88,17 @@ export function Shovel(name, source, destination, options) {
 Object.defineProperties(Shovel.prototype, {
   name: {
     get() {
-      return this[kName];
+      return this[K_NAME];
     },
   },
   closed: {
     get() {
-      return this[kClosed];
+      return this[K_CLOSED];
     },
   },
   consumerTag: {
     get() {
-      return this[kConsumerTag];
+      return this[K_CONSUMER_TAG];
     },
   },
 });
@@ -134,19 +133,19 @@ Shovel.prototype.off = function off(eventName, handler) {
 
 /** Close shovel and cancel its source consumer */
 Shovel.prototype.close = function closeShovel() {
-  if (this[kClosed]) return;
-  this[kClosed] = true;
-  for (const eh of this[kEventHandlers]) eh.cancel();
-  this[kEventHandlers].clear();
+  if (this[K_CLOSED]) return;
+  this[K_CLOSED] = true;
+  for (const eh of this[K_EVENT_HANDLERS]) eh.cancel();
+  this[K_EVENT_HANDLERS].clear();
   const events = this.events;
   this.emit('close', this);
   events.close();
-  this[kSourceBroker].cancel(this[kConsumerTag]);
+  this[K_SOURCE_BROKER].cancel(this[K_CONSUMER_TAG]);
 };
 
 /** @private */
 Shovel.prototype._messageHandler = function messageHandler(message) {
-  const cloneMessage = this[kCloneMessage];
+  const cloneMessage = this[K_CLONE_MESSAGE];
   if (!cloneMessage) return message;
 
   const { fields, content, properties } = message;
@@ -165,12 +164,12 @@ Shovel.prototype._messageHandler = function messageHandler(message) {
 
 /** @private */
 Shovel.prototype._onShovelMessage = function onShovelMessage(routingKey, message) {
-  const destinationExchange = this[kDestinationExchange];
+  const destinationExchange = this[K_DESTINATION_EXCHANGE];
   if (!destinationExchange.bindingCount && !message.properties.mandatory) return message.ack();
 
   const { content, properties } = this._messageHandler(message);
-  const props = { ...properties, ...this.destination.publishProperties, 'source-exchange': this[kSourceExchange].name };
-  if (!this[kBrokerInternal]) props['shovel-name'] = this[kName];
+  const props = { ...properties, ...this.destination.publishProperties, 'source-exchange': this[K_SOURCE_EXCHANGE].name };
+  if (!this[K_BROKER_INTERNAL]) props['shovel-name'] = this[K_NAME];
   destinationExchange.publish(this.destination.exchangeKey || routingKey, content, props);
   message.ack();
 };
@@ -180,38 +179,39 @@ Shovel.prototype._onShovelMessage = function onShovelMessage(routingKey, message
  * @param {Shovel} shovel underlying shovel
  */
 export function Exchange2Exchange(shovel) {
-  this[kE2EShovel] = shovel;
+  /** @internal */
+  this[K_E2E_SHOVEL] = shovel;
 }
 
 Object.defineProperties(Exchange2Exchange.prototype, {
   name: {
     get() {
-      return this[kE2EShovel].name;
+      return this[K_E2E_SHOVEL].name;
     },
   },
   source: {
     get() {
-      return this[kE2EShovel].source.exchange;
+      return this[K_E2E_SHOVEL].source.exchange;
     },
   },
   destination: {
     get() {
-      return this[kE2EShovel].destination.exchange;
+      return this[K_E2E_SHOVEL].destination.exchange;
     },
   },
   pattern: {
     get() {
-      return this[kE2EShovel].source.pattern;
+      return this[K_E2E_SHOVEL].source.pattern;
     },
   },
   queue: {
     get() {
-      return this[kE2EShovel].source.queue;
+      return this[K_E2E_SHOVEL].source.queue;
     },
   },
   consumerTag: {
     get() {
-      return this[kE2EShovel].consumerTag;
+      return this[K_E2E_SHOVEL].consumerTag;
     },
   },
 });
@@ -223,10 +223,10 @@ Object.defineProperties(Exchange2Exchange.prototype, {
  * @returns {import('./Queue.js').Consumer}
  */
 Exchange2Exchange.prototype.on = function e2eon(eventName, handler) {
-  return this[kE2EShovel].on(eventName, handler);
+  return this[K_E2E_SHOVEL].on(eventName, handler);
 };
 
 /** Close the underlying shovel */
 Exchange2Exchange.prototype.close = function e2eclose() {
-  this[kE2EShovel].close();
+  this[K_E2E_SHOVEL].close();
 };

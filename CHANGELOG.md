@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v13.1.0 - 2026-07-22
+
+- attempt to improve types
+
 ## v13.0.1 - 2026-05-28
 
 - fix some type declarations

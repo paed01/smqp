@@ -1,3 +1,4 @@
+// @ts-check
 import { Broker, Shovel, Consumer, SmqpError } from 'smqp';
 
 describe('Shovel', () => {
@@ -38,10 +39,12 @@ describe('Shovel', () => {
       shovel.on('close', onClose1, { consumerTag: 'close-tag-1' });
       shovel.on('close', onClose2, { consumerTag: 'close-tag-2', priority: 1000 });
 
+      // @ts-ignore
       expect(shovel.events.bindingCount).to.equal(2);
 
       shovel.off('close', { consumerTag: 'close-tag-1' });
 
+      // @ts-ignore
       expect(shovel.events.bindingCount).to.equal(1);
 
       function onClose1() {}
@@ -59,10 +62,12 @@ describe('Shovel', () => {
       shovel.on('close', onClose);
       shovel.on('#', () => {});
 
+      // @ts-ignore
       expect(shovel.events.bindingCount).to.equal(2);
 
       shovel.off('close', onClose);
 
+      // @ts-ignore
       expect(shovel.events.bindingCount).to.equal(1);
 
       function onClose() {}
@@ -77,6 +82,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {import('smqp').ConsumeMessage[]} */
       const messages = [];
       broker2.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -92,6 +98,7 @@ describe('Shovel', () => {
       expect(message).to.have.property('content', 'snow');
       expect(message).to.have.property('properties').with.property('expiration', 10000);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(_routingKey, msg) {
         messages.push(msg);
       }
@@ -105,6 +112,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {import('smqp').ConsumeMessage[]} */
       const messages = [];
       broker2.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -147,6 +155,7 @@ describe('Shovel', () => {
       expect(message).to.have.property('content').with.property('data', 1);
       expect(message).to.have.property('properties').with.property('mandatory', false);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(_routingKey, msg) {
         messages.push(msg);
       }
@@ -160,6 +169,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {import('smqp').ConsumeMessage[]} */
       const messages = [];
       broker2.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -218,6 +228,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {import('smqp').ConsumeMessage[]} */
       const messages = [];
       broker2.subscribeTmp('dest-events', 'shoveled', onMessage, { noAck: true });
 
@@ -243,6 +254,7 @@ describe('Shovel', () => {
       expect(messages[0]).to.have.property('fields').with.property('routingKey', 'shoveled');
       expect(messages[1]).to.have.property('fields').with.property('routingKey', 'shoveled');
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(_routingKey, msg) {
         messages.push(msg);
       }
@@ -255,6 +267,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {string[]} */
       const messages = [];
       broker2.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -276,6 +289,7 @@ describe('Shovel', () => {
 
       expect(messages).to.have.length(1);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey) {
         messages.push(routingKey);
       }
@@ -333,6 +347,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {string[]} */
       const messages = [];
       broker2.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -360,6 +375,7 @@ describe('Shovel', () => {
 
       expect(messages).to.have.length(1);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey) {
         messages.push(routingKey);
       }
@@ -372,6 +388,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {string[]} */
       const messages = [];
       broker2.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -397,6 +414,7 @@ describe('Shovel', () => {
 
       expect(shovel.closed).to.be.true;
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey) {
         messages.push(routingKey);
       }
@@ -409,6 +427,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {string[]} */
       const messages = [];
       broker2.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -434,6 +453,7 @@ describe('Shovel', () => {
 
       expect(shovel.closed).to.be.true;
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey) {
         messages.push(routingKey);
       }
@@ -473,6 +493,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {string[]} */
       const messages = [];
       broker2.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -502,6 +523,7 @@ describe('Shovel', () => {
       expect(messages).to.have.length(1);
       expect(eventsQ).to.have.property('messageCount', 1);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey) {
         messages.push(routingKey);
       }
@@ -515,9 +537,11 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {string[]} */
       const messages = [];
       broker2.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
+      /** @type {Parameters<typeof Shovel>} */
       const args = [
         'my-shovel',
         {
@@ -553,6 +577,7 @@ describe('Shovel', () => {
 
       expect(messages).to.eql(['event.1', 'event.2', 'event.3']);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey) {
         messages.push(routingKey);
       }
@@ -565,9 +590,11 @@ describe('Shovel', () => {
 
       broker.assertQueue('events-q', { autoDelete: false });
 
+      /** @type {string[]} */
       const messages = [];
       broker.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
+      /** @type {Parameters<typeof Shovel>} */
       const args = [
         'my-shovel',
         {
@@ -603,6 +630,7 @@ describe('Shovel', () => {
 
       expect(messages).to.eql(['event.1', 'event.2', 'event.3']);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey) {
         messages.push(routingKey);
       }
@@ -616,6 +644,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {import('smqp').ConsumeMessage[]} */
       const messages = [];
       broker1.subscribeTmp(
         'source-events',
@@ -626,6 +655,7 @@ describe('Shovel', () => {
         { noAck: true }
       );
 
+      /** @type {Parameters<typeof Shovel>} */
       const args = [
         'my-shovel',
         {
@@ -669,6 +699,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {import('smqp').ConsumeMessage[]} */
       const messages = [];
       broker2.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -695,6 +726,7 @@ describe('Shovel', () => {
       expect(message).to.have.property('content', 'snow');
       expect(message).to.have.property('properties').with.property('destProp', true);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey, msg) {
         messages.push(msg);
       }
@@ -707,6 +739,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {import('smqp').MessageEnvelope[]} */
       const messages = [];
       Shovel(
         'my-shovel',
@@ -739,6 +772,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {any[]} */
       const messages = [];
       broker2.on('return', (message) => messages.push(message));
 
@@ -767,6 +801,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {import('smqp').MessageEnvelope[]} */
       const messages = [];
       Shovel(
         'my-shovel',
@@ -799,6 +834,7 @@ describe('Shovel', () => {
       const broker2 = new Broker();
       broker2.assertExchange('dest-events', 'topic');
 
+      /** @type {any[]} */
       const messages = [];
       broker1.on('return', (message) => messages.push(message));
       broker2.on('return', (message) => messages.push(message));
@@ -831,6 +867,7 @@ describe('Shovel', () => {
       const destinationBroker = new Broker();
       destinationBroker.assertExchange('events', 'topic');
 
+      /** @type {import('smqp').ConsumeMessage[]} */
       const messages = [];
       destinationBroker.subscribeTmp('events', '#', onMessage, { noAck: true });
 
@@ -874,6 +911,7 @@ describe('Shovel', () => {
       expect(message).to.have.property('properties').with.property('mandatory', false);
       expect(message).to.have.property('properties').with.property('type', 'shoveled');
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey, msg) {
         messages.push(msg);
       }
@@ -887,6 +925,7 @@ describe('Shovel', () => {
       destinationBroker.assertExchange('events-0', 'topic');
       destinationBroker.assertExchange('events-1', 'direct');
 
+      /** @type {import('smqp').ConsumeMessage[]} */
       const messages = [];
       destinationBroker.subscribeTmp('events-0', '#', onMessage, { noAck: true });
       destinationBroker.subscribeTmp('events-1', '#', onMessage, { noAck: true });
@@ -898,6 +937,7 @@ describe('Shovel', () => {
 
       expect(messages).to.have.length(2);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey, msg) {
         messages.push(msg);
       }
@@ -910,6 +950,7 @@ describe('Shovel', () => {
       const destinationBroker = new Broker();
       destinationBroker.assertExchange('events', 'topic');
 
+      /** @type {import('smqp').ConsumeMessage[]} */
       const messages = [];
       destinationBroker.subscribeTmp('events', '#', onMessage, { noAck: true });
 
@@ -921,6 +962,7 @@ describe('Shovel', () => {
 
       expect(messages).to.have.length(3);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey, msg) {
         messages.push(msg);
       }
@@ -1003,6 +1045,7 @@ describe('Shovel', () => {
       expect(shovel).to.have.property('closed', true);
       expect(broker.getShovel('events-shovel')).to.not.be.ok;
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey) {
         messages.push(routingKey);
       }
@@ -1015,6 +1058,7 @@ describe('Shovel', () => {
       const destinationBroker = new Broker();
       destinationBroker.assertExchange('dest-events', 'topic');
 
+      /** @type {string[]} */
       const messages = [];
       destinationBroker.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -1023,6 +1067,7 @@ describe('Shovel', () => {
 
       expect(messages).to.have.length(1);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey) {
         messages.push(routingKey);
         shovel.close();
@@ -1038,6 +1083,7 @@ describe('Shovel', () => {
       const destinationBroker = new Broker();
       destinationBroker.assertExchange('dest-events', 'topic');
 
+      /** @type {string[]} */
       const messages = [];
       destinationBroker.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -1046,6 +1092,7 @@ describe('Shovel', () => {
 
       expect(messages).to.have.length(1);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey) {
         messages.push(routingKey);
         broker.cancel(shovel.consumerTag);
@@ -1062,6 +1109,7 @@ describe('Shovel', () => {
       const destinationBroker = new Broker();
       destinationBroker.assertExchange('dest-events', 'topic');
 
+      /** @type {string[]} */
       const messages = [];
       destinationBroker.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -1077,6 +1125,7 @@ describe('Shovel', () => {
 
       expect(messages).to.have.length(1);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey) {
         messages.push(routingKey);
         queue.close();
@@ -1093,6 +1142,7 @@ describe('Shovel', () => {
       const destinationBroker = new Broker();
       destinationBroker.assertExchange('dest-events', 'topic');
 
+      /** @type {string[]} */
       const messages = [];
       destinationBroker.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -1111,6 +1161,7 @@ describe('Shovel', () => {
 
       expect(messages).to.have.length(1);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey) {
         messages.push(routingKey);
         broker.deleteQueue(queue.name);
@@ -1127,6 +1178,7 @@ describe('Shovel', () => {
       const destinationBroker = new Broker();
       destinationBroker.assertExchange('dest-events', 'topic');
 
+      /** @type {string[]} */
       const messages = [];
       destinationBroker.subscribeTmp('dest-events', '#', onMessage, { noAck: true });
 
@@ -1142,6 +1194,7 @@ describe('Shovel', () => {
 
       expect(messages).to.have.length(1);
 
+      /** @type {import('smqp').onMessage} */
       function onMessage(routingKey) {
         messages.push(routingKey);
         broker.close();

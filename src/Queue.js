@@ -1,15 +1,14 @@
 import { generateId, sortByPriority } from './shared.js';
 import { Message } from './Message.js';
 import { SmqpError, ERR_EXCLUSIVE_CONFLICT, ERR_EXCLUSIVE_NOT_ALLOWED } from './Errors.js';
+import { K_NAME, K_STOPPED } from './constants.js';
 
-const kName = Symbol.for('name');
-const kConsumers = Symbol.for('consumers');
-const kConsuming = Symbol.for('consuming');
-const kExclusive = Symbol.for('exclusive');
-const kInternalQueue = Symbol.for('internalQueue');
-const kIsReady = Symbol.for('isReady');
-const kAvailableCount = Symbol.for('availableCount');
-const kStopped = Symbol.for('stopped');
+const K_CONSUMERS = Symbol.for('consumers');
+const K_CONSUMING = Symbol.for('consuming');
+const K_EXCLUSIVE = Symbol.for('exclusive');
+const K_INTERNAL_QUEUE = Symbol.for('internalQueue');
+const K_IS_READY = Symbol.for('isReady');
+const K_AVAILABLE_COUNT = Symbol.for('availableCount');
 
 /**
  * Queue
@@ -20,7 +19,7 @@ const kStopped = Symbol.for('stopped');
 export function Queue(name, options, eventEmitter) {
   if (name && typeof name !== 'string') throw new TypeError('Queue name must be a string');
   else if (!name) name = `smq.qname-${generateId()}`;
-  this[kName] = name;
+  this[K_NAME] = name;
 
   /** @type {import('#types').QueueOptions} */
   this.options = { autoDelete: true, ...options };
@@ -28,33 +27,33 @@ export function Queue(name, options, eventEmitter) {
   /** @type {Message[]} */
   this.messages = [];
   this.events = eventEmitter;
-  this[kConsumers] = [];
-  this[kStopped] = false;
-  this[kAvailableCount] = 0;
-  this[kExclusive] = false;
-  /** @private */
+  this[K_CONSUMERS] = [];
+  this[K_STOPPED] = false;
+  this[K_AVAILABLE_COUNT] = 0;
+  this[K_EXCLUSIVE] = false;
+  /** @internal */
   this._onMessageConsumed = this._onMessageConsumed.bind(this);
 }
 
 Object.defineProperties(Queue.prototype, {
   name: {
     get() {
-      return this[kName];
+      return this[K_NAME];
     },
   },
   consumerCount: {
     get() {
-      return this[kConsumers].length;
+      return this[K_CONSUMERS].length;
     },
   },
   consumers: {
     get() {
-      return this[kConsumers].slice();
+      return this[K_CONSUMERS].slice();
     },
   },
   exclusive: {
     get() {
-      return this[kExclusive];
+      return this[K_EXCLUSIVE];
     },
   },
   messageCount: {
@@ -64,7 +63,7 @@ Object.defineProperties(Queue.prototype, {
   },
   stopped: {
     get() {
-      return this[kStopped];
+      return this[K_STOPPED];
     },
   },
 });
@@ -79,7 +78,7 @@ Queue.prototype.queueMessage = function queueMessage(fields, content, properties
   if (fields && typeof fields !== 'object') throw new TypeError('fields must be an object');
   if (properties && typeof properties !== 'object') throw new TypeError('properties must be an object');
 
-  if (this[kStopped]) return;
+  if (this[K_STOPPED]) return;
 
   const messageTtl = this.options.messageTtl;
   const messageProperties = { ...properties };
@@ -90,7 +89,7 @@ Queue.prototype.queueMessage = function queueMessage(fields, content, properties
 
   const capacity = this._getCapacity();
   this.messages.push(message);
-  this[kAvailableCount]++;
+  this[K_AVAILABLE_COUNT]++;
 
   let discarded;
   switch (capacity) {
@@ -118,9 +117,9 @@ Queue.prototype.evictFirst = function evictFirst(compareMessage) {
 
 /** @private */
 Queue.prototype._consumeNext = function consumeNext() {
-  if (this[kStopped] || !this[kAvailableCount]) return;
+  if (this[K_STOPPED] || !this[K_AVAILABLE_COUNT]) return;
 
-  const consumers = this[kConsumers];
+  const consumers = this[K_CONSUMERS];
   let consumed = 0;
   if (!consumers.length) return consumed;
 
@@ -142,9 +141,9 @@ Queue.prototype._consumeNext = function consumeNext() {
  * @param {any} [owner] forwarded to the message handler as the third arg
  */
 Queue.prototype.consume = function consume(onMessage, consumeOptions, owner) {
-  const consumers = this[kConsumers];
+  const consumers = this[K_CONSUMERS];
   if (consumers.length) {
-    if (this[kExclusive])
+    if (this[K_EXCLUSIVE])
       throw new SmqpError(`Queue ${this.name} is exclusively consumed by ${consumers[0].consumerTag}`, ERR_EXCLUSIVE_CONFLICT);
     if (consumeOptions?.exclusive)
       throw new SmqpError(`Queue ${this.name} already has consumers and cannot be exclusively consumed`, ERR_EXCLUSIVE_NOT_ALLOWED);
@@ -158,7 +157,7 @@ Queue.prototype.consume = function consume(onMessage, consumeOptions, owner) {
   }
 
   if (consumer.options.exclusive) {
-    this[kExclusive] = true;
+    this[K_EXCLUSIVE] = true;
   }
 
   const pendingMessages = this._consumeMessages(consumer.capacity, consumer.options);
@@ -175,7 +174,7 @@ Queue.prototype.consume = function consume(onMessage, consumeOptions, owner) {
  */
 Queue.prototype.assertConsumer = function assertConsumer(onMessage, consumeOptions, owner) {
   /** @type {Consumer[]} */
-  const consumers = this[kConsumers];
+  const consumers = this[K_CONSUMERS];
   if (!consumers.length) return this.consume(onMessage, consumeOptions, owner);
   for (const consumer of consumers) {
     if (consumer.onMessage !== onMessage) continue;
@@ -196,6 +195,7 @@ Queue.prototype.assertConsumer = function assertConsumer(onMessage, consumeOptio
 /**
  * Get next message from queue
  * @param {import('#types').ConsumeOptions} [options] optional consume options
+ * @returns {import('#types').ConsumeMessage | undefined}
  */
 Queue.prototype.get = function getMessage(options) {
   const message = this._consumeMessages(1, { noAck: options?.noAck, consumerTag: options?.consumerTag })[0];
@@ -214,9 +214,10 @@ Queue.prototype.get = function getMessage(options) {
  * @param {import('#types').ConsumeOptions} consumeOptions
  */
 Queue.prototype._consumeMessages = function consumeMessages(n, consumeOptions) {
+  /** @type {import('#types').ConsumeMessage[]} */
   const msgs = [];
 
-  if (this[kStopped] || !this[kAvailableCount] || !n) return msgs;
+  if (this[K_STOPPED] || !this[K_AVAILABLE_COUNT] || !n) return msgs;
 
   const messages = this.messages;
   if (!messages.length) return msgs;
@@ -229,7 +230,7 @@ Queue.prototype._consumeMessages = function consumeMessages(n, consumeOptions) {
       continue;
     }
     message._consume(consumeOptions?.consumerTag);
-    this[kAvailableCount]--;
+    this[K_AVAILABLE_COUNT]--;
     msgs.push(message);
     if (!--n) break;
   }
@@ -277,7 +278,7 @@ Queue.prototype.reject = function reject(message, requeue = true) {
  * @param {boolean} requeue
  */
 Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operation, allUpTo, requeue) {
-  if (this[kStopped]) return;
+  if (this[K_STOPPED]) return;
 
   const msgIdx = this._dequeueMessage(message);
   if (msgIdx === -1) return false;
@@ -291,7 +292,7 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
       break;
     case 'nack': {
       if (requeue) {
-        this[kAvailableCount]++;
+        this[K_AVAILABLE_COUNT]++;
         messages.splice(
           msgIdx,
           0,
@@ -394,7 +395,7 @@ Queue.prototype.peek = function peek(ignoreDelivered) {
  * @param {boolean} [requeue] requeue messages held by the consumer, defaults to true
  */
 Queue.prototype.cancel = function cancel(consumerTag, requeue) {
-  const consumers = this[kConsumers];
+  const consumers = this[K_CONSUMERS];
   const idx = consumers.findIndex((c) => c.consumerTag === consumerTag);
   if (idx === -1) return false;
 
@@ -410,7 +411,7 @@ Queue.prototype.cancel = function cancel(consumerTag, requeue) {
  * @param {boolean} [requeue] requeue messages held by the consumer, defaults to true
  */
 Queue.prototype.dismiss = function dismiss(onMessage, requeue) {
-  const consumers = this[kConsumers];
+  const consumers = this[K_CONSUMERS];
   const consumer = consumers.find((c) => c.onMessage === onMessage);
   if (!consumer) return;
   this.unbindConsumer(consumer, requeue);
@@ -422,13 +423,13 @@ Queue.prototype.dismiss = function dismiss(onMessage, requeue) {
  * @param {boolean} [requeue] requeue messages held by the consumer, defaults to true
  */
 Queue.prototype.unbindConsumer = function unbindConsumer(consumer, requeue = true) {
-  const consumers = this[kConsumers];
+  const consumers = this[K_CONSUMERS];
   const idx = consumers.indexOf(consumer);
   if (idx === -1) return;
 
   consumers.splice(idx, 1);
 
-  this[kExclusive] = false;
+  this[K_EXCLUSIVE] = false;
 
   consumer.stop();
   consumer.nackAll(requeue);
@@ -471,7 +472,7 @@ Queue.prototype.off = function off(eventName, handler) {
 
 Queue.prototype.purge = function purge() {
   const toDelete = this.messages.filter(({ pending }) => !pending);
-  this[kAvailableCount] = 0;
+  this[K_AVAILABLE_COUNT] = 0;
 
   for (const msg of toDelete) {
     this._dequeueMessage(msg);
@@ -522,8 +523,8 @@ Queue.prototype.getState = function getState() {
  * @param {import('#types').QueueState} [state] queue state, omit to recover stopped queue in place
  */
 Queue.prototype.recover = function recover(state) {
-  this[kStopped] = false;
-  const consumers = this[kConsumers];
+  this[K_STOPPED] = false;
+  const consumers = this[K_CONSUMERS];
   if (!state) {
     for (const c of consumers.slice()) c.recover();
     this._consumeNext();
@@ -540,13 +541,12 @@ Queue.prototype.recover = function recover(state) {
 
   if (!state.messages) return this;
 
-  const onConsumed = this._onMessageConsumed;
   for (const { fields, content, properties } of state.messages) {
     if (properties?.persistent === false) continue;
-    const msg = new Message({ ...fields, redelivered: true }, content, properties, onConsumed);
+    const msg = new Message({ ...fields, redelivered: true }, content, properties, this._onMessageConsumed);
     this.messages.push(msg);
   }
-  this[kAvailableCount] = this.messages.length;
+  this[K_AVAILABLE_COUNT] = this.messages.length;
   for (const c of consumers) c.recover();
   if (continueConsume) {
     this._consumeNext();
@@ -560,14 +560,14 @@ Queue.prototype.recover = function recover(state) {
  * @param {import('#types').DeleteQueueOptions} [options] optional delete guards
  */
 Queue.prototype.delete = function deleteQueue(options) {
-  const consumers = this[kConsumers];
+  const consumers = this[K_CONSUMERS];
   if (options?.ifUnused && consumers.length) return;
   const messages = this.messages;
   if (options?.ifEmpty && messages.length) return;
 
-  this[kStopped] = true;
+  this[K_STOPPED] = true;
   const messageCount = messages.length;
-  for (const consumer of this[kConsumers].splice(0)) {
+  for (const consumer of this[K_CONSUMERS].splice(0)) {
     this.emit('consumer.cancel', consumer);
   }
 
@@ -578,14 +578,14 @@ Queue.prototype.delete = function deleteQueue(options) {
 };
 
 Queue.prototype.close = function close() {
-  for (const consumer of this[kConsumers].slice()) {
+  for (const consumer of this[K_CONSUMERS].slice()) {
     this.unbindConsumer(consumer);
   }
 };
 
 Queue.prototype.stop = function stop() {
-  this[kStopped] = true;
-  for (const consumer of this[kConsumers].slice()) {
+  this[K_STOPPED] = true;
+  for (const consumer of this[K_CONSUMERS].slice()) {
     consumer.stop();
   }
 };
@@ -619,12 +619,12 @@ export function Consumer(queue, onMessage, options, owner, eventEmitter) {
   this.onMessage = onMessage;
   this.owner = owner;
   this.events = eventEmitter;
-  this[kName] = this.options.consumerTag;
-  this[kIsReady] = true;
-  this[kStopped] = false;
-  this[kConsuming] = false;
+  this[K_NAME] = this.options.consumerTag;
+  this[K_IS_READY] = true;
+  this[K_STOPPED] = false;
+  this[K_CONSUMING] = false;
 
-  this[kInternalQueue] = new Queue(
+  this[K_INTERNAL_QUEUE] = new Queue(
     `${this.options.consumerTag}-q`,
     {
       autoDelete: false,
@@ -637,27 +637,27 @@ export function Consumer(queue, onMessage, options, owner, eventEmitter) {
 Object.defineProperties(Consumer.prototype, {
   consumerTag: {
     get() {
-      return this[kName];
+      return this[K_NAME];
     },
   },
   ready: {
     get() {
-      return this[kIsReady] && !this[kStopped];
+      return this[K_IS_READY] && !this[K_STOPPED];
     },
   },
   stopped: {
     get() {
-      return this[kStopped];
+      return this[K_STOPPED];
     },
   },
   capacity: {
     get() {
-      return this[kInternalQueue]._getCapacity();
+      return this[K_INTERNAL_QUEUE]._getCapacity();
     },
   },
   messageCount: {
     get() {
-      return this[kInternalQueue].messageCount;
+      return this[K_INTERNAL_QUEUE].messageCount;
     },
   },
   queueName: {
@@ -682,24 +682,24 @@ Consumer.prototype.toJSON = function toJSON() {
 
 /** @private */
 Consumer.prototype._push = function push(messages) {
-  const internalQueue = this[kInternalQueue];
+  const internalQueue = this[K_INTERNAL_QUEUE];
   for (const message of messages) {
     internalQueue.queueMessage(message.fields, message, message.properties);
   }
-  if (!this[kConsuming]) {
-    this[kConsuming] = true;
+  if (!this[K_CONSUMING]) {
+    this[K_CONSUMING] = true;
     try {
       this._consume();
     } finally {
-      this[kConsuming] = false;
+      this[K_CONSUMING] = false;
     }
   }
 };
 
 /** @private */
 Consumer.prototype._consume = function consume() {
-  const internalQ = this[kInternalQueue];
-  const consumerTag = this[kName];
+  const internalQ = this[K_INTERNAL_QUEUE];
+  const consumerTag = this[K_NAME];
 
   let _msg;
 
@@ -712,7 +712,7 @@ Consumer.prototype._consume = function consume() {
     if (this.options.noAck) message.ack();
     this.onMessage(msg.fields.routingKey, message, this.owner);
 
-    if (this[kStopped]) break;
+    if (this[K_STOPPED]) break;
   }
 };
 
@@ -721,14 +721,14 @@ Consumer.prototype._consume = function consume() {
  * @param {boolean} [requeue] requeue nacked messages, defaults to true
  */
 Consumer.prototype.nackAll = function nackAll(requeue) {
-  for (const msg of this[kInternalQueue].messages.slice()) {
+  for (const msg of this[K_INTERNAL_QUEUE].messages.slice()) {
     msg.content.nack(false, requeue);
   }
 };
 
 /** Acknowledge all messages held by this consumer */
 Consumer.prototype.ackAll = function ackAll() {
-  for (const msg of this[kInternalQueue].messages.slice()) {
+  for (const msg of this[K_INTERNAL_QUEUE].messages.slice()) {
     msg.content.ack(false);
   }
 };
@@ -748,7 +748,7 @@ Consumer.prototype.cancel = function cancel(requeue = true) {
  * @param {number} value new prefetch count
  */
 Consumer.prototype.prefetch = function prefetch(value) {
-  this.options.prefetch = this[kInternalQueue].options.maxLength = value;
+  this.options.prefetch = this[K_INTERNAL_QUEUE].options.maxLength = value;
 };
 
 /**
@@ -772,11 +772,11 @@ Consumer.prototype.on = function on(eventName, handler) {
 };
 
 Consumer.prototype.recover = function recover() {
-  this[kStopped] = false;
+  this[K_STOPPED] = false;
 };
 
 Consumer.prototype.stop = function stop() {
-  this[kStopped] = true;
+  this[K_STOPPED] = true;
 };
 
 function ConsumerEmitter(queue) {
@@ -801,12 +801,12 @@ function ConsumerQueueEvents(consumer) {
 ConsumerQueueEvents.prototype.emit = function queueHandler(eventName) {
   switch (eventName) {
     case 'queue.saturated': {
-      this.consumer[kIsReady] = false;
+      this.consumer[K_IS_READY] = false;
       break;
     }
     case 'queue.depleted':
     case 'queue.ready':
-      this.consumer[kIsReady] = true;
+      this.consumer[K_IS_READY] = true;
       break;
   }
 };

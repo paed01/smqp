@@ -57,14 +57,14 @@ Because delivery is synchronous, a publish call returns only after every downstr
 - `Broker.js` — façade; manages entity maps, exposes the `amqplib`-shaped API, and owns the internal `broker__events` `EventExchange` used to emit `exchange.delete`, `queue.delete`, `consumer.cancel`, etc.
 - `Exchange.js` — `Exchange` (topic/direct) plus `EventExchange` (a non-durable, auto-deleting topic exchange used internally for lifecycle events). Each exchange has its own `delivery-q` and an `events` sub-exchange named `${name}__events`.
 - `Queue.js` — message storage, consumer scheduling, prefetch accounting, `getState`/`recover` for persistence handoff, plus the `Consumer` constructor.
-- `Message.js` — message envelope with `ack`/`nack`/`reject`. The `kPending` symbol guards against double-acking.
+- `Message.js` — message envelope with `ack`/`nack`/`reject`. The `K_PENDING` symbol guards against double-acking.
 - `Shovel.js` — pipes messages from a source exchange (any broker) to a destination exchange. `Exchange2Exchange` is the in-broker variant used by `broker.bindExchange`.
 - `Errors.js` — `SmqpError` and the `ERR_SMQP_*` code constants. Throw these (not generic `Error`) for AMQP-style failures so callers can branch on `err.code`.
 - `shared.js` — `generateId`, `sortByPriority`, and `getRoutingKeyPattern`. The last is hot-path; benchmark before regressing.
 
 ### Conventions worth preserving
 
-- Internal state lives on instances under `Symbol.for('...')` keys (e.g. `kEntities`, `kBindings`, `kConsumers`). This keeps state non-enumerable while still letting tests reach in via the same well-known symbol. Prefer this pattern over closure-captured state when adding new fields.
+- Internal state lives on instances under `Symbol.for('...')` keys named `K_<SNAKE_CASE>` (e.g. `K_ENTITIES`, `K_BINDINGS`, `K_CONSUMERS`). Symbols used by more than one module (`K_NAME`, `K_STOPPED`) are declared once in `src/constants.js`; module-local symbols stay `const` in their own module. This keeps state non-enumerable while still letting tests reach in via the same well-known symbol. Prefer this pattern over closure-captured state when adding new fields — and only ever touch another module's symbol-keyed state through that module's methods, never directly.
 - Constructors are callable with or without `new` (see `Broker`, `Shovel`) — keep that idiom if you add new entity types.
 - `assert*` methods (`assertExchange`, `assertQueue`) are idempotent and validate that an existing entity matches the requested type/durability — mismatches throw `ERR_SMQP_*`. Don't change them to silently coerce.
 - `getState()` / `recover()` on broker, exchange, and queue form the persistence contract. Any new field that must survive a restart needs to round-trip through both.
@@ -77,7 +77,7 @@ Public types are bundled into `types/index.d.ts` by `dts-buddy` (run via `npm ru
 1. **JSDoc inference from `src/*.js`** — TypeScript reads JSDoc on functions, classes, and prototype assignments and infers declarations. This handles methods, parameters, and return types.
 2. **`types/interfaces.d.ts`** — the only hand-maintained types file (paired with the small `types/bundle.d.ts` entry). It contains:
    - Shared interfaces consumed across the API (`SubscribeOptions`, `ConsumeOptions`, `QueueOptions`, `MessageProperties`, `MessageEnvelope`, `ShovelSource`, `BrokerState`, etc.). They become importable from `smqp` because `types/bundle.d.ts` does `export * from './interfaces.js'` — anything declared with `export interface` / `export type` in `interfaces.d.ts` is automatically picked up. No further wiring needed when you add a new shared type; just `export interface Foo` and consumers can `import type { Foo } from 'smqp'`.
-   - `declare module '../src/<File>.js' { interface <Class> { ... } }` augmentations that add the getters defined via `Object.defineProperties` to each prototype. **TypeScript JSDoc inference does NOT see properties added via `Object.defineProperties` (plural)** — only the singular `Object.defineProperty(target, 'name', desc)` form. Splitting the call sites would regress hot-path performance, so the augmentations are the workaround. When you add a getter via `Object.defineProperties`, add the matching `readonly <name>: <type>` to the corresponding interface in `types/interfaces.d.ts` or the bundle will be incomplete. `test/types-test.js` runs the build pipeline and asserts each augmented getter is present in the emitted bundle.
+   - `declare module '../src/<File>.js' { interface <Class> { ... } }` augmentations that add the getters defined via `Object.defineProperties` to each prototype. **TypeScript JSDoc inference does NOT see properties added via `Object.defineProperties` (plural)** — only the singular `Object.defineProperty(target, 'name', desc)` form. Splitting the call sites would regress hot-path performance, so the augmentations are the workaround. When you add a getter via `Object.defineProperties`, add the matching `readonly <name>: <type>` to the corresponding interface in `types/interfaces.d.ts` or the bundle will be incomplete.
 
 `tsconfig.json` exposes the alias `#types` → `./types/interfaces.d.ts`. When you add JSDoc that references a shared type, use the path-alias form so dts-buddy resolves and inlines it: `@param {import('#types').SubscribeOptions} options` rather than a relative path. dts-buddy rewrites these aliases when bundling.
 
@@ -93,14 +93,7 @@ In `types/bundle.d.ts`, never re-export the same identifier as both `default` an
 
 **`@internal` does NOT strip prototype-assigned methods.** For the `Foo.prototype.method = function () { ... }` style this codebase uses, `/** @internal */` on the assignment is silently ignored by tsc — the method emits unchanged, neither stripped nor flagged `private`, even with `stripInternal: true` in `tsconfig`. Use `/** @private */` instead; the bundle will emit `private foo;` which TS-using consumers can't access. (`stripInternal` operates on declaration nodes the tag is _attached to_; inferred-from-prototype-assignment members don't carry the JSDoc that way.)
 
-**To hide `Symbol.for(...)`-keyed instance state from the published types, cast the symbol declaration to plain `symbol` via JSDoc.** TS treats `Symbol.for(...)` as `unique symbol` by default, and `this[uniqueSymbol] = X` constructor patterns get synthesized as `[symbolName]: T` class members in the emitted `.d.ts`. Neither `@internal` nor `@private` strips these. The fix is a one-line cast on each symbol declaration:
-
-```js
-/** @type {symbol} */
-const kPending = Symbol.for('pending');
-```
-
-That demotes the symbol to plain `symbol` (not `unique symbol`), so `this[kPending] = X` becomes an untracked dynamic property access and TS emits no class member for it. Independently: never `export` symbols across module boundaries for runtime mutation (e.g. `export const kPending` so another file can do `message[kPending] = false`); add a `_clearPending()`-style internal method instead. Cross-module symbol mutation also forces unique-symbol inference and is a sign of leaky encapsulation.
+**`Symbol.for(...)`-keyed instance state stays out of the published types.** dts-buddy 0.8.x strips `@internal`-decorated properties and emits no symbol-keyed class members, so no `/** @type {symbol} */` casts are needed on the symbol declarations — after `npm run build:types`, confirm the bundle has no `[K_...]`/`[Symbol...]` members. Independently: never mutate another module's symbol-keyed state from outside (e.g. `message[K_PENDING] = false` from `Queue.js`); add a `_clearPending()`-style internal method instead — cross-module symbol mutation is a sign of leaky encapsulation.
 
 ## Tests
 

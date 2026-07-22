@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "13.0.1",
+  "version": "13.1.0",
   "type": "module",
   "description": "Synchronous message queueing package",
   "author": {
@@ -71,9 +71,6 @@
     "independent"
   ],
   "overrides": {
-    "c8": {
-      "yargs": "^18.0.0"
-    },
     "mocha": {
       "yargs": "^18.0.0"
     }
@@ -81,7 +78,9 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@rollup/plugin-commonjs": "^29.0.2",
-    "c8": "^11.0.0",
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "c8": "^12.0.0",
     "chai": "^6.2.0",
     "chronokinesis": "^8.0.0",
     "dts-buddy": "^0.8.0",

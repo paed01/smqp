@@ -17,6 +17,7 @@
     "resolveJsonModule": false,
     "allowSyntheticDefaultImports": true,
     "strict": true,
+    "strictNullChecks": false,
     "stripInternal": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

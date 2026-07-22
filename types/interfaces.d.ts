@@ -1,4 +1,11 @@
-export type onMessage = (routingKey: string, message: import('../src/Message.js').Message, owner: any) => void;
+import { Message } from '../src/Message.js';
+
+export class ConsumeMessage extends Message {
+  fields: Required<MessageFields>;
+  properties: MessageProperties;
+}
+
+export type onMessage = (routingKey: string, message: ConsumeMessage, owner: any) => void;
 
 /**
  * Minimal event-emitter shape used as the `eventEmitter` argument of `Queue`, `Consumer`, and `Shovel`.
@@ -6,6 +13,7 @@ export type onMessage = (routingKey: string, message: import('../src/Message.js'
  * needs `emit`/`on`/`off`, so this narrows the type away from the full `ExchangeBase` surface.
  */
 export interface ExchangeEventEmitter {
+  readonly name: string;
   emit(eventName: string, content?: any): void;
   on(pattern: string, handler: Function, options?: ConsumeOptions): import('../src/Queue.js').Consumer;
   off(pattern: string, handler: Function): undefined;
@@ -151,14 +159,10 @@ export interface MessageProperties extends Record<string, any> {
   'shovel-name'?: string;
 }
 
-export interface MessageEnvelope {
-  fields: MessageFields;
-  content?: any;
-  properties: MessageProperties;
-}
+export type MessageEnvelope = Pick<ConsumeMessage, 'fields' | 'content' | 'properties'>;
 
 export interface ShovelOptions {
-  cloneMessage?: (message: MessageEnvelope) => MessageEnvelope;
+  cloneMessage?: (message: MessageEnvelope) => Partial<MessageEnvelope>;
   [x: string]: any;
 }
 
