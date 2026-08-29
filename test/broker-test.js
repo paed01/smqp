@@ -1,4 +1,3 @@
-// @ts-check
 import * as ck from 'chronokinesis';
 
 import * as smqp from 'smqp';

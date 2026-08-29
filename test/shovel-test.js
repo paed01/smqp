@@ -1,4 +1,3 @@
-// @ts-check
 import { Broker, Shovel, Consumer, SmqpError } from 'smqp';
 
 describe('Shovel', () => {
