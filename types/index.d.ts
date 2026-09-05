@@ -128,6 +128,28 @@ declare module 'smqp' {
 	queues?: QueueState[];
   }
 
+  export interface QueueStats {
+	/** queue name */
+	name: string;
+	/** total number of messages in queue, including delivered but unacked */
+	messageCount: number;
+	/** number of delivered but not yet acked/nacked messages */
+	unackedCount: number;
+	/** number of consumers */
+	consumerCount: number;
+  }
+
+  export interface BrokerStats {
+	/** total number of messages across all queues */
+	messageCount: number;
+	/** total number of delivered but not yet acked/nacked messages across all queues */
+	unackedCount: number;
+	/** total number of queue consumers */
+	consumerCount: number;
+	/** stats per queue */
+	queues: QueueStats[];
+  }
+
   export interface MessageFields extends Record<string, any> {
 	/** published through exchange */
 	exchange?: string;
@@ -362,12 +384,22 @@ declare module 'smqp' {
 		 */
 		publish(exchangeName: string, routingKey: string, content?: any, properties?: MessageProperties): number;
 		/**
+		 * Get broker statistics on demand, totals across all queues plus stats per queue
+		 * */
+		getStats(): BrokerStats;
+		/**
 		 * Purge all non-pending messages from queue
 		 * @param queueName queue name
 		 */
 		purgeQueue(queueName: string): number;
 		/**
-		 * Send content directly to a queue, bypassing exchanges
+		 * Evict expired undelivered messages from one or all queues
+		 * @param queueName queue name, evicts from all queues if omitted
+		 * @returns number of evicted messages
+		 */
+		evictExpired(queueName?: string): number;
+		/**
+		 * Send content directly to a queue, bypassing exchanges. The message routing key is an empty string
 		 * @param queueName queue name
 		 * @param content message content
 		 * @param options optional message properties
@@ -579,6 +611,12 @@ declare module 'smqp' {
 		get(options?: ConsumeOptions): ConsumeMessage | undefined;
 		private _consumeMessages;
 		/**
+		 * Evict expired undelivered messages, dead-lettering them if the queue has a dead letter exchange
+		 * @returns number of evicted messages
+		 */
+		evictExpired(): number;
+		private _evict;
+		/**
 		 * Acknowledge message
 		 * @param message message to ack
 		 * @param allUpTo ack all messages up to and including this one
@@ -650,6 +688,10 @@ declare module 'smqp' {
 		}): undefined;
 		purge(): number;
 		private _dequeueMessage;
+		/**
+		 * Get queue statistics on demand
+		 * */
+		getStats(): QueueStats;
 		/**
 		 * Snapshot queue state
 		 * */

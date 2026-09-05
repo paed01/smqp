@@ -2242,6 +2242,181 @@ describe('Broker', () => {
     });
   });
 
+  describe('evictExpired([queueName])', () => {
+    afterEach(ck.reset);
+
+    it('evicts expired messages from named queue and returns number of evicted messages', () => {
+      const broker = new Broker();
+      const q1 = broker.assertQueue('test-q');
+      const q2 = broker.assertQueue('test-q2');
+
+      ck.freeze();
+      broker.sendToQueue('test-q', 'old', { expiration: 100 });
+      broker.sendToQueue('test-q2', 'old', { expiration: 100 });
+      ck.travel(Date.now() + 200);
+      broker.sendToQueue('test-q', 'new');
+
+      expect(broker.evictExpired('test-q')).to.equal(1);
+
+      expect(q1.messageCount).to.equal(1);
+      expect(q1.peek().content).to.equal('new');
+      expect(q2.messageCount).to.equal(1);
+    });
+
+    it('evicts expired messages from all queues if called without queue name', () => {
+      const broker = new Broker();
+      const q1 = broker.assertQueue('test-q');
+      const q2 = broker.assertQueue('test-q2', { messageTtl: 100 });
+
+      ck.freeze();
+      broker.sendToQueue('test-q', 'old', { expiration: 100 });
+      broker.sendToQueue('test-q2', 'old');
+      ck.travel(Date.now() + 200);
+      broker.sendToQueue('test-q', 'new');
+
+      expect(broker.evictExpired()).to.equal(2);
+
+      expect(q1.messageCount).to.equal(1);
+      expect(q2.messageCount).to.equal(0);
+    });
+
+    it('dead-letters evicted messages', () => {
+      const broker = new Broker();
+      broker.assertExchange('event');
+      broker.assertExchange('dead-letter');
+      broker.assertQueue('test-q', { deadLetterExchange: 'dead-letter' });
+      broker.bindQueue('test-q', 'event', '#');
+      broker.assertQueue('dead-letter-q');
+      broker.bindQueue('dead-letter-q', 'dead-letter', '#');
+
+      ck.freeze();
+      broker.publish('event', 'test.expired', 'old', { expiration: 100 });
+      ck.travel(Date.now() + 200);
+
+      expect(broker.evictExpired('test-q')).to.equal(1);
+
+      const dead = broker.get('dead-letter-q');
+      expect(dead).to.be.ok;
+      expect(dead.fields).to.have.property('routingKey', 'test.expired');
+      expect(dead.content).to.equal('old');
+    });
+
+    it('returns 0 if queue is not found', () => {
+      const broker = new Broker();
+      broker.assertQueue('test-q');
+      expect(broker.evictExpired('nan-q')).to.equal(0);
+    });
+  });
+
+  describe('sendToQueue(queueName, content[, options])', () => {
+    it('queues message with empty string as routing key', () => {
+      const broker = new Broker();
+      broker.assertQueue('test-q');
+
+      broker.sendToQueue('test-q', 'meme');
+
+      const msg = broker.get('test-q');
+      expect(msg.fields).to.have.property('routingKey', '');
+      expect(msg.content).to.equal('meme');
+    });
+
+    it('throws if queue is not found', () => {
+      const broker = new Broker();
+      expect(() => broker.sendToQueue('nan-q', 'meme'))
+        .to.throw(SmqpError)
+        .with.property('code', 'ERR_SMQP_QUEUE_NOT_FOUND');
+    });
+
+    it('dead-letters nacked message with empty string as routing key', () => {
+      const broker = new Broker();
+      broker.assertExchange('dead-letter');
+      broker.assertQueue('test-q', { deadLetterExchange: 'dead-letter' });
+      broker.assertQueue('dead-letter-q');
+      broker.bindQueue('dead-letter-q', 'dead-letter', '#');
+
+      broker.sendToQueue('test-q', 'meme');
+
+      broker.get('test-q').nack(false, false);
+
+      const dead = broker.get('dead-letter-q');
+      expect(dead).to.be.ok;
+      expect(dead.fields).to.have.property('routingKey', '');
+      expect(dead.content).to.equal('meme');
+    });
+
+    it('dead-letters message queued directly without routing key', () => {
+      const broker = new Broker();
+      broker.assertExchange('dead-letter');
+      const queue = broker.assertQueue('test-q', { deadLetterExchange: 'dead-letter' });
+      broker.assertQueue('dead-letter-q');
+      broker.bindQueue('dead-letter-q', 'dead-letter', '#');
+
+      queue.queueMessage({}, 'meme');
+
+      broker.get('test-q').nack(false, false);
+
+      const dead = broker.get('dead-letter-q');
+      expect(dead).to.be.ok;
+      expect(dead.fields).to.have.property('routingKey', '');
+      expect(dead.content).to.equal('meme');
+    });
+
+    it('dead-letters expired message with dead letter routing key if set', () => {
+      const broker = new Broker();
+      broker.assertExchange('dead-letter');
+      broker.assertQueue('test-q', { deadLetterExchange: 'dead-letter', deadLetterRoutingKey: 'expired' });
+      broker.assertQueue('dead-letter-q');
+      broker.bindQueue('dead-letter-q', 'dead-letter', 'expired');
+
+      ck.freeze();
+      broker.sendToQueue('test-q', 'meme', { expiration: 100 });
+      ck.travel(Date.now() + 200);
+
+      expect(broker.evictExpired('test-q')).to.equal(1);
+
+      const dead = broker.get('dead-letter-q');
+      expect(dead).to.be.ok;
+      expect(dead.fields).to.have.property('routingKey', 'expired');
+      expect(dead.content).to.equal('meme');
+      ck.reset();
+    });
+  });
+
+  describe('getStats()', () => {
+    it('returns total message count, unacked count, consumer count, and stats per queue', () => {
+      const broker = new Broker();
+      broker.assertExchange('event');
+      broker.assertQueue('event-q');
+      broker.bindQueue('event-q', 'event', '#');
+      broker.assertQueue('other-q');
+
+      broker.publish('event', 'test.1');
+      broker.publish('event', 'test.2');
+      broker.publish('event', 'test.3');
+      broker.sendToQueue('other-q', 'meme');
+      broker.sendToQueue('other-q', 'meme');
+
+      broker.consume('event-q', () => {}, { prefetch: 2 });
+      broker.get('other-q');
+
+      expect(broker.getStats()).to.eql({
+        messageCount: 5,
+        unackedCount: 3,
+        consumerCount: 1,
+        queues: [
+          { name: 'event-q', messageCount: 3, unackedCount: 2, consumerCount: 1 },
+          { name: 'other-q', messageCount: 2, unackedCount: 1, consumerCount: 0 },
+        ],
+      });
+    });
+
+    it('returns zeros and no queues for empty broker', () => {
+      const broker = new Broker();
+      broker.assertExchange('event');
+      expect(broker.getStats()).to.eql({ messageCount: 0, unackedCount: 0, consumerCount: 0, queues: [] });
+    });
+  });
+
   describe('purgeQueue(queueName)', () => {
     it('has expected behaviour', () => {
       const broker = new Broker();

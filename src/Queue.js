@@ -219,11 +219,8 @@ Queue.prototype._consumeMessages = function consumeMessages(n, consumeOptions) {
 
   if (this[K_STOPPED] || !this[K_AVAILABLE_COUNT] || !n) return msgs;
 
-  const messages = this.messages;
-  if (!messages.length) return msgs;
-
   const evict = [];
-  for (const message of messages) {
+  for (const message of this.messages) {
     if (message.pending) continue;
     if (message.properties.expiration && message.properties.ttl < Date.now()) {
       evict.push(message);
@@ -235,11 +232,38 @@ Queue.prototype._consumeMessages = function consumeMessages(n, consumeOptions) {
     if (!--n) break;
   }
 
-  if (evict.length) {
-    for (const expired of evict) this.nack(expired, false, false);
-  }
+  if (evict.length) this._evict(evict);
 
   return msgs;
+};
+
+/**
+ * Evict expired undelivered messages, dead-lettering them if the queue has a dead letter exchange
+ * @returns {number} number of evicted messages
+ */
+Queue.prototype.evictExpired = function evictExpired() {
+  if (this[K_STOPPED] || !this[K_AVAILABLE_COUNT]) return 0;
+
+  const now = Date.now();
+  /** @type {Message[]} */
+  const evict = [];
+  for (const message of this.messages) {
+    if (message.pending) continue;
+    if (message.properties.expiration && message.properties.ttl < now) evict.push(message);
+  }
+
+  if (evict.length) this._evict(evict);
+  return evict.length;
+};
+
+/**
+ * Nack undelivered messages without requeue
+ * @private
+ * @param {Message[]} messages
+ */
+Queue.prototype._evict = function evict(messages) {
+  this[K_AVAILABLE_COUNT] -= messages.length;
+  for (const message of messages) this.nack(message, false, false);
 };
 
 /**
@@ -321,6 +345,7 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
     const { expiration, ...messageProperties } = message.properties;
     const deadMessage = new Message(message.fields, message.content, messageProperties);
     if (deadLetterRoutingKey) deadMessage.fields.routingKey = deadLetterRoutingKey;
+    else if (deadMessage.fields.routingKey === undefined) deadMessage.fields.routingKey = '';
 
     this.emit('dead-letter', {
       deadLetterExchange,
@@ -492,6 +517,24 @@ Queue.prototype._dequeueMessage = function dequeueMessage(message) {
   if (msgIdx === -1) return msgIdx;
   messages.splice(msgIdx, 1);
   return msgIdx;
+};
+
+/**
+ * Get queue statistics on demand
+ * @returns {import('#types').QueueStats}
+ */
+Queue.prototype.getStats = function getStats() {
+  const messages = this.messages;
+  let unackedCount = 0;
+  for (const message of messages) {
+    if (message.pending) unackedCount++;
+  }
+  return {
+    name: this.name,
+    messageCount: messages.length,
+    unackedCount,
+    consumerCount: this[K_CONSUMERS].length,
+  };
 };
 
 /**

@@ -380,6 +380,26 @@ Broker.prototype.publish = function publish(exchangeName, routingKey, content, p
 };
 
 /**
+ * Get broker statistics on demand, totals across all queues plus stats per queue
+ * @returns {import('#types').BrokerStats}
+ */
+Broker.prototype.getStats = function getStats() {
+  /** @type {import('#types').QueueStats[]} */
+  const queues = [];
+  let messageCount = 0;
+  let unackedCount = 0;
+  let consumerCount = 0;
+  for (const queue of this[K_ENTITIES].get('queues').values()) {
+    const stats = queue.getStats();
+    messageCount += stats.messageCount;
+    unackedCount += stats.unackedCount;
+    consumerCount += stats.consumerCount;
+    queues.push(stats);
+  }
+  return { messageCount, unackedCount, consumerCount, queues };
+};
+
+/**
  * Purge all non-pending messages from queue
  * @param {string} queueName queue name
  */
@@ -390,7 +410,25 @@ Broker.prototype.purgeQueue = function purgeQueue(queueName) {
 };
 
 /**
- * Send content directly to a queue, bypassing exchanges
+ * Evict expired undelivered messages from one or all queues
+ * @param {string} [queueName] queue name, evicts from all queues if omitted
+ * @returns {number} number of evicted messages
+ */
+Broker.prototype.evictExpired = function evictExpired(queueName) {
+  if (queueName !== undefined) {
+    const queue = this.getQueue(queueName);
+    return queue ? queue.evictExpired() : 0;
+  }
+
+  let evicted = 0;
+  for (const queue of this[K_ENTITIES].get('queues').values()) {
+    evicted += queue.evictExpired();
+  }
+  return evicted;
+};
+
+/**
+ * Send content directly to a queue, bypassing exchanges. The message routing key is an empty string
  * @param {string} queueName queue name
  * @param {any} content message content
  * @param {import('#types').MessageProperties} [options] optional message properties
@@ -398,7 +436,7 @@ Broker.prototype.purgeQueue = function purgeQueue(queueName) {
 Broker.prototype.sendToQueue = function sendToQueue(queueName, content, options) {
   const queue = this.getQueue(queueName);
   if (!queue) throw new SmqpError(`Queue with name <${queueName}> was not found`, ERR_QUEUE_NOT_FOUND);
-  return queue.queueMessage({}, content, options);
+  return queue.queueMessage({ routingKey: '' }, content, options);
 };
 
 /**

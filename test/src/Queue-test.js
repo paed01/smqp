@@ -1,3 +1,4 @@
+import * as ck from 'chronokinesis';
 import { Queue, SmqpError } from 'smqp';
 
 describe('Queue', () => {
@@ -174,6 +175,21 @@ describe('Queue', () => {
         expect(triggered).to.be.ok;
         expect(triggered).to.have.property('deadLetterExchange', 'evict');
         expect(triggered).to.have.property('message').with.property('fields').with.property('routingKey', 'evicted.message');
+
+        function emit(eventName, event) {
+          if (eventName === 'queue.dead-letter') triggered = event;
+        }
+      });
+
+      it('deadLetterExchange emits event with message with empty string routing key when nacked message lacks routing key', () => {
+        let triggered;
+        const queue = new Queue(null, { deadLetterExchange: 'evict' }, { emit });
+        queue.queueMessage({});
+
+        queue.get().nack(false, false);
+
+        expect(triggered).to.be.ok;
+        expect(triggered).to.have.property('message').with.property('fields').with.property('routingKey', '');
 
         function emit(eventName, event) {
           if (eventName === 'queue.dead-letter') triggered = event;
@@ -719,6 +735,189 @@ describe('Queue', () => {
       queue.reject(msg);
       queue.reject(msg);
       expect(queue.messageCount).to.equal(3);
+    });
+  });
+
+  describe('evictExpired()', () => {
+    afterEach(ck.reset);
+
+    it('evicts expired undelivered messages and returns number of evicted messages', () => {
+      const queue = new Queue();
+      ck.freeze();
+      queue.queueMessage({ routingKey: 'test.1' }, null, { expiration: 100 });
+      queue.queueMessage({ routingKey: 'test.2' }, null, { expiration: 100 });
+      ck.travel(Date.now() + 200);
+      queue.queueMessage({ routingKey: 'test.3' }, null, { expiration: 100 });
+      queue.queueMessage({ routingKey: 'test.4' });
+
+      expect(queue.messageCount).to.equal(4);
+      expect(queue.evictExpired()).to.equal(2);
+      expect(queue.messageCount).to.equal(2);
+      expect(queue.peek().fields).to.have.property('routingKey', 'test.3');
+    });
+
+    it('uses queue messageTtl if message lacks expiration', () => {
+      const queue = new Queue(null, { messageTtl: 100 });
+      ck.freeze();
+      queue.queueMessage({ routingKey: 'test.1' });
+      ck.travel(Date.now() + 200);
+      queue.queueMessage({ routingKey: 'test.2' });
+
+      expect(queue.evictExpired()).to.equal(1);
+      expect(queue.messageCount).to.equal(1);
+      expect(queue.peek().fields).to.have.property('routingKey', 'test.2');
+    });
+
+    it('returns 0 if no message has expired', () => {
+      const queue = new Queue();
+      queue.queueMessage({ routingKey: 'test.1' }, null, { expiration: 100 });
+      queue.queueMessage({ routingKey: 'test.2' });
+
+      expect(queue.evictExpired()).to.equal(0);
+      expect(queue.messageCount).to.equal(2);
+    });
+
+    it('returns 0 if queue is empty', () => {
+      const queue = new Queue();
+      expect(queue.evictExpired()).to.equal(0);
+    });
+
+    it('ignores expired messages that are delivered but not acked', () => {
+      const queue = new Queue();
+      ck.freeze();
+      queue.queueMessage({ routingKey: 'test.1' }, null, { expiration: 100 });
+      queue.queueMessage({ routingKey: 'test.2' }, null, { expiration: 100 });
+
+      const msg = queue.get();
+      expect(msg.fields).to.have.property('routingKey', 'test.1');
+
+      ck.travel(Date.now() + 200);
+
+      expect(queue.evictExpired()).to.equal(1);
+      expect(queue.messageCount).to.equal(1);
+      expect(queue.peek()).to.equal(msg);
+
+      msg.ack();
+      expect(queue.messageCount).to.equal(0);
+    });
+
+    it('dead-letters evicted messages', () => {
+      const deadLetters = [];
+      const queue = new Queue(null, { deadLetterExchange: 'dead-letter' }, { emit });
+      ck.freeze();
+      queue.queueMessage({ routingKey: 'test.1' }, 'content', { expiration: 100 });
+      ck.travel(Date.now() + 200);
+
+      expect(queue.evictExpired()).to.equal(1);
+
+      expect(deadLetters).to.have.length(1);
+      expect(deadLetters[0]).to.have.property('deadLetterExchange', 'dead-letter');
+      expect(deadLetters[0].message.fields).to.have.property('routingKey', 'test.1');
+      expect(deadLetters[0].message).to.have.property('content', 'content');
+      expect(deadLetters[0].message.properties).to.not.have.property('expiration');
+
+      function emit(eventName, msg) {
+        if (eventName === 'queue.dead-letter') deadLetters.push(msg);
+      }
+    });
+
+    it('emits depleted if no messages remain', () => {
+      let triggered;
+      const queue = new Queue(null, {}, { emit });
+      ck.freeze();
+      queue.queueMessage({ routingKey: 'test.1' }, null, { expiration: 100 });
+      ck.travel(Date.now() + 200);
+
+      queue.evictExpired();
+
+      expect(queue.messageCount).to.equal(0);
+      expect(triggered, 'depleted').to.be.true;
+
+      function emit(eventName, msg) {
+        if (eventName === 'queue.depleted') {
+          triggered = true;
+          expect(queue === msg).to.be.true;
+        }
+      }
+    });
+
+    it('keeps available count in sync so that new messages are consumed', () => {
+      const queue = new Queue();
+      ck.freeze();
+      queue.queueMessage({ routingKey: 'test.1' }, null, { expiration: 100 });
+      ck.travel(Date.now() + 200);
+
+      expect(queue.evictExpired()).to.equal(1);
+      expect(queue[Symbol.for('availableCount')]).to.equal(0);
+
+      const messages = [];
+      queue.consume((routingKey) => messages.push(routingKey));
+      queue.queueMessage({ routingKey: 'test.2' });
+      expect(messages).to.eql(['test.2']);
+    });
+
+    it('returns 0 and leaves messages if queue is stopped', () => {
+      const queue = new Queue();
+      ck.freeze();
+      queue.queueMessage({ routingKey: 'test.1' }, null, { expiration: 100 });
+      ck.travel(Date.now() + 200);
+      queue.stop();
+
+      expect(queue.evictExpired()).to.equal(0);
+      expect(queue.messageCount).to.equal(1);
+    });
+  });
+
+  describe('getStats()', () => {
+    it('returns name, message count, unacked count, and consumer count', () => {
+      const queue = new Queue('test-q');
+      queue.queueMessage({ routingKey: 'test.1' });
+      queue.queueMessage({ routingKey: 'test.2' });
+      queue.queueMessage({ routingKey: 'test.3' });
+
+      expect(queue.getStats()).to.eql({ name: 'test-q', messageCount: 3, unackedCount: 0, consumerCount: 0 });
+    });
+
+    it('counts delivered but unacked messages', () => {
+      const queue = new Queue('test-q');
+      queue.queueMessage({ routingKey: 'test.1' });
+      queue.queueMessage({ routingKey: 'test.2' });
+      queue.queueMessage({ routingKey: 'test.3' });
+
+      const consumer = queue.consume(() => {}, { prefetch: 2 });
+
+      expect(queue.getStats()).to.eql({ name: 'test-q', messageCount: 3, unackedCount: 2, consumerCount: 1 });
+
+      consumer.cancel(true);
+      expect(queue.getStats()).to.eql({ name: 'test-q', messageCount: 3, unackedCount: 0, consumerCount: 0 });
+    });
+
+    it('acked message is no longer counted', () => {
+      const queue = new Queue('test-q');
+      queue.queueMessage({ routingKey: 'test.1' });
+      queue.queueMessage({ routingKey: 'test.2' });
+
+      const msg = queue.get();
+      expect(queue.getStats()).to.eql({ name: 'test-q', messageCount: 2, unackedCount: 1, consumerCount: 0 });
+
+      msg.ack();
+      expect(queue.getStats()).to.eql({ name: 'test-q', messageCount: 1, unackedCount: 0, consumerCount: 0 });
+    });
+
+    it('requeued message is counted as not unacked', () => {
+      const queue = new Queue('test-q');
+      queue.queueMessage({ routingKey: 'test.1' });
+
+      const msg = queue.get();
+      expect(queue.getStats()).to.have.property('unackedCount', 1);
+
+      msg.nack(false, true);
+      expect(queue.getStats()).to.eql({ name: 'test-q', messageCount: 1, unackedCount: 0, consumerCount: 0 });
+    });
+
+    it('returns zeros for empty queue', () => {
+      const queue = new Queue('test-q');
+      expect(queue.getStats()).to.eql({ name: 'test-q', messageCount: 0, unackedCount: 0, consumerCount: 0 });
     });
   });
 

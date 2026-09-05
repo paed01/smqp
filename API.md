@@ -28,7 +28,9 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [`broker.getConsumer(consumerTag)`](#brokergetconsumerconsumertag)
   - [`broker.getState([onlyWithContent])`](#brokergetstateonlywithcontent)
   - [`broker.recover([state])`](#brokerrecoverstate)
+  - [`broker.getStats()`](#brokergetstats)
   - [`broker.purgeQueue(queueName)`](#brokerpurgequeuequeuename)
+  - [`broker.evictExpired([queueName])`](#brokerevictexpiredqueuename)
   - [`broker.sendToQueue(queueName, content[, options])`](#brokersendtoqueuequeuename-content-options)
   - [`broker.stop()`](#brokerstop)
   - [`broker.get(queueName[, options])`](#brokergetqueuename-options)
@@ -73,6 +75,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [`queue.delete([deleteOptions])`](#queuedeletedeleteoptions)
   - [`queue.dismiss(onMessage[, requeue = true])`](#queuedismissonmessage-requeue-true)
   - [`queue.get([consumeOptions])`](#queuegetconsumeoptions)
+  - [`queue.getStats()`](#queuegetstats)
   - [`queue.getState()`](#queuegetstate)
   - [`queue.nack(message[, allUpTo, requeue = true])`](#queuenackmessage-allupto-requeue-true)
   - [`queue.nackAll([requeue = true])`](#queuenackallrequeue-true)
@@ -80,6 +83,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [`queue.off(eventName, handler)`](#queueoffeventname-handler)
   - [`queue.peek([ignoreDelivered])`](#queuepeekignoredelivered)
   - [`queue.purge()`](#queuepurge)
+  - [`queue.evictExpired()`](#queueevictexpired)
   - [`queue.queueMessage(fields[, content, properties])`](#queuequeuemessagefields-content-properties)
   - [`queue.recover([state])`](#queuerecoverstate)
   - [`queue.reject(message[, requeue = true])`](#queuerejectmessage-requeue-true)
@@ -369,13 +373,68 @@ Return serializable object containing durable exchanges, bindings, and durable q
 
 Recovers exchanges, bindings, and queues with messages. A state may be passed, preferably from [`getState()`](#brokergetstate). With no argument, restarts stopped exchanges and queues in place.
 
+### `broker.getStats()`
+
+Get statistics on demand. Returns totals across all queues and stats per queue:
+
+- `messageCount`: total number of messages in all queues, including delivered but unacked messages
+- `unackedCount`: total number of delivered but not yet acked or nacked messages
+- `consumerCount`: total number of queue consumers
+- `queues`: list of [`queue.getStats()`](#queuegetstats) per queue
+
+```javascript
+import { Broker } from 'smqp';
+
+const broker = new Broker();
+
+broker.assertExchange('event');
+broker.assertQueue('event-q');
+broker.bindQueue('event-q', 'event', '#');
+
+broker.publish('event', 'test.1');
+broker.publish('event', 'test.2');
+broker.publish('event', 'test.3');
+
+broker.consume('event-q', () => {}, { prefetch: 2 });
+
+console.log(broker.getStats());
+// { messageCount: 3, unackedCount: 2, consumerCount: 1, queues: [ { name: 'event-q', messageCount: 3, unackedCount: 2, consumerCount: 1 } ] }
+```
+
 ### `broker.purgeQueue(queueName)`
 
 Purge queue by name if found. Removes all non consumed messages.
 
+### `broker.evictExpired([queueName])`
+
+Evict expired messages on demand, [see Message Eviction](#message-eviction). Returns the number of evicted messages.
+
+- `queueName`: optional string, queue name. If omitted expired messages are evicted from all queues. Returns 0 if the named queue is not found
+
+```javascript
+import { Broker } from 'smqp';
+
+const broker = new Broker();
+
+broker.assertExchange('event');
+broker.assertExchange('dead-letter');
+broker.assertQueue('event-q', { messageTtl: 100, deadLetterExchange: 'dead-letter' });
+broker.bindQueue('event-q', 'event', '#');
+broker.assertQueue('dead-letter-q');
+broker.bindQueue('dead-letter-q', 'dead-letter', '#');
+
+broker.publish('event', 'test.expired');
+
+setTimeout(() => {
+  console.log(broker.evictExpired('event-q')); // 1
+  console.log(broker.getQueue('event-q').messageCount); // 0
+  console.log(broker.getQueue('dead-letter-q').messageCount); // 1
+}, 200);
+```
+
 ### `broker.sendToQueue(queueName, content[, options])`
 
-Send message directly to queue, bypassing routing key patterns etc.
+Send message directly to queue, bypassing routing key patterns etc. The message routing key is an empty string, so dead-lettered messages are routed with an empty routing key unless the queue has a `deadLetterRoutingKey`.
 
 ### `broker.stop()`
 
@@ -761,6 +820,15 @@ Dismiss first consumer with matching `onMessage` handler.
 
 Same as [`broker.get`](#brokergetqueuename-options) but you don't have to supply a queue name.
 
+### `queue.getStats()`
+
+Get queue statistics on demand:
+
+- `name`: queue name
+- `messageCount`: number of messages in queue, including delivered but unacked messages
+- `unackedCount`: number of delivered but not yet acked or nacked messages
+- `consumerCount`: number of consumers
+
 ### `queue.getState()`
 
 Get queue state.
@@ -808,6 +876,10 @@ Peek into queue.
 ### `queue.purge()`
 
 Removes all non consumed messages from queue.
+
+### `queue.evictExpired()`
+
+Evict expired undelivered messages, [see Message Eviction](#message-eviction). Evicted messages are dead-lettered if the queue has a `deadLetterExchange`. Returns the number of evicted messages.
 
 ### `queue.queueMessage(fields[, content, properties])`
 
@@ -1063,3 +1135,5 @@ console.log(pattern.test('activity.execution.completed')); // false
 ## Message eviction
 
 About message eviction: There are no timeouts that will automatically evict expired messages. Expired messages will simply not be returned in the message callback when the queue is consumed. Use a dead letter exchange to pick them up.
+
+Expired messages that are never consumed stay in the queue until they are evicted. To evict them on demand, e.g. from your own interval or when a queue is inspected, call [`broker.evictExpired([queueName])`](#brokerevictexpiredqueuename) or [`queue.evictExpired()`](#queueevictexpired). Messages that are delivered but not yet acknowledged are never evicted.

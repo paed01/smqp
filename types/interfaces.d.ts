@@ -129,6 +129,28 @@ export interface BrokerState {
   queues?: QueueState[];
 }
 
+export interface QueueStats {
+  /** queue name */
+  name: string;
+  /** total number of messages in queue, including delivered but unacked */
+  messageCount: number;
+  /** number of delivered but not yet acked/nacked messages */
+  unackedCount: number;
+  /** number of consumers */
+  consumerCount: number;
+}
+
+export interface BrokerStats {
+  /** total number of messages across all queues */
+  messageCount: number;
+  /** total number of delivered but not yet acked/nacked messages across all queues */
+  unackedCount: number;
+  /** total number of queue consumers */
+  consumerCount: number;
+  /** stats per queue */
+  queues: QueueStats[];
+}
+
 export interface MessageFields extends Record<string, any> {
   /** published through exchange */
   exchange?: string;

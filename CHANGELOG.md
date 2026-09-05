@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v13.2.0 - 2026-09-05
+
+- add `queue.evictExpired()` and `broker.evictExpired([queueName])` to evict expired messages on demand. There are still no timers; call it when it suits you and expired messages are dead-lettered as usual
+- add `queue.getStats()` and `broker.getStats()` returning `messageCount`, `unackedCount`, and `consumerCount` on demand. Types `QueueStats` and `BrokerStats` are exported
+- fix dead-lettering a message without routing key, e.g. sent with `broker.sendToQueue` or queued with `queue.queueMessage({})`, throwing `TypeError` when routed. Messages sent with `sendToQueue` now carry an empty string routing key, as AMQP prescribes, and dead-lettered messages default to an empty string routing key
+- fix queue available message count drifting after expired messages were evicted during consume
+
 ## v13.1.0 - 2026-07-22
 
 - attempt to improve types

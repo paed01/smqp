@@ -42,7 +42,8 @@ package-lock.json
 *.d.ts.map
 
 # AI
-.claude
+.claude/*
+!.claude/skills/
 CLAUDE.md
 
 dist/
