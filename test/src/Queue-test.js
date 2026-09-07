@@ -1713,11 +1713,34 @@ describe('Queue', () => {
     });
   });
 
-  describe('_consumeNext()', () => {
+  describe('consumeNext()', () => {
     it('returns undefined if called when stopped ', () => {
       const queue = new Queue();
       queue.stop();
-      expect(queue._consumeNext()).to.be.undefined;
+      expect(queue.consumeNext()).to.be.undefined;
+    });
+
+    it('returns undefined if called without messages', () => {
+      const queue = new Queue();
+      queue.consume(() => {});
+      expect(queue.consumeNext()).to.be.undefined;
+    });
+
+    it('returns 0 if called without consumers', () => {
+      const queue = new Queue();
+      queue.queueMessage({});
+      expect(queue.consumeNext()).to.equal(0);
+    });
+
+    it('returns number of delivered messages', () => {
+      const queue = new Queue();
+      queue.queueMessage({});
+      queue.queueMessage({});
+      const consumer = queue.consume(() => {}, { prefetch: 5 });
+      consumer.stop();
+      queue.queueMessage({});
+      consumer.recover();
+      expect(queue.consumeNext()).to.equal(1);
     });
   });
 

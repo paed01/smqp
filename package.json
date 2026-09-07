@@ -1,6 +1,6 @@
 {
   "name": "smqp",
-  "version": "13.2.0",
+  "version": "14.0.0",
   "type": "module",
   "description": "Synchronous message queueing package",
   "author": {

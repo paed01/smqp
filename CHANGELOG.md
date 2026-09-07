@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## v14.0.0
+
+- add consume option `capacity`, a function returning the credit the consumer currently accepts. The consumer gets the lesser of credit and prefetch capacity and is not ready while credit is zero
+- add `queue.consumeNext()` to deliver available messages when credit is raised. Replaces the private `_consumeNext()`
 
 ## v13.2.0 - 2026-09-05
 

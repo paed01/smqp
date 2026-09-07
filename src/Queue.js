@@ -101,7 +101,7 @@ Queue.prototype.queueMessage = function queueMessage(fields, content, properties
       break;
   }
 
-  return discarded ? 0 : this._consumeNext();
+  return discarded ? 0 : this.consumeNext();
 };
 
 /**
@@ -115,8 +115,11 @@ Queue.prototype.evictFirst = function evictFirst(compareMessage) {
   return evict === compareMessage;
 };
 
-/** @private */
-Queue.prototype._consumeNext = function consumeNext() {
+/**
+ * Deliver available messages to ready consumers, e.g. after a consumer's capacity hook has granted more credit
+ * @returns {number | undefined} number of delivered messages, undefined if stopped or nothing is available
+ */
+Queue.prototype.consumeNext = function consumeNext() {
   if (this[K_STOPPED] || !this[K_AVAILABLE_COUNT]) return;
 
   const consumers = this[K_CONSUMERS];
@@ -149,7 +152,10 @@ Queue.prototype.consume = function consume(onMessage, consumeOptions, owner) {
       throw new SmqpError(`Queue ${this.name} already has consumers and cannot be exclusively consumed`, ERR_EXCLUSIVE_NOT_ALLOWED);
   }
 
-  const consumer = new Consumer(this, onMessage, consumeOptions, owner, new ConsumerEmitter(this));
+  const consumer =
+    consumeOptions && 'capacity' in consumeOptions
+      ? new CreditConsumer(this, onMessage, consumeOptions, owner, new ConsumerEmitter(this))
+      : new Consumer(this, onMessage, consumeOptions, owner, new ConsumerEmitter(this));
   this.emit('consume', consumer);
 
   if (consumers.push(consumer) > 1 && consumer.options.priority) {
@@ -334,7 +340,7 @@ Queue.prototype._onMessageConsumed = function onMessageConsumed(message, operati
   else if ((capacity = this._getCapacity()) === 1) this.emit('ready', capacity);
 
   const pendingLength = pending && pending.length;
-  if (!pendingLength) this._consumeNext();
+  if (!pendingLength) this.consumeNext();
 
   if (!requeue && message.properties.confirm) {
     this.emit(`message.consumed.${operation}`, { operation, message: { ...message } });
@@ -570,7 +576,7 @@ Queue.prototype.recover = function recover(state) {
   const consumers = this[K_CONSUMERS];
   if (!state) {
     for (const c of consumers.slice()) c.recover();
-    this._consumeNext();
+    this.consumeNext();
     return this;
   }
 
@@ -592,7 +598,7 @@ Queue.prototype.recover = function recover(state) {
   this[K_AVAILABLE_COUNT] = this.messages.length;
   for (const c of consumers) c.recover();
   if (continueConsume) {
-    this._consumeNext();
+    this.consumeNext();
   }
 
   return this;
@@ -821,6 +827,36 @@ Consumer.prototype.recover = function recover() {
 Consumer.prototype.stop = function stop() {
   this[K_STOPPED] = true;
 };
+
+/**
+ * Consumer whose capacity is additionally limited by a credit hook
+ * @param {Queue} queue queue this consumer reads from
+ * @param {import('#types').onMessage} onMessage message handler
+ * @param {import('#types').ConsumeOptions} options consume options with capacity hook
+ * @param {any} [owner] forwarded to the message handler as the third arg
+ * @param {import('#types').ExchangeEventEmitter} [eventEmitter] internal queue event bridge
+ */
+function CreditConsumer(queue, onMessage, options, owner, eventEmitter) {
+  if (typeof options.capacity !== 'function') throw new TypeError('capacity must be a function');
+  Consumer.call(this, queue, onMessage, options, owner, eventEmitter);
+}
+
+CreditConsumer.prototype = Object.create(Consumer.prototype, {
+  constructor: { value: CreditConsumer, writable: true, configurable: true },
+  ready: {
+    get() {
+      return this[K_IS_READY] && !this[K_STOPPED] && this.options.capacity() > 0;
+    },
+  },
+  capacity: {
+    get() {
+      const capacity = this[K_INTERNAL_QUEUE]._getCapacity();
+      const credit = this.options.capacity();
+      if (credit < capacity) return credit > 0 ? credit : 0;
+      return capacity;
+    },
+  },
+});
 
 function ConsumerEmitter(queue) {
   this.queue = queue;

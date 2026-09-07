@@ -31,6 +31,8 @@ declare module 'smqp' {
 	prefetch?: number;
 	/** defaults to 0, higher value gets messages first */
 	priority?: number;
+	/** returns the number of messages the consumer currently accepts, i.e. credit; consumer gets the lesser of credit and prefetch capacity */
+	capacity?: () => number;
 	[x: string]: any;
   }
 
@@ -248,7 +250,7 @@ declare module 'smqp' {
 		 * @param onMessage message handlers
 		 * @param options optional subscribe options
 		 */
-		subscribe(exchangeName: string, pattern: string, queueName: string, onMessage: onMessage, options?: SubscribeOptions): Consumer;
+		subscribe(exchangeName: string, pattern: string, queueName: string, onMessage: onMessage, options?: SubscribeOptions): any;
 		/**
 		 * Subscribe to exchange via temporary, non-durable queue
 		 * @param exchangeName exchange name
@@ -256,7 +258,7 @@ declare module 'smqp' {
 		 * @param onMessage message handler
 		 * @param options optional subscribe options
 		 */
-		subscribeTmp(exchangeName: string, pattern: string, onMessage: onMessage, options?: SubscribeOptions): Consumer;
+		subscribeTmp(exchangeName: string, pattern: string, onMessage: onMessage, options?: SubscribeOptions): any;
 		/**
 		 * Subscribe once to first matching message, then auto-cancel.
 		 *
@@ -269,7 +271,7 @@ declare module 'smqp' {
 		 * @param onMessage message handler
 		 * @param options optional subscribe options
 		 */
-		subscribeOnce(exchangeName: string, pattern: string, onMessage: onMessage, options?: SubscribeOptions): Consumer;
+		subscribeOnce(exchangeName: string, pattern: string, onMessage: onMessage, options?: SubscribeOptions): any;
 		/**
 		 * Cancel consumer matching queue + handler
 		 * @param queueName queue name
@@ -304,7 +306,7 @@ declare module 'smqp' {
 		 * @param onMessage message handler
 		 * @param options optional consume options
 		 */
-		consume(queueName: string, onMessage: onMessage, options?: ConsumeOptions): Consumer;
+		consume(queueName: string, onMessage: onMessage, options?: ConsumeOptions): any;
 		/**
 		 * Cancel consumer by tag
 		 * @param consumerTag consumer tag
@@ -589,21 +591,25 @@ declare module 'smqp' {
 		 * @param compareMessage message to compare against the evicted one
 		 */
 		evictFirst(compareMessage?: Message): boolean;
-		private _consumeNext;
+		/**
+		 * Deliver available messages to ready consumers, e.g. after a consumer's capacity hook has granted more credit
+		 * @returns number of delivered messages, undefined if stopped or nothing is available
+		 */
+		consumeNext(): number | undefined;
 		/**
 		 * Add a consumer
 		 * @param onMessage message handler
 		 * @param consumeOptions optional consume options
 		 * @param owner forwarded to the message handler as the third arg
 		 */
-		consume(onMessage: onMessage, consumeOptions?: ConsumeOptions, owner?: any): Consumer;
+		consume(onMessage: onMessage, consumeOptions?: ConsumeOptions, owner?: any): any;
 		/**
 		 * Assert consumer matching handler + options exists, create if absent
 		 * @param onMessage message handler
 		 * @param consumeOptions optional consume options
 		 * @param owner forwarded to the message handler as the third arg
 		 */
-		assertConsumer(onMessage: onMessage, consumeOptions?: ConsumeOptions, owner?: any): Consumer;
+		assertConsumer(onMessage: onMessage, consumeOptions?: ConsumeOptions, owner?: any): any;
 		/**
 		 * Get next message from queue
 		 * @param options optional consume options
@@ -743,6 +749,7 @@ declare module 'smqp' {
 			exclusive?: boolean;
 			prefetch: number;
 			priority: number;
+			capacity?: () => number;
 		};
 		queue: Queue;
 		onMessage: onMessage;

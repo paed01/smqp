@@ -32,6 +32,8 @@ export interface ConsumeOptions {
   prefetch?: number;
   /** defaults to 0, higher value gets messages first */
   priority?: number;
+  /** returns the number of messages the consumer currently accepts, i.e. credit; consumer gets the lesser of credit and prefetch capacity */
+  capacity?: () => number;
   [x: string]: any;
 }
 

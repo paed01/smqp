@@ -72,6 +72,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [`queue.cancel(consumerTag[, requeue = true])`](#queuecancelconsumertag-requeue-true)
   - [`queue.close()`](#queueclose)
   - [`queue.consume(onMessage[, options, owner])`](#queueconsumeonmessage-options-owner)
+  - [`queue.consumeNext()`](#queueconsumenext)
   - [`queue.delete([deleteOptions])`](#queuedeletedeleteoptions)
   - [`queue.dismiss(onMessage[, requeue = true])`](#queuedismissonmessage-requeue-true)
   - [`queue.get([consumeOptions])`](#queuegetconsumeoptions)
@@ -309,6 +310,7 @@ Consume queue. Returns a [consumer](#consumer). If the message callback is alrea
   - `noAck`: boolean, defaults to `false`
   - `prefetch`: integer, defaults to `1`, number of messages to consume at a time
   - `priority`: integer, defaults to `0`, higher value gets messages first
+  - `capacity`: optional function returning the number of messages the consumer currently accepts, i.e. credit. The consumer receives the lesser of credit and prefetch capacity, and is not ready while the function returns zero or less. Call [`queue.consumeNext()`](#queueconsumenext) when credit is raised
 
 Returns [consumer](#consumer).
 
@@ -795,6 +797,35 @@ Consume queue messages.
 
 Returns [consumer](#consumer).
 
+### `queue.consumeNext()`
+
+Deliver available messages to ready consumers. Messages are delivered automatically when queued and acked, so this is only needed when a consumer [`capacity`](#brokerconsumequeuename-onmessage-options) hook has granted more credit.
+
+Returns the number of delivered messages, or `undefined` if the queue is stopped or has no available messages.
+
+```javascript
+import { Broker } from 'smqp';
+
+const broker = new Broker();
+broker.assertQueue('credit-q');
+broker.sendToQueue('credit-q', 'first');
+broker.sendToQueue('credit-q', 'second');
+
+let credit = 1;
+broker.consume('credit-q', onMessage, { prefetch: 10, capacity: () => credit });
+
+console.log(broker.getQueue('credit-q').messageCount); // 2, one delivered and pending
+
+credit = 5;
+broker.getQueue('credit-q').consumeNext();
+
+function onMessage(routingKey, message) {
+  credit--;
+  console.log(message.content, 'credit left', credit);
+  message.ack();
+}
+```
+
 ### `queue.delete([deleteOptions])`
 
 Delete queue.
@@ -914,7 +945,7 @@ Queue consumer
 **Properties**:
 
 - `options`: returns passed options
-- `capacity`: consumer message capacity
+- `capacity`: consumer message capacity, limited by the `capacity` option if supplied
 - `consumerTag`: consumer tag
 - `messageCount`: current amount of messages handled by consumer
 - `onMessage`: message callback

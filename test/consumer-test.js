@@ -1,4 +1,4 @@
-import { Broker } from 'smqp';
+import { Broker, Queue, Consumer } from 'smqp';
 
 describe('consumer', () => {
   describe('noAck', () => {
@@ -429,5 +429,154 @@ describe('consumer', () => {
 
       expect(queue.messageCount).to.equal(4);
     });
+  });
+});
+
+describe('consumer capacity hook', () => {
+  it('throws TypeError if capacity option is not a function', () => {
+    const queue = new Queue();
+    expect(() => queue.consume(() => {}, { capacity: 3 })).to.throw(TypeError, /capacity/);
+  });
+
+  it('consumer is still an instance of Consumer', () => {
+    const queue = new Queue();
+    const consumer = queue.consume(() => {}, { capacity: () => 1 });
+    expect(consumer).to.be.instanceof(Consumer);
+    expect(consumer.options).to.have.property('prefetch', 1);
+  });
+
+  it('limits delivery to the credit returned by the hook', () => {
+    const queue = new Queue();
+    const messages = [];
+    let credit = 2;
+
+    const consumer = queue.consume(onMessage, { prefetch: 10, capacity: () => credit });
+
+    queue.queueMessage({});
+    queue.queueMessage({});
+    queue.queueMessage({});
+
+    expect(messages).to.have.length(2);
+    expect(credit).to.equal(0);
+    expect(consumer).to.have.property('messageCount', 2);
+    expect(queue).to.have.property('messageCount', 3);
+
+    function onMessage(_, msg) {
+      credit--;
+      messages.push(msg);
+    }
+  });
+
+  it('capacity is the lesser of credit and prefetch capacity', () => {
+    const queue = new Queue();
+    let credit = 5;
+    const consumer = queue.consume(() => {}, { prefetch: 2, capacity: () => credit });
+
+    expect(consumer).to.have.property('capacity', 2);
+
+    credit = 1;
+    expect(consumer).to.have.property('capacity', 1);
+
+    credit = -1;
+    expect(consumer).to.have.property('capacity', 0);
+  });
+
+  it('delivers already queued messages up to credit when consumed', () => {
+    const queue = new Queue();
+    queue.queueMessage({});
+    queue.queueMessage({});
+    queue.queueMessage({});
+
+    const messages = [];
+    queue.consume((_, msg) => messages.push(msg), { prefetch: 10, capacity: () => 1 });
+
+    expect(messages).to.have.length(1);
+  });
+
+  it('consumer with zero credit is not ready and other consumers get the messages', () => {
+    const queue = new Queue();
+    const first = [];
+    const second = [];
+
+    const credited = queue.consume((_, msg) => first.push(msg), { priority: 10, prefetch: 10, capacity: () => 0 });
+    queue.consume((_, msg) => second.push(msg), { prefetch: 10 });
+
+    queue.queueMessage({});
+    queue.queueMessage({});
+
+    expect(credited).to.have.property('ready', false);
+    expect(first).to.have.length(0);
+    expect(second).to.have.length(2);
+  });
+
+  it('queue.consumeNext() delivers pending messages when credit is raised', () => {
+    const queue = new Queue();
+    const messages = [];
+    let credit = 0;
+
+    const consumer = queue.consume(onMessage, { prefetch: 10, capacity: () => credit });
+
+    queue.queueMessage({});
+    queue.queueMessage({});
+    queue.queueMessage({});
+
+    expect(messages).to.have.length(0);
+    expect(consumer).to.have.property('ready', false);
+
+    credit = 2;
+    expect(consumer).to.have.property('ready', true);
+    expect(queue.consumeNext()).to.equal(2);
+    expect(messages).to.have.length(2);
+
+    expect(queue.consumeNext()).to.equal(0);
+
+    messages[0].ack();
+    expect(messages).to.have.length(2);
+
+    credit = 10;
+    expect(queue.consumeNext()).to.equal(1);
+    expect(messages).to.have.length(3);
+    expect(credit).to.equal(9);
+
+    function onMessage(_, msg) {
+      credit--;
+      messages.push(msg);
+    }
+  });
+
+  it('acking does not deliver more than credit allows', () => {
+    const queue = new Queue();
+    const messages = [];
+    let credit = 1;
+
+    queue.consume(onMessage, { prefetch: 10, capacity: () => credit });
+
+    queue.queueMessage({});
+    queue.queueMessage({});
+
+    expect(messages).to.have.length(1);
+    expect(credit).to.equal(0);
+
+    messages[0].ack();
+
+    expect(messages).to.have.length(1);
+
+    function onMessage(_, msg) {
+      credit--;
+      messages.push(msg);
+    }
+  });
+
+  it('works through broker.consume', () => {
+    const broker = new Broker();
+    broker.assertQueue('credit-q');
+    broker.sendToQueue('credit-q', 'a');
+    broker.sendToQueue('credit-q', 'b');
+
+    const messages = [];
+    broker.consume('credit-q', (_, msg) => messages.push(msg), { prefetch: 10, capacity: () => 1 });
+
+    expect(messages).to.have.length(1);
+    expect(broker.getQueue('credit-q')).to.have.property('messageCount', 2);
   });
 });
