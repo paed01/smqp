@@ -19,7 +19,8 @@ const K_DELIVERY_QUEUE = Symbol.for('deliveryQueue');
 export function Exchange(name, type = 'topic', options) {
   if (!name || typeof name !== 'string') throw new TypeError('Exchange name is required and must be a string');
 
-  if (type !== 'topic' && type !== 'direct') throw new TypeError('Exchange type must be one of topic or direct');
+  if (type !== 'topic' && type !== 'direct' && type !== 'fanout')
+    throw new TypeError('Exchange type must be one of topic, direct, or fanout');
   const eventExchange = EventExchange(`${name}__events`);
   return new ExchangeBase(name, type, options, eventExchange);
 }
@@ -53,8 +54,7 @@ export function ExchangeBase(name, type, options, eventExchange) {
 
   /** @type {Queue} */
   const deliveryQueue = (this[K_DELIVERY_QUEUE] = new Queue('delivery-q', { autoDelete: false }));
-  const onMessage = (type === 'topic' ? this._onTopicMessage : this._onDirectMessage).bind(this);
-  deliveryQueue.consume(onMessage, { exclusive: true, consumerTag: '_exchange-tag' });
+  deliveryQueue.consume(this._getRouter(), { exclusive: true, consumerTag: '_exchange-tag' });
 }
 
 Object.defineProperties(ExchangeBase.prototype, {
@@ -110,6 +110,21 @@ ExchangeBase.prototype.publish = function publish(routingKey, content, propertie
   );
 };
 
+/**
+ * Bound delivery queue handler for this exchange type
+ * @private
+ */
+ExchangeBase.prototype._getRouter = function getRouter() {
+  switch (this[K_TYPE]) {
+    case 'direct':
+      return this._onDirectMessage.bind(this);
+    case 'fanout':
+      return this._onFanoutMessage.bind(this);
+    default:
+      return this._onTopicMessage.bind(this);
+  }
+};
+
 /** @private */
 ExchangeBase.prototype._onTopicMessage = function topic(routingKey, message) {
   const publishedMsg = message.content;
@@ -119,6 +134,29 @@ ExchangeBase.prototype._onTopicMessage = function topic(routingKey, message) {
   let delivered = 0;
   for (const binding of this[K_BINDINGS].slice()) {
     if (!binding.testPattern(routingKey)) continue;
+    binding.queue.queueMessage({ routingKey, exchange: this.name }, publishedMsg.content, publishedMsg.properties);
+    ++delivered;
+  }
+
+  if (!delivered) {
+    this._emitReturn(routingKey, publishedMsg.content, publishedMsg.properties);
+  }
+
+  return delivered;
+};
+
+/**
+ * @private
+ * @param {string} routingKey
+ * @param {Message} message
+ */
+ExchangeBase.prototype._onFanoutMessage = function fanout(routingKey, message) {
+  const publishedMsg = message.content;
+
+  message.ack();
+
+  let delivered = 0;
+  for (const binding of this[K_BINDINGS].slice()) {
     binding.queue.queueMessage({ routingKey, exchange: this.name }, publishedMsg.content, publishedMsg.properties);
     ++delivered;
   }
@@ -277,8 +315,7 @@ ExchangeBase.prototype.recover = function recover(state, getQueue) {
   }
   deliveryQueue.recover(state.deliveryQueue);
   if (!deliveryQueue.consumerCount) {
-    const onMessage = (this[K_TYPE] === 'topic' ? this._onTopicMessage : this._onDirectMessage).bind(this);
-    deliveryQueue.consume(onMessage, { exclusive: true, consumerTag: '_exchange-tag' });
+    deliveryQueue.consume(this._getRouter(), { exclusive: true, consumerTag: '_exchange-tag' });
   }
 
   return this;

@@ -809,25 +809,25 @@ describe('Broker', () => {
       expect(exchange).to.be.ok;
     });
 
-    it('throws if type is not topic or direct', () => {
+    it('throws if type is not topic, direct, or fanout', () => {
       const broker = new Broker();
 
       expect(() => {
         // @ts-ignore
-        broker.assertExchange('test', 'fanout');
-      }).to.throw(TypeError, /topic or direct/);
+        broker.assertExchange('test', 'mopic');
+      }).to.throw(TypeError, /topic, direct, or fanout/);
       expect(() => {
         // @ts-ignore
         broker.assertExchange('test', new Date());
-      }).to.throw(TypeError, /topic or direct/);
+      }).to.throw(TypeError, /topic, direct, or fanout/);
       expect(() => {
         // @ts-ignore
         broker.assertExchange('test', {});
-      }).to.throw(TypeError, /topic or direct/);
+      }).to.throw(TypeError, /topic, direct, or fanout/);
       expect(() => {
         // @ts-ignore
         broker.assertExchange('test', () => {});
-      }).to.throw(TypeError, /topic or direct/);
+      }).to.throw(TypeError, /topic, direct, or fanout/);
     });
 
     it('returns the same exchange if it exists', () => {

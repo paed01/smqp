@@ -80,6 +80,117 @@ describe('exchange', () => {
     });
   });
 
+  describe('fanout exchange', () => {
+    it('delivers message to every bound queue regardless of pattern', () => {
+      const broker = Broker();
+      broker.assertExchange('fan', 'fanout');
+
+      broker.assertQueue('q1');
+      broker.assertQueue('q2');
+      broker.assertQueue('q3');
+      broker.bindQueue('q1', 'fan', '');
+      broker.bindQueue('q2', 'fan', 'orders.#');
+      broker.bindQueue('q3', 'fan', 'unrelated');
+
+      broker.publish('fan', 'anything.goes', 'payload');
+      broker.publish('fan', '', 'empty');
+
+      for (const name of ['q1', 'q2', 'q3']) {
+        const queue = broker.getQueue(name);
+        expect(queue, name).to.have.property('messageCount', 2);
+        expect(queue.peek().fields, name).to.include({ routingKey: 'anything.goes', exchange: 'fan' });
+        expect(queue.peek().content, name).to.equal('payload');
+      }
+    });
+
+    it('same queue bound twice with different patterns gets the message once per binding', () => {
+      const broker = Broker();
+      broker.assertExchange('fan', 'fanout');
+      broker.assertQueue('q1');
+      broker.bindQueue('q1', 'fan', 'a');
+      broker.bindQueue('q1', 'fan', 'b');
+
+      broker.publish('fan', 'rk');
+
+      expect(broker.getQueue('q1')).to.have.property('messageCount', 2);
+    });
+
+    it('delivers in binding priority order', () => {
+      const broker = Broker();
+      broker.assertExchange('fan', 'fanout');
+      broker.assertQueue('low');
+      broker.assertQueue('high');
+      broker.bindQueue('low', 'fan', '', { priority: 0 });
+      broker.bindQueue('high', 'fan', '', { priority: 10 });
+
+      const order = [];
+      broker.consume('low', () => order.push('low'), { noAck: true });
+      broker.consume('high', () => order.push('high'), { noAck: true });
+
+      broker.publish('fan', 'rk');
+
+      expect(order).to.deep.equal(['high', 'low']);
+    });
+
+    it('returns mandatory message when there are no bindings', () => {
+      const broker = Broker();
+      broker.assertExchange('fan', 'fanout');
+
+      const returned = [];
+      broker.on('return', (msg) => returned.push(msg));
+
+      broker.publish('fan', 'rk', 'payload', { mandatory: true });
+
+      expect(returned).to.have.length(1);
+      expect(returned[0].fields).to.include({ routingKey: 'rk', exchange: 'fan' });
+    });
+
+    it('asserting with a different type throws', () => {
+      const broker = Broker();
+      broker.assertExchange('fan', 'fanout');
+      expect(() => broker.assertExchange('fan', 'topic')).to.throw(/type/i);
+      expect(() => broker.assertExchange('fan', 'direct')).to.throw(/type/i);
+      expect(broker.assertExchange('fan', 'fanout')).to.have.property('type', 'fanout');
+    });
+
+    it('state round-trips type and fanout routing survives recover', () => {
+      const broker = Broker();
+      broker.assertExchange('fan', 'fanout', { durable: true });
+      broker.assertQueue('q1', { durable: true });
+      broker.assertQueue('q2', { durable: true });
+      broker.bindQueue('q1', 'fan', 'a');
+      broker.bindQueue('q2', 'fan', 'b');
+
+      const state = broker.getState();
+      expect(state.exchanges[0]).to.have.property('type', 'fanout');
+
+      const recovered = Broker().recover(state);
+      expect(recovered.getExchange('fan')).to.have.property('type', 'fanout');
+
+      recovered.publish('fan', 'whatever');
+
+      expect(recovered.getQueue('q1')).to.have.property('messageCount', 1);
+      expect(recovered.getQueue('q2')).to.have.property('messageCount', 1);
+    });
+
+    it('stopped exchange recovered in place keeps fanout routing', () => {
+      const broker = Broker();
+      const exchange = broker.assertExchange('fan', 'fanout');
+      broker.assertQueue('q1');
+      broker.assertQueue('q2');
+      broker.bindQueue('q1', 'fan', 'a');
+      broker.bindQueue('q2', 'fan', 'b');
+
+      exchange.stop();
+      broker.publish('fan', 'while-stopped');
+      exchange.recover();
+      broker.publish('fan', 'after');
+
+      expect(broker.getQueue('q1')).to.have.property('messageCount', 1);
+      expect(broker.getQueue('q2')).to.have.property('messageCount', 1);
+    });
+  });
+
   describe('topic exchange', () => {
     it('delivers message to a single queue', () => {
       const broker = Broker();

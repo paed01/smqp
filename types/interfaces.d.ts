@@ -19,7 +19,7 @@ export interface ExchangeEventEmitter {
   off(pattern: string, handler: Function): undefined;
 }
 
-export type exchangeType = 'topic' | 'direct';
+export type exchangeType = 'topic' | 'direct' | 'fanout';
 
 export interface ConsumeOptions {
   /** set to true if there is no need to acknowledge message, message is immediately consumed */

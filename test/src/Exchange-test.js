@@ -25,13 +25,17 @@ describe('Exchange', () => {
       expect(exchange).to.have.property('type', 'topic');
     });
 
-    it('throws if type is not topic or direct', () => {
+    it('throws if type is not topic, direct, or fanout', () => {
       expect(() => {
         Exchange('event', 'mopic');
-      }).to.throw();
+      }).to.throw(TypeError, /topic, direct, or fanout/);
       expect(() => {
         Exchange('event', {});
-      }).to.throw();
+      }).to.throw(TypeError);
+    });
+
+    it('accepts fanout', () => {
+      expect(Exchange('event', 'fanout')).to.have.property('type', 'fanout');
     });
 
     it('event exchange generates name if missing', () => {
@@ -143,6 +147,71 @@ describe('Exchange', () => {
         messages.push(message);
         binding3.close();
       }
+    });
+  });
+
+  describe('fanout exchange', () => {
+    it('publish delivers to every bound queue', () => {
+      const exchange = Exchange('fan', 'fanout');
+      const q1 = new Queue('q1');
+      const q2 = new Queue('q2');
+      exchange.bindQueue(q1, 'a');
+      exchange.bindQueue(q2, 'b');
+
+      expect(exchange.publish('rk', 'payload')).to.equal(1);
+      expect(q1).to.have.property('messageCount', 1);
+      expect(q2).to.have.property('messageCount', 1);
+      expect(q1.peek().content).to.equal('payload');
+    });
+
+    it('publish without bindings returns undefined and emits return for mandatory', () => {
+      const exchange = Exchange('fan', 'fanout');
+      const returned = [];
+      exchange.on('return', (_, msg) => returned.push(msg.content));
+
+      expect(exchange.publish('rk', 'payload', { mandatory: true })).to.be.undefined;
+      expect(returned).to.have.length(1);
+    });
+
+    it('emits return for mandatory message republished during routing when all bindings are closed', () => {
+      const exchange = Exchange('fan', 'fanout');
+      const q1 = new Queue('q1');
+      const binding = exchange.bindQueue(q1, 'a');
+      const returned = [];
+      exchange.on('return', (_, msg) => returned.push(msg.content));
+
+      q1.consume(
+        (routingKey) => {
+          if (routingKey !== 'first') return;
+          exchange.publish('nested', 'payload', { mandatory: true });
+          binding.close();
+        },
+        { noAck: true }
+      );
+
+      exchange.publish('first');
+
+      expect(returned).to.have.length(1);
+      expect(returned[0].fields).to.include({ routingKey: 'nested', exchange: 'fan' });
+      expect(exchange).to.have.property('undeliveredCount', 0);
+    });
+
+    it('binding closed during delivery is skipped without breaking the loop', () => {
+      const exchange = Exchange('fan', 'fanout');
+      const q1 = new Queue('q1');
+      const q2 = new Queue('q2');
+      const q3 = new Queue('q3');
+      exchange.bindQueue(q1, 'a');
+      const b2 = exchange.bindQueue(q2, 'b');
+      exchange.bindQueue(q3, 'c');
+
+      q1.consume(() => b2.close(), { noAck: true });
+
+      exchange.publish('rk');
+
+      expect(q2).to.have.property('messageCount', 1);
+      expect(q3).to.have.property('messageCount', 1);
+      expect(exchange).to.have.property('bindingCount', 2);
     });
   });
 

@@ -219,12 +219,30 @@ Close exchanges, queues, and all consumers
 
 Creates exchange with name.
 
-- `type`: type of exchange, must be one of `topic` or `direct`, defaults to `topic`.
+- `type`: type of exchange, must be one of `topic`, `direct`, or `fanout`, defaults to `topic`.
+  - `topic`: routes to every binding whose pattern matches the routing key, `*` matches one word and `#` matches zero or more
+  - `direct`: routes to the first binding whose pattern matches, load balancing between matching bindings in sequence
+  - `fanout`: routes to every binding regardless of routing key, the binding pattern is ignored
 - `options`:
   - `durable`: boolean, defaults to `true`, makes queue durable, i.e. will be returned when getting state
   - `autoDelete`: boolean, defaults to `true`, the exchange will be removed when all bindings are gone
 
 Returns [Exchange](#exchange).
+
+```javascript
+import { Broker } from 'smqp';
+
+const broker = new Broker();
+broker.assertExchange('broadcast', 'fanout');
+broker.assertQueue('audit-q');
+broker.assertQueue('mail-q');
+broker.bindQueue('audit-q', 'broadcast', '');
+broker.bindQueue('mail-q', 'broadcast', 'ignored.pattern');
+
+broker.publish('broadcast', 'user.signup', { id: 1 });
+
+console.log(broker.getQueue('audit-q').messageCount, broker.getQueue('mail-q').messageCount); // 1 1
+```
 
 ### `broker.deleteExchange(exchangeName[, {ifUnused}])`
 
@@ -632,7 +650,7 @@ Exchange
 Properties:
 
 - `name`: exchange name
-- `type`: exchange type, topic or direct
+- `type`: exchange type, `topic`, `direct`, or `fanout`
 - `options`: exchange options
 - `bindingCount`: getter for number of bindings
 - `bindings`: getter for list of [bindings](#binding)

@@ -18,7 +18,7 @@ declare module 'smqp' {
 	off(pattern: string, handler: Function): undefined;
   }
 
-  export type exchangeType = 'topic' | 'direct';
+  export type exchangeType = 'topic' | 'direct' | 'fanout';
 
   export interface ConsumeOptions {
 	/** set to true if there is no need to acknowledge message, message is immediately consumed */
@@ -926,7 +926,9 @@ declare module 'smqp' {
 		 * @returns number of consumed messages
 		 */
 		publish(routingKey: string, content?: any, properties?: MessageProperties): number | undefined;
+		private _getRouter;
 		private _onTopicMessage;
+		private _onFanoutMessage;
 		private _onDirectMessage;
 		private _emitReturn;
 		/**
