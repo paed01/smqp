@@ -192,7 +192,7 @@ Broker.prototype.consume = function consume(queueName, onMessage, options) {
 /**
  * Cancel consumer by tag
  * @param {string} consumerTag consumer tag
- * @param {boolean} [requeue] requeue messages held by the consumer, defaults to true
+ * @param {boolean | import('#types').CancelOptions} [requeue] requeue messages held by the consumer, defaults to true, or cancel options
  */
 Broker.prototype.cancel = function cancel(consumerTag, requeue = true) {
   const consumer = this.getConsumer(consumerTag);

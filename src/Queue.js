@@ -423,7 +423,7 @@ Queue.prototype.peek = function peek(ignoreDelivered) {
 /**
  * Cancel consumer by tag
  * @param {string} consumerTag consumer tag
- * @param {boolean} [requeue] requeue messages held by the consumer, defaults to true
+ * @param {boolean | import('#types').CancelOptions} [requeue] requeue messages held by the consumer, defaults to true, or cancel options
  */
 Queue.prototype.cancel = function cancel(consumerTag, requeue) {
   const consumers = this[K_CONSUMERS];
@@ -439,7 +439,7 @@ Queue.prototype.cancel = function cancel(consumerTag, requeue) {
 /**
  * Cancel consumer matching the given handler
  * @param {import('#types').onMessage} onMessage handler previously passed to consume
- * @param {boolean} [requeue] requeue messages held by the consumer, defaults to true
+ * @param {boolean | import('#types').CancelOptions} [requeue] requeue messages held by the consumer, defaults to true, or cancel options
  */
 Queue.prototype.dismiss = function dismiss(onMessage, requeue) {
   const consumers = this[K_CONSUMERS];
@@ -451,7 +451,7 @@ Queue.prototype.dismiss = function dismiss(onMessage, requeue) {
 /**
  * Unbind consumer from queue
  * @param {Consumer} consumer consumer to unbind
- * @param {boolean} [requeue] requeue messages held by the consumer, defaults to true
+ * @param {boolean | import('#types').CancelOptions} [requeue] requeue messages held by the consumer, defaults to true, or cancel options
  */
 Queue.prototype.unbindConsumer = function unbindConsumer(consumer, requeue = true) {
   const consumers = this[K_CONSUMERS];
@@ -463,7 +463,11 @@ Queue.prototype.unbindConsumer = function unbindConsumer(consumer, requeue = tru
   this[K_EXCLUSIVE] = false;
 
   consumer.stop();
-  consumer.nackAll(requeue);
+  if (requeue && typeof requeue === 'object') {
+    if (!requeue.keepPending) consumer.nackAll(requeue.requeue ?? true);
+  } else {
+    consumer.nackAll(requeue);
+  }
 
   this.emit('consumer.cancel', consumer);
 
@@ -784,12 +788,11 @@ Consumer.prototype.ackAll = function ackAll() {
 
 /**
  * Cancel consumer
- * @param {boolean} [requeue] requeue messages held by the consumer, defaults to true
+ * @param {boolean | import('#types').CancelOptions} [requeue] requeue messages held by the consumer, defaults to true, or cancel options
  */
 Consumer.prototype.cancel = function cancel(requeue = true) {
   this.stop();
-  if (!requeue) this.nackAll(requeue);
-  this.emit('cancel', this);
+  this.queue.unbindConsumer(this, requeue);
 };
 
 /**
@@ -867,9 +870,6 @@ ConsumerEmitter.prototype.on = function on(...args) {
 };
 
 ConsumerEmitter.prototype.emit = function emit(eventName, content) {
-  if (eventName === 'consumer.cancel') {
-    return this.queue.unbindConsumer(content);
-  }
   this.queue.emit(eventName, content);
 };
 

@@ -319,7 +319,7 @@ Returns [consumer](#consumer).
 Cancel consumption by consumer tag.
 
 - `consumerTag`: consumer tag
-- `requeue`: optional boolean to requeue messages consumed by consumer
+- `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue-true)
 
 Returns true if consumer tag was found, and consequently false if not.
 
@@ -776,9 +776,30 @@ Upsert consumer.
 Cancel consumer with tag
 
 - `consumerTag`: consumer tag
-- `requeue`: optional boolean to requeue messages consumed by consumer
+- `requeue`: optional boolean to requeue messages consumed by consumer, or cancel options:
+  - `requeue`: boolean, defaults to `true`. If `false` held messages are rejected, i.e. dead-lettered if configured
+  - `keepPending`: boolean, leave held messages pending on the queue as AMQP does on `basic.cancel`. They are not redelivered until acked, nacked, or the queue is recovered. Overrides `requeue`. An `autoDelete` queue is still deleted when its last consumer is cancelled
 
 Returns true if consumer tag was found, and consequently false if not.
+
+```javascript
+import { Broker } from 'smqp';
+
+const broker = new Broker();
+const queue = broker.assertQueue('held-q', { autoDelete: false });
+broker.sendToQueue('held-q', 'payload');
+
+const held = [];
+broker.consume('held-q', (routingKey, message) => held.push(message), { consumerTag: 'held' });
+
+queue.cancel('held', { keepPending: true });
+
+console.log(queue.getStats()); // { messageCount: 1, unackedCount: 1, consumerCount: 0 }
+
+held[0].ack();
+
+console.log(queue.messageCount); // 0
+```
 
 ### `queue.close()`
 
@@ -845,7 +866,7 @@ Returns:
 Dismiss first consumer with matching `onMessage` handler.
 
 - `onMessage`: message handler function
-- `requeue`: optional boolean to requeue messages consumed by consumer
+- `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue-true)
 
 ### `queue.get([consumeOptions])`
 
@@ -936,7 +957,7 @@ Recover queue, optionally from a previous [`queue.getState()`](#queuegetstate). 
 Unbind consumer instance.
 
 - `consumer`: consumer instance
-- `requeue`: optional boolean to requeue messages consumed by consumer
+- `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue-true)
 
 ## Consumer
 
@@ -965,7 +986,7 @@ Nack all messages currently held by consumer
 
 Cancel consumption and unsubscribe from queue
 
-- `requeue`: optional boolean to requeue messages consumed by consumer
+- `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue-true)
 
 ### `consumer.prefetch(numberOfMessages)`
 

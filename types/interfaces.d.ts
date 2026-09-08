@@ -37,6 +37,13 @@ export interface ConsumeOptions {
   [x: string]: any;
 }
 
+export interface CancelOptions {
+  /** requeue messages held by the consumer, defaults to true; false rejects them, i.e. dead-letters if configured */
+  requeue?: boolean;
+  /** leave messages held by the consumer pending on the queue, to be acked or nacked later; overrides requeue */
+  keepPending?: boolean;
+}
+
 export interface SubscribeOptions extends ConsumeOptions {
   /** defaults to true, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down */
   autoDelete?: boolean;

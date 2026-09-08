@@ -2,8 +2,15 @@
 
 ## v14.0.0
 
+### Breaking
+
+- `consumer.cancel()` no longer emits `cancel` through the consumer. The queue unbinds the consumer directly and emits `queue.consumer.cancel` as before, so `consumer.on('cancel')` and `queue.on('consumer.cancel')` still fire. Emitting `cancel` on a consumer yourself no longer unbinds it, use `consumer.cancel()`
+
+### Additions
+
 - add consume option `capacity`, a function returning the credit the consumer currently accepts. The consumer gets the lesser of credit and prefetch capacity and is not ready while credit is zero
 - add `queue.consumeNext()` to deliver available messages when credit is raised. Replaces the private `_consumeNext()`
+- cancel accepts options, `{ keepPending: true }` leaves messages held by the consumer pending on the queue as AMQP does on `basic.cancel`. Applies to `broker.cancel`, `queue.cancel`, `queue.dismiss`, `queue.unbindConsumer`, and `consumer.cancel`. Type `CancelOptions` is exported
 
 ## v13.2.0 - 2026-09-05
 

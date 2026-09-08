@@ -36,6 +36,13 @@ declare module 'smqp' {
 	[x: string]: any;
   }
 
+  export interface CancelOptions {
+	/** requeue messages held by the consumer, defaults to true; false rejects them, i.e. dead-letters if configured */
+	requeue?: boolean;
+	/** leave messages held by the consumer pending on the queue, to be acked or nacked later; overrides requeue */
+	keepPending?: boolean;
+  }
+
   export interface SubscribeOptions extends ConsumeOptions {
 	/** defaults to true, exchange will be deleted when all bindings are removed; the queue will be removed when all consumers are down */
 	autoDelete?: boolean;
@@ -310,9 +317,9 @@ declare module 'smqp' {
 		/**
 		 * Cancel consumer by tag
 		 * @param consumerTag consumer tag
-		 * @param requeue requeue messages held by the consumer, defaults to true
+		 * @param requeue requeue messages held by the consumer, defaults to true, or cancel options
 		 */
-		cancel(consumerTag: string, requeue?: boolean): boolean;
+		cancel(consumerTag: string, requeue?: boolean | CancelOptions): boolean;
 		/** List all consumers as serializable projections */
 		getConsumers(): ConsumerState[];
 		/**
@@ -656,21 +663,21 @@ declare module 'smqp' {
 		/**
 		 * Cancel consumer by tag
 		 * @param consumerTag consumer tag
-		 * @param requeue requeue messages held by the consumer, defaults to true
+		 * @param requeue requeue messages held by the consumer, defaults to true, or cancel options
 		 */
-		cancel(consumerTag: string, requeue?: boolean): boolean;
+		cancel(consumerTag: string, requeue?: boolean | CancelOptions): boolean;
 		/**
 		 * Cancel consumer matching the given handler
 		 * @param onMessage handler previously passed to consume
-		 * @param requeue requeue messages held by the consumer, defaults to true
+		 * @param requeue requeue messages held by the consumer, defaults to true, or cancel options
 		 */
-		dismiss(onMessage: onMessage, requeue?: boolean): void;
+		dismiss(onMessage: onMessage, requeue?: boolean | CancelOptions): void;
 		/**
 		 * Unbind consumer from queue
 		 * @param consumer consumer to unbind
-		 * @param requeue requeue messages held by the consumer, defaults to true
+		 * @param requeue requeue messages held by the consumer, defaults to true, or cancel options
 		 */
-		unbindConsumer(consumer: Consumer, requeue?: boolean): void;
+		unbindConsumer(consumer: Consumer, requeue?: boolean | CancelOptions): void;
 		/**
 		 * Emit a queue event
 		 * @param eventName event name (without `queue.` prefix)
@@ -770,9 +777,9 @@ declare module 'smqp' {
 		ackAll(): void;
 		/**
 		 * Cancel consumer
-		 * @param requeue requeue messages held by the consumer, defaults to true
+		 * @param requeue requeue messages held by the consumer, defaults to true, or cancel options
 		 */
-		cancel(requeue?: boolean): void;
+		cancel(requeue?: boolean | CancelOptions): void;
 		/**
 		 * Set consumer prefetch count
 		 * @param value new prefetch count
