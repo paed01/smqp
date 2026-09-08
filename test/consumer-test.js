@@ -242,6 +242,43 @@ describe('consumer', () => {
       }
     });
 
+    it('cancel of another consumer on the same queue does not trigger handler', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('event-q', { autoDelete: false });
+
+      const mine = broker.consume(queue.name, () => {}, { consumerTag: 'mine' });
+      broker.consume(queue.name, () => {}, { consumerTag: 'other' });
+
+      const seen = [];
+      mine.on('cancel', (_, msg) => seen.push(msg.content.consumerTag));
+
+      broker.cancel('other');
+      expect(seen).to.deep.equal([]);
+
+      broker.cancel('mine');
+      expect(seen).to.deep.equal(['mine']);
+    });
+
+    it('on returns event consumer that can be cancelled to unsubscribe', () => {
+      const broker = Broker();
+      const queue = broker.assertQueue('event-q', { autoDelete: false });
+      const consumer = broker.consume(queue.name, () => {}, { consumerTag: 'mine' });
+
+      const seen = [];
+      const subscription = consumer.on('cancel', () => seen.push('cancel'));
+      subscription.cancel();
+
+      consumer.cancel();
+      expect(seen).to.deep.equal([]);
+    });
+
+    it('consumer has no emit', () => {
+      const broker = Broker();
+      broker.assertQueue('event-q');
+      const consumer = broker.consume('event-q', () => {});
+      expect(consumer).to.not.have.property('emit');
+    });
+
     it('emits cancel when unbound by queue', (done) => {
       const broker = Broker();
 

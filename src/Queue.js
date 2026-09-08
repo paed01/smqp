@@ -804,23 +804,16 @@ Consumer.prototype.prefetch = function prefetch(value) {
 };
 
 /**
- * Emit consumer event
+ * Subscribe to an event about this consumer, currently only `cancel`
  * @param {string} eventName event name (without `consumer.` prefix)
- * @param {any} [content] event payload
- */
-Consumer.prototype.emit = function emit(eventName, content) {
-  const routingKey = `consumer.${eventName}`;
-  this.events.emit(routingKey, content);
-};
-
-/**
- * Subscribe to consumer event
- * @param {string} eventName event name (without `consumer.` prefix)
- * @param {Function} handler event handler
+ * @param {import('#types').onMessage} handler event handler, called only when the event concerns this consumer
+ * @returns {Consumer | undefined} event consumer, cancel it to unsubscribe
  */
 Consumer.prototype.on = function on(eventName, handler) {
-  const pattern = `consumer.${eventName}`;
-  return this.events.on(pattern, handler);
+  const consumer = this;
+  return this.events.on(`consumer.${eventName}`, function scopedHandler(routingKey, message, owner) {
+    if (message.content === consumer) return handler(routingKey, message, owner);
+  });
 };
 
 Consumer.prototype.recover = function recover() {
@@ -862,15 +855,12 @@ CreditConsumer.prototype = Object.create(Consumer.prototype, {
 });
 
 function ConsumerEmitter(queue) {
+  /** @type {Queue} */
   this.queue = queue;
 }
 
 ConsumerEmitter.prototype.on = function on(...args) {
   return this.queue.on(...args);
-};
-
-ConsumerEmitter.prototype.emit = function emit(eventName, content) {
-  this.queue.emit(eventName, content);
 };
 
 function ConsumerQueueEvents(consumer) {

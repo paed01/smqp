@@ -95,6 +95,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [`consumer.nackAll([requeue])`](#consumernackallrequeue)
   - [`consumer.cancel([requeue = true])`](#consumercancelrequeue-true)
   - [`consumer.prefetch(numberOfMessages)`](#consumerprefetchnumberofmessages)
+  - [`consumer.on(eventName, handler)`](#consumeroneventname-handler)
 - [Message](#message)
   - [`message.ack([allUpTo])`](#messageackallupto)
   - [`message.nack([allUpTo, requeue])`](#messagenackallupto-requeue)
@@ -1007,6 +1008,31 @@ Cancel consumption and unsubscribe from queue
 - `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue-true)
 
 ### `consumer.prefetch(numberOfMessages)`
+
+### `consumer.on(eventName, handler)`
+
+Subscribe to an event about this consumer. The handler is only called for events concerning this consumer, not for other consumers on the same queue.
+
+- `eventName`: event name without the `consumer.` prefix, currently only `cancel` is emitted
+- `handler(routingKey, message)`: event handler, `message.content` is the consumer
+
+Returns an event consumer, cancel it to unsubscribe.
+
+```javascript
+import { Broker } from 'smqp';
+
+const broker = new Broker();
+broker.assertQueue('event-q', { autoDelete: false });
+const consumer = broker.consume('event-q', () => {}, { consumerTag: 'mine' });
+broker.consume('event-q', () => {}, { consumerTag: 'other' });
+
+consumer.on('cancel', (routingKey, message) => {
+  console.log('cancelled', message.content.consumerTag);
+});
+
+broker.cancel('other'); // nothing logged
+broker.cancel('mine'); // cancelled mine
+```
 
 ## Message
 

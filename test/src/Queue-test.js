@@ -1327,24 +1327,6 @@ describe('Queue', () => {
         if (eventName === 'queue.ready') triggered = true;
       }
     });
-
-    it('forwards events from consumer', () => {
-      let triggered;
-      const queue = new Queue('test-q', { maxLength: 2 }, { emit });
-      queue.queueMessage({ routingKey: 'test.1' });
-      queue.queueMessage({ routingKey: 'test.2' });
-
-      queue.get().nack(false, false);
-
-      const consumer = queue.consume(() => {});
-      consumer.emit('madeup');
-
-      expect(triggered).to.be.true;
-
-      function emit(eventName) {
-        if (eventName === 'queue.consumer.madeup') triggered = true;
-      }
-    });
   });
 
   describe('stop()', () => {

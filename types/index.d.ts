@@ -786,17 +786,12 @@ declare module 'smqp' {
 		 */
 		prefetch(value: number): void;
 		/**
-		 * Emit consumer event
+		 * Subscribe to an event about this consumer, currently only `cancel`
 		 * @param eventName event name (without `consumer.` prefix)
-		 * @param content event payload
+		 * @param handler event handler, called only when the event concerns this consumer
+		 * @returns event consumer, cancel it to unsubscribe
 		 */
-		emit(eventName: string, content?: any): void;
-		/**
-		 * Subscribe to consumer event
-		 * @param eventName event name (without `consumer.` prefix)
-		 * @param handler event handler
-		 */
-		on(eventName: string, handler: Function): Consumer;
+		on(eventName: string, handler: onMessage): Consumer | undefined;
 		recover(): void;
 		stop(): void;
 		readonly consumerTag: string;

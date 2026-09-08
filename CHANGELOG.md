@@ -4,7 +4,9 @@
 
 ### Breaking
 
-- `consumer.cancel()` no longer emits `cancel` through the consumer. The queue unbinds the consumer directly and emits `queue.consumer.cancel` as before, so `consumer.on('cancel')` and `queue.on('consumer.cancel')` still fire. Emitting `cancel` on a consumer yourself no longer unbinds it, use `consumer.cancel()`
+- `consumer.cancel()` no longer emits `cancel` through the consumer. The queue unbinds the consumer directly and emits `queue.consumer.cancel` as before, so `consumer.on('cancel')` and `queue.on('consumer.cancel')` still fire
+- drop undocumented `consumer.emit()`, it had no purpose left
+- `consumer.on(eventName, handler)` only calls the handler for events about that consumer. It used to fire for any consumer on the same queue, which made a shovel close when an unrelated consumer on its shared source queue was cancelled. Unsubscribe by cancelling the returned event consumer
 
 ### Additions
 

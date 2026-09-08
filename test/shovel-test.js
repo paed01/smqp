@@ -1075,6 +1075,35 @@ describe('Shovel', () => {
       }
     });
 
+    it('keeps shovel open if an unrelated consumer on the shared source queue is canceled', () => {
+      const broker = new Broker();
+      broker.assertExchange('events', 'topic', { autoDelete: false });
+      broker.assertQueue('shared-q', { autoDelete: false });
+      broker.consume('shared-q', () => {}, { consumerTag: 'unrelated' });
+
+      const destinationBroker = new Broker();
+      destinationBroker.assertExchange('dest-events', 'topic');
+      const messages = [];
+      destinationBroker.subscribeTmp('dest-events', '#', (routingKey) => messages.push(routingKey), { noAck: true });
+
+      const shovel = broker.createShovel(
+        'events-shovel',
+        { exchange: 'events', queue: 'shared-q', pattern: '#', priority: 10 },
+        { broker: destinationBroker, exchange: 'dest-events' }
+      );
+
+      broker.cancel('unrelated');
+
+      expect(shovel).to.have.property('closed', false);
+      expect(broker.getShovel('events-shovel')).to.be.ok;
+
+      broker.publish('events', 'test.1');
+      expect(messages).to.deep.equal(['test.1']);
+
+      broker.cancel(shovel.consumerTag);
+      expect(shovel).to.have.property('closed', true);
+    });
+
     it('closes shovel if source consumer is canceled', () => {
       const broker = new Broker();
       broker.assertExchange('events', 'topic', { autoDelete: false });
