@@ -419,6 +419,70 @@ describe('consumer', () => {
     });
   });
 
+  describe('prefetch(value) after messages are held', () => {
+    it('lowering prefetch below held count clamps capacity to zero and stops delivery until held drops below it', () => {
+      const queue = new Queue('test-q');
+      const held = [];
+      const consumer = queue.consume((_, msg) => held.push(msg), { prefetch: 5 });
+
+      queue.queueMessage({});
+      queue.queueMessage({});
+      expect(held).to.have.length(2);
+
+      consumer.prefetch(1);
+
+      expect(consumer).to.have.property('capacity', 0);
+      expect(consumer).to.have.property('ready', false);
+
+      for (let i = 0; i < 5; i++) queue.queueMessage({});
+
+      expect(held).to.have.length(2);
+      expect(consumer).to.have.property('messageCount', 2);
+      expect(queue).to.have.property('messageCount', 7);
+
+      held.shift().ack();
+      expect(held).to.have.length(1);
+      expect(consumer).to.have.property('messageCount', 1);
+
+      held.shift().ack();
+      expect(held).to.have.length(1);
+      expect(consumer).to.have.property('messageCount', 1);
+      expect(consumer).to.have.property('capacity', 0);
+    });
+
+    it('raising prefetch while saturated resumes delivery immediately', () => {
+      const queue = new Queue('test-q');
+      const held = [];
+      const consumer = queue.consume((_, msg) => held.push(msg), { prefetch: 2 });
+
+      for (let i = 0; i < 5; i++) queue.queueMessage({});
+      expect(held).to.have.length(2);
+      expect(consumer).to.have.property('ready', false);
+
+      consumer.prefetch(4);
+
+      expect(held).to.have.length(4);
+      expect(consumer).to.have.property('ready', false);
+      expect(consumer).to.have.property('capacity', 0);
+
+      held[0].ack();
+      expect(held).to.have.length(5);
+      expect(consumer).to.have.property('messageCount', 4);
+    });
+
+    it('raising prefetch on a saturated consumer with an empty queue makes it ready', () => {
+      const queue = new Queue('test-q');
+      const consumer = queue.consume(() => {}, { prefetch: 1 });
+      queue.queueMessage({});
+      expect(consumer).to.have.property('ready', false);
+
+      consumer.prefetch(2);
+
+      expect(consumer).to.have.property('ready', true);
+      expect(consumer).to.have.property('capacity', 1);
+    });
+  });
+
   describe('ackAll()', () => {
     it('removes non-acked messages from queue', () => {
       const broker = new Broker();

@@ -781,7 +781,7 @@ declare module 'smqp' {
 		 */
 		cancel(requeue?: boolean | CancelOptions): void;
 		/**
-		 * Set consumer prefetch count
+		 * Set consumer prefetch count, takes effect immediately
 		 * @param value new prefetch count
 		 */
 		prefetch(value: number): void;

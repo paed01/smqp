@@ -103,6 +103,30 @@ describe('exchange', () => {
       }
     });
 
+    it('subscribe, subscribeTmp, and subscribeOnce accept an empty pattern', () => {
+      const broker = Broker();
+      broker.assertExchange('fan', 'fanout');
+
+      const messages = [];
+      broker.subscribe('fan', '', 'sub-q', (routingKey) => messages.push(`sub:${routingKey}`), { noAck: true });
+      broker.subscribeTmp('fan', '', (routingKey) => messages.push(`tmp:${routingKey}`), { noAck: true });
+      broker.subscribeOnce('fan', '', (routingKey) => messages.push(`once:${routingKey}`));
+
+      broker.publish('fan', 'rk');
+      broker.publish('fan', 'rk2');
+
+      expect(messages).to.deep.equal(['sub:rk', 'tmp:rk', 'once:rk', 'sub:rk2', 'tmp:rk2']);
+    });
+
+    it('subscribe still throws if pattern is missing or not a string', () => {
+      const broker = Broker();
+      broker.assertExchange('fan', 'fanout');
+      expect(() => broker.subscribe('fan', undefined, 'q', () => {})).to.throw(TypeError);
+      expect(() => broker.subscribe('fan', null, 'q', () => {})).to.throw(TypeError);
+      expect(() => broker.subscribe('fan', 1, 'q', () => {})).to.throw(TypeError);
+      expect(() => broker.subscribeTmp('fan', undefined, () => {})).to.throw(TypeError);
+    });
+
     it('same queue bound twice with different patterns gets the message once per binding', () => {
       const broker = Broker();
       broker.assertExchange('fan', 'fanout');
@@ -192,6 +216,19 @@ describe('exchange', () => {
   });
 
   describe('topic exchange', () => {
+    it('empty pattern binds and matches only an empty routing key', () => {
+      const broker = Broker();
+      broker.assertExchange('test', 'topic');
+
+      const messages = [];
+      broker.subscribe('test', '', 'empty-q', (routingKey) => messages.push(routingKey), { noAck: true });
+
+      broker.publish('test', 'not.empty');
+      broker.publish('test', '');
+
+      expect(messages).to.deep.equal(['']);
+    });
+
     it('delivers message to a single queue', () => {
       const broker = Broker();
       broker.assertExchange('test', 'topic');

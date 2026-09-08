@@ -1,6 +1,6 @@
 # Changelog
 
-## v14.0.0
+## v14.0.0 - 2026-09-08
 
 ### Breaking
 
@@ -13,7 +13,12 @@
 - add consume option `capacity`, a function returning the credit the consumer currently accepts. The consumer gets the lesser of credit and prefetch capacity and is not ready while credit is zero
 - add `queue.consumeNext()` to deliver available messages when credit is raised. Replaces the private `_consumeNext()`
 - add `fanout` exchange type, routes to every bound queue regardless of routing key. Binding patterns are ignored but must still be strings
+- `broker.subscribe`, `subscribeTmp`, and `subscribeOnce` accept an empty string pattern, as AMQP does for binding keys. A missing or non-string pattern still throws
 - cancel accepts options, `{ keepPending: true }` leaves messages held by the consumer pending on the queue as AMQP does on `basic.cancel`. Applies to `broker.cancel`, `queue.cancel`, `queue.dismiss`, `queue.unbindConsumer`, and `consumer.cancel`. Type `CancelOptions` is exported
+
+### Fixes
+
+- fix `consumer.prefetch(value)` lowered below the number of held messages making capacity negative, which let the consumer drain the entire queue. Capacity is now clamped to zero, and a prefetch change takes effect immediately instead of after the consumer is depleted
 
 ## v13.2.0 - 2026-09-05
 

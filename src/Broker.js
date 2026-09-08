@@ -65,7 +65,7 @@ Object.defineProperties(Broker.prototype, {
  * @param {import('#types').SubscribeOptions} [options] optional subscribe options
  */
 Broker.prototype.subscribe = function subscribe(exchangeName, pattern, queueName, onMessage, options) {
-  if (!exchangeName || !pattern || typeof onMessage !== 'function')
+  if (!exchangeName || typeof pattern !== 'string' || typeof onMessage !== 'function')
     throw new TypeError('exchange name, pattern, and message callback are required');
   if (options?.consumerTag) this.validateConsumerTag(options.consumerTag);
 

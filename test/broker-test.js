@@ -41,7 +41,8 @@ describe('Broker', () => {
       const broker = new Broker();
       broker.assertExchange('test');
 
-      expect(() => broker.subscribe('test', '', 'persist', () => {})).to.throw(TypeError);
+      // @ts-ignore
+      expect(() => broker.subscribe('test', undefined, 'persist', () => {})).to.throw(TypeError);
     });
 
     it('throws if subscribe without onMessage callback', () => {

@@ -133,7 +133,7 @@ Asserts an exchange, a named queue, and returns [consumer](#consumer) to the nam
 To make sure the exchange, and or queue has the desired behaviour, please use [`assertExchange()`](#brokerassertexchangeexchangename-type--topic-options) and [`assertQueue()`](#brokerassertqueuequeuename-options)
 
 - `exchangeName`: exchange name
-- `pattern`: queue binding pattern
+- `pattern`: queue binding pattern, must be a string, an empty string is allowed and matches an empty routing key on topic and direct exchanges. Ignored by fanout exchanges
 - `queueName`: queue name
 - `onMessage`: message callback
 - `options`:
@@ -775,7 +775,7 @@ Properties:
 - `stopped`: is stopped
 - `exclusive`: is exclusively consumed
 - `maxLength`: get or set max length of queue
-- `capacity`: `maxLength - messageCount`
+- `capacity`: `maxLength - messageCount`, never below zero
 - `messageTtl`: expire messages after milliseconds, [see Message Eviction](#message-eviction)
 
 ### `queue.ack(message[, allUpTo])`
@@ -1008,6 +1008,8 @@ Cancel consumption and unsubscribe from queue
 - `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue-true)
 
 ### `consumer.prefetch(numberOfMessages)`
+
+Set prefetch count. Takes effect immediately, lowering it below the number of held messages stops delivery until enough messages are acked, raising it resumes delivery.
 
 ### `consumer.on(eventName, handler)`
 

@@ -648,7 +648,8 @@ Queue.prototype.stop = function stop() {
  */
 Queue.prototype._getCapacity = function getCapacity() {
   if ('maxLength' in this.options) {
-    return this.options.maxLength - this.messages.length;
+    const capacity = this.options.maxLength - this.messages.length;
+    return capacity > 0 ? capacity : 0;
   }
   return Infinity;
 };
@@ -796,11 +797,14 @@ Consumer.prototype.cancel = function cancel(requeue = true) {
 };
 
 /**
- * Set consumer prefetch count
+ * Set consumer prefetch count, takes effect immediately
  * @param {number} value new prefetch count
  */
 Consumer.prototype.prefetch = function prefetch(value) {
-  this.options.prefetch = this[K_INTERNAL_QUEUE].options.maxLength = value;
+  const internalQueue = this[K_INTERNAL_QUEUE];
+  this.options.prefetch = internalQueue.options.maxLength = value;
+  this[K_IS_READY] = internalQueue._getCapacity() > 0;
+  this.queue.consumeNext();
 };
 
 /**
