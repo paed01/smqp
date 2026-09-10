@@ -175,32 +175,21 @@ ExchangeBase.prototype._onFanoutMessage = function fanout(routingKey, message) {
  */
 ExchangeBase.prototype._onDirectMessage = function direct(routingKey, message) {
   const publishedMsg = message.content;
-  const bindings = this[K_BINDINGS];
-
-  let deliverToBinding;
-  for (const binding of bindings) {
-    if (!binding.testPattern(routingKey)) continue;
-    deliverToBinding = binding;
-    break;
-  }
-
-  if (!deliverToBinding) {
-    message.ack();
-    this._emitReturn(routingKey, publishedMsg.content, publishedMsg.properties);
-    return 0;
-  }
-
-  if (bindings.length > 1) {
-    const idx = bindings.indexOf(deliverToBinding);
-    bindings.splice(idx, 1);
-    bindings.push(deliverToBinding);
-  }
 
   message.ack();
 
-  deliverToBinding.queue.queueMessage({ routingKey, exchange: this.name }, publishedMsg.content, publishedMsg.properties);
+  let delivered = 0;
+  for (const binding of this[K_BINDINGS].slice()) {
+    if (binding.pattern !== routingKey) continue;
+    binding.queue.queueMessage({ routingKey, exchange: this.name }, publishedMsg.content, publishedMsg.properties);
+    ++delivered;
+  }
 
-  return 1;
+  if (!delivered) {
+    this._emitReturn(routingKey, publishedMsg.content, publishedMsg.properties);
+  }
+
+  return delivered;
 };
 
 /** @private */
@@ -255,13 +244,13 @@ ExchangeBase.prototype.unbindQueue = function unbindQueue(queue, pattern) {
  * @param {string} queueName queue name
  */
 ExchangeBase.prototype.unbindQueueByName = function unbindQueueByName(queueName) {
-  for (const binding of this[K_BINDINGS]) {
+  for (const binding of this[K_BINDINGS].slice()) {
     if (binding.queue.name === queueName) this.closeBinding(binding);
   }
 };
 
 ExchangeBase.prototype.close = function close() {
-  for (const binding of this[K_BINDINGS]) {
+  for (const binding of this[K_BINDINGS].slice()) {
     binding.close();
   }
   const deliveryQueue = this[K_DELIVERY_QUEUE];

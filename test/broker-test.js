@@ -977,7 +977,8 @@ describe('Broker', () => {
       broker.assertQueue('loads', { autoDelete: false });
 
       broker.bindQueue('events', 'event', '#');
-      broker.bindQueue('loads', 'load', '#');
+      broker.bindQueue('loads', 'load', 'load.1');
+      broker.bindQueue('loads', 'load', 'load.2');
     });
 
     it('stops publishing messages and consumption', () => {
@@ -1073,7 +1074,8 @@ describe('Broker', () => {
       broker.assertQueue('loads', { autoDelete: false });
 
       broker.bindQueue('events', 'event', '#');
-      broker.bindQueue('loads', 'load', '#');
+      broker.bindQueue('loads', 'load', 'load.1');
+      broker.bindQueue('loads', 'load', 'load.2');
     });
 
     it('stops publishing messages and consumption', () => {
@@ -2168,8 +2170,8 @@ describe('Broker', () => {
       broker.assertQueue('event-q', { autoDelete: false });
 
       broker.bindQueue('event-q', 'event', '#');
-      broker.bindQueue('load1-q', 'load', '#');
-      broker.bindQueue('load2-q', 'load', '#');
+      broker.bindQueue('load1-q', 'load', 'heavy.1');
+      broker.bindQueue('load2-q', 'load', 'heavy.1');
     });
 
     it('are recovered with bindings', () => {
@@ -2181,8 +2183,8 @@ describe('Broker', () => {
       newBroker.publish('load', 'heavy.1');
 
       expect(newBroker.getQueue('event-q')?.messageCount).to.equal(1);
-      expect(newBroker.getQueue('load1-q')?.messageCount).to.equal(1);
-      expect(newBroker.getQueue('load2-q')?.messageCount).to.equal(1);
+      expect(newBroker.getQueue('load1-q')?.messageCount).to.equal(2);
+      expect(newBroker.getQueue('load2-q')?.messageCount).to.equal(2);
     });
 
     it('are recovered with messages', () => {
@@ -2194,8 +2196,8 @@ describe('Broker', () => {
       const newBroker = Broker().recover(state);
 
       expect(newBroker.getQueue('event-q')?.messageCount).to.equal(1);
-      expect(newBroker.getQueue('load1-q')?.messageCount).to.equal(1);
-      expect(newBroker.getQueue('load2-q')?.messageCount).to.equal(1);
+      expect(newBroker.getQueue('load1-q')?.messageCount).to.equal(2);
+      expect(newBroker.getQueue('load2-q')?.messageCount).to.equal(2);
     });
 
     it('recovers the same broker with bindings', () => {
@@ -2207,8 +2209,8 @@ describe('Broker', () => {
       broker.publish('load', 'heavy.1');
 
       expect(broker.getQueue('event-q')?.messageCount).to.equal(1);
-      expect(broker.getQueue('load1-q')?.messageCount).to.equal(1);
-      expect(broker.getQueue('load2-q')?.messageCount).to.equal(1);
+      expect(broker.getQueue('load1-q')?.messageCount).to.equal(2);
+      expect(broker.getQueue('load2-q')?.messageCount).to.equal(2);
     });
 
     it('recovers the same broker with messages', () => {
@@ -2220,8 +2222,8 @@ describe('Broker', () => {
       broker.recover(state);
 
       expect(broker.getQueue('event-q')?.messageCount).to.equal(1);
-      expect(broker.getQueue('load1-q')?.messageCount).to.equal(1);
-      expect(broker.getQueue('load2-q')?.messageCount).to.equal(1);
+      expect(broker.getQueue('load1-q')?.messageCount).to.equal(2);
+      expect(broker.getQueue('load2-q')?.messageCount).to.equal(2);
     });
   });
 

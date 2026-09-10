@@ -1,5 +1,22 @@
 # Changelog
 
+## v15.0.0 - 2026-09-10
+
+### Breaking
+
+Routing now follows RabbitMQ semantics, which changes what bindings on a `direct` exchange match and how topic patterns are matched.
+
+- `direct` exchanges deliver to every queue bound with the routing key, as AMQP prescribes. They used to deliver to one matching binding at a time, load balancing between matching bindings in sequence. Two queues bound with the same key both get every message. Use a single queue with several consumers to load balance
+- `direct` exchanges compare binding keys literally. Wildcards have no meaning, so a binding `run.#` on a direct exchange only receives messages with routing key `run.#`. Bind the exact keys or switch the exchange to `topic`
+- topic `#` matches zero or more words, so `order.#` matches `order`, `a.#.b` matches `a.b`, `#.b` matches `b`, and `*.#` matches `a`. Trailing `#` used to require at least one more word and inner `#` at least one
+- topic `*` matches exactly one word, which may be empty, so `a.*.c` matches `a..c`
+- `#` and `*` are only wildcards as whole words. `prefix#` is now a literal word that only matches the routing key `prefix#`, it used to match anything starting with `prefix`
+
+### Fixes
+
+- fix regex metacharacters in topic patterns matching as regex, `a(1).*` now matches `a(1).x`
+- fix `exchange.close()` and `exchange.unbindQueueByName()` skipping every other binding since the binding list was mutated while iterated
+
 ## v14.0.0 - 2026-09-08
 
 ### Breaking

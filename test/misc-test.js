@@ -7,8 +7,8 @@ describe('misc test', () => {
     beforeEach(() => {
       broker = new Broker();
 
-      broker.assertExchange('run', 'direct', { autoDelete: false });
-      broker.assertExchange('format', 'direct', { autoDelete: false });
+      broker.assertExchange('run', 'topic', { autoDelete: false });
+      broker.assertExchange('format', 'topic', { autoDelete: false });
 
       broker.assertQueue('run-q', { durable: true, autoDelete: false });
       broker.assertQueue('format-run-q', { durable: true, autoDelete: false });
@@ -41,7 +41,7 @@ describe('misc test', () => {
     });
 
     it('publish to second exchange in third exchange listening for messages on first', () => {
-      broker.assertExchange('event', 'direct', { autoDelete: false });
+      broker.assertExchange('event', 'topic', { autoDelete: false });
 
       broker.publish('run', 'run.enter', 'MSG');
       broker.publish('run', 'run.start', 'MSG');
@@ -79,7 +79,7 @@ describe('misc test', () => {
     it('intricate system where first consumer waits for second exchange before acking', () => {
       const formatQ = broker.getQueue('format-run-q');
 
-      broker.assertExchange('event', 'direct', { autoDelete: false });
+      broker.assertExchange('event', 'topic', { autoDelete: false });
 
       broker.publish('run', 'run.enter', 'MSG');
       broker.publish('run', 'run.start', 'MSG');
@@ -122,7 +122,7 @@ describe('misc test', () => {
     it('intricate async prefetch system where first consumer waits for second exchange before acking', () => {
       const formatQ = broker.getQueue('format-run-q');
 
-      broker.assertExchange('event', 'direct', { autoDelete: false });
+      broker.assertExchange('event', 'topic', { autoDelete: false });
 
       broker.publish('run', 'run.enter', 'MSG');
       broker.publish('run', 'run.start', 'MSG');

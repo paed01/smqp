@@ -19,63 +19,101 @@ describe('exchange', () => {
   });
 
   describe('direct exchange', () => {
-    it('delivers message to a single queue', () => {
-      const broker = Broker();
-      broker.assertExchange('test', 'direct');
-
-      broker.assertQueue('testq');
-      broker.bindQueue('testq', 'test', 'test.#');
-
-      const messages = [];
-
-      broker.publish('test', 'live');
-      broker.publish('test', 'test.1');
-      broker.publish('test', 'test.2');
-      broker.publish('test', 'test.3');
-
-      broker.consume('testq', onMessage);
-
-      expect(messages).to.eql(['test.1', 'test.2', 'test.3', 'test.4']);
-
-      function onMessage(routingKey, msg) {
-        messages.push(routingKey);
-        if (routingKey === 'test.1') broker.publish('test', 'test.4');
-        msg.ack();
-      }
-    });
-
-    it('load balances messages in sequence to multiple queues', () => {
+    it('delivers message to every queue bound with the routing key', () => {
       const broker = Broker();
       broker.assertExchange('test', 'direct');
 
       broker.assertQueue('testq1');
       broker.assertQueue('testq2');
-      broker.bindQueue('testq1', 'test', 'test.#');
-      broker.bindQueue('testq2', 'test', 'test.#');
+      broker.bindQueue('testq1', 'test', 'k');
+      broker.bindQueue('testq2', 'test', 'k');
 
-      const messages1 = [];
-      const messages2 = [];
+      broker.publish('test', 'k');
+      broker.publish('test', 'k');
 
-      broker.consume('testq1', onMessage1);
-      broker.consume('testq2', onMessage2);
+      expect(broker.getQueue('testq1')).to.have.property('messageCount', 2);
+      expect(broker.getQueue('testq2')).to.have.property('messageCount', 2);
+    });
 
-      broker.publish('test', 'test.1.1');
-      broker.publish('test', 'test.1.2');
-      broker.publish('test', 'test.2.1');
-      broker.publish('test', 'test.2.2');
+    it('compares binding key literally, wildcards have no meaning', () => {
+      const broker = Broker();
+      broker.assertExchange('test', 'direct');
 
-      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql(['test.1.1', 'test.2.1']);
+      broker.assertQueue('wildq');
+      broker.assertQueue('hashq');
+      broker.assertQueue('literalq');
+      broker.bindQueue('wildq', 'test', 'k.*');
+      broker.bindQueue('hashq', 'test', '#');
+      broker.bindQueue('literalq', 'test', 'k.x');
 
-      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql(['test.1.2', 'test.2.2']);
+      broker.publish('test', 'k.x');
+      broker.publish('test', 'k.*');
+      broker.publish('test', '#');
 
-      function onMessage1(routingKey, message) {
-        messages1.push(message);
-        message.ack();
+      expect(broker.getQueue('wildq')).to.have.property('messageCount', 1);
+      expect(broker.getQueue('wildq')?.peek()).to.have.property('fields').with.property('routingKey', 'k.*');
+      expect(broker.getQueue('hashq')).to.have.property('messageCount', 1);
+      expect(broker.getQueue('hashq')?.peek()).to.have.property('fields').with.property('routingKey', '#');
+      expect(broker.getQueue('literalq')).to.have.property('messageCount', 1);
+      expect(broker.getQueue('literalq')?.peek()).to.have.property('fields').with.property('routingKey', 'k.x');
+    });
+
+    it('delivers in binding priority order and republish from consumer keeps order', () => {
+      const broker = Broker();
+      broker.assertExchange('test', 'direct');
+
+      broker.assertQueue('testq');
+      broker.bindQueue('testq', 'test', 'test');
+
+      const messages = [];
+
+      broker.publish('test', 'live');
+      broker.publish('test', 'test', 1);
+      broker.publish('test', 'test', 2);
+      broker.publish('test', 'test', 3);
+
+      broker.consume('testq', onMessage);
+
+      expect(messages).to.eql([1, 2, 3, 4]);
+
+      function onMessage(routingKey, msg) {
+        messages.push(msg.content);
+        if (msg.content === 1) broker.publish('test', 'test', 4);
+        msg.ack();
       }
+    });
 
-      function onMessage2(routingKey, message) {
-        messages2.push(message);
-        message.ack();
+    it('closing a binding in a consumer while routing does not disturb delivery to the other bindings', () => {
+      const broker = Broker();
+      const exchange = broker.assertExchange('test', 'direct');
+
+      broker.assertQueue('q1');
+      broker.assertQueue('q2');
+      broker.assertQueue('q3');
+      const binding1 = broker.bindQueue('q1', 'test', 'k', { priority: 10 });
+      const binding2 = broker.bindQueue('q2', 'test', 'k', { priority: 3 });
+      const binding3 = broker.bindQueue('q3', 'test', 'k', { priority: 5 });
+
+      const messages = [];
+
+      broker.consume('q1', onMessage(binding1));
+      broker.consume('q2', onMessage(binding2));
+      broker.consume('q3', onMessage(binding3));
+
+      broker.publish('test', 'k');
+
+      expect(exchange.bindingCount).to.equal(0);
+      expect(messages.map((m) => m.fields.consumerTag)).to.have.length(3);
+
+      broker.publish('test', 'k');
+      expect(messages).to.have.length(3);
+
+      function onMessage(binding) {
+        return (_routingKey, message) => {
+          messages.push(message);
+          binding.close();
+          message.ack();
+        };
       }
     });
   });

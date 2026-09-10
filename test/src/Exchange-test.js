@@ -52,100 +52,96 @@ describe('Exchange', () => {
   });
 
   describe('direct exchange', () => {
-    it('delivers message to a single queue', () => {
+    it('delivers message to every queue bound with the routing key', () => {
+      const exchange = new Exchange('test', 'direct');
+      const queue1 = new Queue('test1-q');
+      const queue2 = new Queue('test2-q');
+      exchange.bindQueue(queue1, 'k');
+      exchange.bindQueue(queue2, 'k');
+
+      exchange.publish('k');
+      exchange.publish('k');
+
+      expect(queue1).to.have.property('messageCount', 2);
+      expect(queue2).to.have.property('messageCount', 2);
+    });
+
+    it('compares binding key literally, wildcards have no meaning', () => {
+      const exchange = Exchange('test', 'direct');
+      const wildq = new Queue('wild-q');
+      const hashq = new Queue('hash-q');
+      const literalq = new Queue('literal-q');
+      exchange.bindQueue(wildq, 'k.*');
+      exchange.bindQueue(hashq, '#');
+      exchange.bindQueue(literalq, 'k.x');
+
+      exchange.publish('k.x');
+      exchange.publish('k.*');
+      exchange.publish('#');
+      exchange.publish('k.y');
+
+      expect(wildq).to.have.property('messageCount', 1);
+      expect(hashq).to.have.property('messageCount', 1);
+      expect(literalq).to.have.property('messageCount', 1);
+      expect(wildq.peek()).to.have.property('fields').with.property('routingKey', 'k.*');
+      expect(hashq.peek()).to.have.property('fields').with.property('routingKey', '#');
+      expect(literalq.peek()).to.have.property('fields').with.property('routingKey', 'k.x');
+    });
+
+    it('republish from consumer keeps message order', () => {
       const exchange = new Exchange('test', 'direct');
       const queue = new Queue('test-q');
-      exchange.bindQueue(queue, 'test.#');
+      exchange.bindQueue(queue, 'test');
 
       const messages = [];
 
       exchange.publish('live');
-      exchange.publish('test.1');
-      exchange.publish('test.2');
-      exchange.publish('test.3');
+      exchange.publish('test', 1);
+      exchange.publish('test', 2);
+      exchange.publish('test', 3);
 
       queue.consume(onMessage);
 
-      expect(messages).to.eql(['test.1', 'test.2', 'test.3', 'test.4']);
+      expect(messages).to.eql([1, 2, 3, 4]);
 
       function onMessage(routingKey, msg) {
-        messages.push(routingKey);
-        if (routingKey === 'test.1') exchange.publish('test.4');
+        messages.push(msg.content);
+        if (msg.content === 1) exchange.publish('test', 4);
         msg.ack();
       }
     });
 
-    it('load balances messages in sequence to multiple queues', () => {
-      const exchange = Exchange('test', 'direct');
-
-      const queue1 = new Queue('test1-q');
-      const queue2 = new Queue('test2-q');
-
-      exchange.bindQueue(queue1, 'test.#');
-      exchange.bindQueue(queue2, 'test.#');
-
-      const messages1 = [];
-      const messages2 = [];
-
-      queue1.consume(onMessage1);
-      queue2.consume(onMessage2);
-
-      exchange.publish('test.1.1');
-      exchange.publish('test.1.2');
-      exchange.publish('test.2.1');
-      exchange.publish('test.2.2');
-
-      expect(messages1.map(({ fields }) => fields.routingKey)).to.eql(['test.1.1', 'test.2.1']);
-
-      expect(messages2.map(({ fields }) => fields.routingKey)).to.eql(['test.1.2', 'test.2.2']);
-
-      function onMessage1(_routingKey, message) {
-        messages1.push(message);
-        message.ack();
-      }
-
-      function onMessage2(_routingKey, message) {
-        messages2.push(message);
-        message.ack();
-      }
-    });
-
-    it('direct bindings is closed on received message is not re-arranged', () => {
+    it('closing a binding in a consumer while routing does not disturb delivery to the other bindings', () => {
       const exchange = Exchange('event', 'direct');
 
       const queue1 = new Queue('event1-q');
       const queue2 = new Queue('event2-q');
       const queue3 = new Queue('event3-q');
 
-      const binding1 = exchange.bindQueue(queue1, 'test.#', { priority: 10 });
-      const binding2 = exchange.bindQueue(queue2, 'test.#', { priority: 3 });
-      const binding3 = exchange.bindQueue(queue3, '#', { priority: 5 });
+      const binding1 = exchange.bindQueue(queue1, 'k', { priority: 10 });
+      const binding2 = exchange.bindQueue(queue2, 'k', { priority: 3 });
+      const binding3 = exchange.bindQueue(queue3, 'k', { priority: 5 });
 
       const messages = [];
 
-      queue1.consume(onMessageCloseBinding1);
-      queue2.consume(onMessageCloseBinding2);
-      queue3.consume(onMessageCloseBinding3);
+      queue1.consume(onMessage(binding1));
+      queue2.consume(onMessage(binding2));
+      queue3.consume(onMessage(binding3));
 
-      exchange.publish('test.1');
-      exchange.publish('test.2');
-      exchange.publish('test.3');
+      exchange.publish('k');
 
       expect(exchange.bindingCount).to.equal(0);
+      expect(messages.map((m) => m.fields.consumerTag)).to.have.length(3);
 
+      exchange.publish('k');
       expect(messages).to.have.length(3);
 
-      function onMessageCloseBinding1(_routingKey, message) {
-        messages.push(message);
-        binding1.close();
-      }
-      function onMessageCloseBinding2(_routingKey, message) {
-        messages.push(message);
-        binding2.close();
-      }
-      function onMessageCloseBinding3(_routingKey, message) {
-        messages.push(message);
-        binding3.close();
+      function onMessage(binding) {
+        return (_routingKey, message) => {
+          messages.push(message);
+          binding.close();
+          message.ack();
+        };
       }
     });
   });
@@ -475,6 +471,36 @@ describe('Exchange', () => {
     });
   });
 
+  describe('close()', () => {
+    it('closes every binding', () => {
+      const exchange = Exchange('event', 'topic', { autoDelete: false });
+      exchange.bindQueue(new Queue('q1'), 'a');
+      exchange.bindQueue(new Queue('q2'), 'b');
+      exchange.bindQueue(new Queue('q3'), 'c');
+
+      exchange.close();
+
+      expect(exchange.bindingCount).to.equal(0);
+    });
+  });
+
+  describe('unbindQueueByName(queueName)', () => {
+    it('closes every binding to the named queue', () => {
+      const exchange = Exchange('event', 'topic', { autoDelete: false });
+      const queue = new Queue('q1');
+      const other = new Queue('q2');
+      exchange.bindQueue(queue, 'a');
+      exchange.bindQueue(queue, 'b');
+      exchange.bindQueue(queue, 'c');
+      exchange.bindQueue(other, 'a');
+
+      exchange.unbindQueueByName('q1');
+
+      expect(exchange.bindingCount).to.equal(1);
+      expect(exchange.getBinding('q2', 'a')).to.be.ok;
+    });
+  });
+
   describe('stop()', () => {
     it('stops publishing messages to topic exchange', () => {
       const exchange = Exchange('event', 'topic');
@@ -505,7 +531,9 @@ describe('Exchange', () => {
     it('stops publishing messages to direct exchange', () => {
       const exchange = Exchange('balance', 'direct');
       const queue = new Queue('balance-q', { durable: true });
-      exchange.bindQueue(queue, 'test.#');
+      exchange.bindQueue(queue, 'test.1');
+      exchange.bindQueue(queue, 'test.2');
+      exchange.bindQueue(queue, 'test.3');
       exchange.publish('test.1');
       exchange.stop();
       exchange.publish('test.2');
@@ -516,7 +544,9 @@ describe('Exchange', () => {
     it('stop in message callback stops publishing messages to direct exchange', () => {
       const exchange = Exchange('balance', 'direct');
       const queue = new Queue('balance-q', { durable: true });
-      exchange.bindQueue(queue, 'test.#');
+      exchange.bindQueue(queue, 'test.1');
+      exchange.bindQueue(queue, 'test.2');
+      exchange.bindQueue(queue, 'test.3');
 
       queue.consume(() => {
         exchange.stop();
@@ -573,7 +603,9 @@ describe('Exchange', () => {
     it('recovers stopped direct exchange without state', () => {
       const exchange = Exchange('balance', 'direct');
       const queue = new Queue('balance-q', { durable: true });
-      exchange.bindQueue(queue, 'test.#');
+      exchange.bindQueue(queue, 'test.1');
+      exchange.bindQueue(queue, 'test.2');
+      exchange.bindQueue(queue, 'test.3');
 
       exchange.publish('test.1');
       exchange.publish('test.2');
@@ -594,7 +626,9 @@ describe('Exchange', () => {
     it('recovers stopped direct exchange with state', () => {
       const exchange = Exchange('balance', 'direct');
       const queue = new Queue('balance-q', { durable: true });
-      exchange.bindQueue(queue, 'test.#');
+      exchange.bindQueue(queue, 'test.1');
+      exchange.bindQueue(queue, 'test.2');
+      exchange.bindQueue(queue, 'test.3');
 
       exchange.publish('test.1', 'data', { contentType: 'text/plain' });
       exchange.publish('test.2', { data: 1 }, { contentType: 'application/json' });
@@ -656,7 +690,8 @@ describe('Exchange', () => {
     it('recover in message callback continues publishing messages to direct exchange', () => {
       const exchange = Exchange('balance', 'direct');
       const queue = new Queue('balance-q', { durable: true });
-      exchange.bindQueue(queue, 'test.#');
+      exchange.bindQueue(queue, 'test.1');
+      exchange.bindQueue(queue, 'test.2');
 
       queue.consume(() => {
         exchange.stop();
@@ -675,8 +710,10 @@ describe('Exchange', () => {
       const exchange = Exchange('balance', 'direct');
       const queue1 = new Queue('balance1-q', { durable: true });
       const queue2 = new Queue('balance2-q', { durable: true });
-      exchange.bindQueue(queue1, 'test.#');
-      exchange.bindQueue(queue2, 'test.#');
+      exchange.bindQueue(queue1, 'test.1');
+      exchange.bindQueue(queue1, 'test.3');
+      exchange.bindQueue(queue2, 'test.2');
+      exchange.bindQueue(queue2, 'test.4');
 
       queue1.consume(() => {
         exchange.stop();
@@ -698,7 +735,9 @@ describe('Exchange', () => {
     it('recovers closed direct exchange with state', () => {
       const exchange = Exchange('balance', 'direct');
       const queue = new Queue('balance-q', { durable: true });
-      exchange.bindQueue(queue, 'test.#');
+      exchange.bindQueue(queue, 'test.1');
+      exchange.bindQueue(queue, 'test.2');
+      exchange.bindQueue(queue, 'test.3');
 
       exchange.publish('test.1');
       exchange.publish('test.2');
@@ -713,7 +752,7 @@ describe('Exchange', () => {
       exchange.recover(state, () => queue);
       expect(exchange).to.have.property('name', 'balance');
       expect(exchange).to.have.property('type', 'direct');
-      expect(exchange).to.have.property('bindingCount', 1);
+      expect(exchange).to.have.property('bindingCount', 3);
 
       exchange.publish('test.3');
 

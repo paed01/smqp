@@ -927,7 +927,7 @@ describe('Shovel', () => {
       /** @type {import('smqp').ConsumeMessage[]} */
       const messages = [];
       destinationBroker.subscribeTmp('events-0', '#', onMessage, { noAck: true });
-      destinationBroker.subscribeTmp('events-1', '#', onMessage, { noAck: true });
+      destinationBroker.subscribeTmp('events-1', 'event.1', onMessage, { noAck: true });
 
       broker.createShovel('events-shovel-0', { exchange: 'events' }, { broker: destinationBroker, exchange: 'events-0' });
       broker.createShovel('events-shovel-1', { exchange: 'events' }, { broker: destinationBroker, exchange: 'events-1' });

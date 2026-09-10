@@ -133,7 +133,7 @@ Asserts an exchange, a named queue, and returns [consumer](#consumer) to the nam
 To make sure the exchange, and or queue has the desired behaviour, please use [`assertExchange()`](#brokerassertexchangeexchangename-type--topic-options) and [`assertQueue()`](#brokerassertqueuequeuename-options)
 
 - `exchangeName`: exchange name
-- `pattern`: queue binding pattern, must be a string, an empty string is allowed and matches an empty routing key on topic and direct exchanges. Ignored by fanout exchanges
+- `pattern`: queue binding pattern, must be a string, an empty string is allowed and matches an empty routing key on topic and direct exchanges. Compared literally by direct exchanges, see [`getRoutingKeyPattern`](#getroutingkeypatternpattern) for topic exchange wildcards. Ignored by fanout exchanges
 - `queueName`: queue name
 - `onMessage`: message callback
 - `options`:
@@ -221,8 +221,8 @@ Close exchanges, queues, and all consumers
 Creates exchange with name.
 
 - `type`: type of exchange, must be one of `topic`, `direct`, or `fanout`, defaults to `topic`.
-  - `topic`: routes to every binding whose pattern matches the routing key, `*` matches one word and `#` matches zero or more
-  - `direct`: routes to the first binding whose pattern matches, load balancing between matching bindings in sequence
+  - `topic`: routes to every binding whose pattern matches the routing key, `*` matches one word and `#` matches zero or more, see [`getRoutingKeyPattern`](#getroutingkeypatternpattern)
+  - `direct`: routes to every binding whose pattern equals the routing key, the pattern is compared literally so wildcards have no meaning
   - `fanout`: routes to every binding regardless of routing key, the binding pattern is ignored
 - `options`:
   - `durable`: boolean, defaults to `true`, makes queue durable, i.e. will be returned when getting state
@@ -1221,6 +1221,8 @@ Close the e2e binding (closes the underlying shovel).
 
 Get routing key pattern tester. Test routing key pattern against routing key.
 
+Topic exchange patterns follow AMQP semantics. The pattern and the routing key are split into words on `.`, a `*` word matches exactly one word, which may be empty, and a `#` word matches zero or more words. Any other word, including `#` or `*` glued to other characters, is compared literally. An empty routing key has no words so it only matches an empty pattern or a pattern made up of `#` words.
+
 ```javascript
 import { getRoutingKeyPattern } from 'smqp';
 
@@ -1228,6 +1230,17 @@ const pattern = getRoutingKeyPattern('activity.*');
 
 console.log(pattern.test('activity.start')); // true
 console.log(pattern.test('activity.execution.completed')); // false
+
+const anyDepth = getRoutingKeyPattern('activity.#');
+
+console.log(anyDepth.test('activity')); // true
+console.log(anyDepth.test('activity.execution.completed')); // true
+
+const inner = getRoutingKeyPattern('activity.#.completed');
+
+console.log(inner.test('activity.completed')); // true
+console.log(inner.test('activity.execution.completed')); // true
+console.log(inner.test('activity.execution')); // false
 ```
 
 ## Message eviction

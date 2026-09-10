@@ -668,7 +668,7 @@ describe('Broker queue', () => {
       const queue = broker.assertQueue('multi');
 
       broker.bindQueue(queue.name, 'topic', '#');
-      broker.bindQueue(queue.name, 'direct', '#');
+      broker.bindQueue(queue.name, 'direct', 'load.1');
 
       broker.publish('topic', 'event.1');
       broker.publish('direct', 'load.1');
@@ -689,7 +689,7 @@ describe('Broker queue', () => {
       const queue = broker.assertQueue('multi');
 
       broker.bindQueue(queue.name, 'topic', '#');
-      broker.bindQueue(queue.name, 'direct', '#');
+      broker.bindQueue(queue.name, 'direct', 'load.1');
 
       broker.publish('topic', 'event.1');
       broker.publish('direct', 'load.1');
