@@ -50,7 +50,7 @@
     "dist": "rollup -c && npm run build:types && node ./scripts/smoke-cjs.js && npm run toc",
     "build:types": "node ./scripts/build-types.js",
     "prepublishOnly": "npm run dist",
-    "toc": "node ./scripts/toc.js API.md",
+    "toc": "toc API.md",
     "lint": "eslint . --cache && prettier . -c --cache"
   },
   "keywords": [
@@ -71,6 +71,7 @@
     "independent"
   ],
   "devDependencies": {
+    "@0dep/toc": "^1.0.1",
     "@eslint/js": "^10.0.1",
     "@rollup/plugin-commonjs": "^29.0.2",
     "@types/chai": "^5.2.3",

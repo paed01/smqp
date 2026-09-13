@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run lint` — ESLint (cached) + Prettier check. Always run before declaring work done.
 - `npm run dist` — builds the CommonJS `dist/` bundle with Rollup, regenerates the types, smoke-tests the CJS `require` export, and regenerates the TOC. `dist/` is generated, never edited.
 - `npm run build:types` — runs `scripts/build-types.js`, which invokes `dts-buddy` against the hand-written entry `types/bundle.d.ts`. That entry re-exports runtime classes from `src/*.js` and shared interfaces from `types/interfaces.d.ts`, so each name is single-declared and the bundle is free of `Foo_1` aliases. Re-run whenever you change a public API shape, add a JSDoc type, or edit `types/interfaces.d.ts` / `types/bundle.d.ts`. (`dist` and `prepack` already run it.)
-- `npm run toc` — regenerate the TOC and version banner in `API.md` via `scripts/toc.js`. Run this whenever you add, rename, or remove a documented API heading.
+- `npm run toc` — regenerate the TOC in `API.md` via the `@0dep/toc` CLI (markers `<!-- toc -->`/`<!-- /toc -->`). Run this whenever you add, rename, or remove a documented API heading.
 - `npm run test:md` — execute the code blocks in `README.md` and `API.md` via `texample`. Doc examples are real tests; broken examples fail this step.
 
 Node 22 is the development target (`.nvmrc`). Source uses native ESM (`"type": "module"`); the `dist/` CJS build is generated, not edited. ESLint 10 requires `^20.19.0 || ^22.13.0 || >=24` — older Node 20.x crashes the stylish formatter (`util.styleText` was unstable before 20.19 and stable from 22.13). The `engines` field in `package.json` enforces this.

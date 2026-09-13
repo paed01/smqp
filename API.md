@@ -11,7 +11,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [`broker.unsubscribe(queueName, onMessage)`](#brokerunsubscribequeuename-onmessage)
   - [`broker.publish(exchangeName, routingKey[, content, options])`](#brokerpublishexchangename-routingkey-content-options)
   - [`broker.close()`](#brokerclose)
-  - [`broker.assertExchange(exchangeName[, type = topic, options])`](#brokerassertexchangeexchangename-type-topic-options)
+  - [`broker.assertExchange(exchangeName[, type = topic, options])`](#brokerassertexchangeexchangename-type--topic-options)
   - [`broker.deleteExchange(exchangeName[, {ifUnused}])`](#brokerdeleteexchangeexchangename-ifunused)
   - [`broker.bindExchange(source, destination[, pattern, args])`](#brokerbindexchangesource-destination-pattern-args)
   - [`broker.unbindExchange(source, destination[, pattern])`](#brokerunbindexchangesource-destination-pattern)
@@ -19,7 +19,7 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [`broker.bindQueue(queueName, exchangeName, pattern[, options])`](#brokerbindqueuequeuename-exchangename-pattern-options)
   - [`broker.unbindQueue(queueName, exchangeName, pattern)`](#brokerunbindqueuequeuename-exchangename-pattern)
   - [`broker.consume(queueName, onMessage[, options])`](#brokerconsumequeuename-onmessage-options)
-  - [`broker.cancel(consumerTag[, requeue = true])`](#brokercancelconsumertag-requeue-true)
+  - [`broker.cancel(consumerTag[, requeue = true])`](#brokercancelconsumertag-requeue--true)
   - [`broker.createQueue([queueName, options])`](#brokercreatequeuequeuename-options)
   - [`broker.deleteQueue(queueName[, {ifUnused, ifEmpty}])`](#brokerdeletequeuequeuename-ifunused-ifempty)
   - [`broker.getExchange(exchangeName)`](#brokergetexchangeexchangename)
@@ -69,17 +69,17 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [`queue.ack(message[, allUpTo])`](#queueackmessage-allupto)
   - [`queue.ackAll()`](#queueackall)
   - [`queue.assertConsumer(onMessage[, consumeOptions, owner])`](#queueassertconsumeronmessage-consumeoptions-owner)
-  - [`queue.cancel(consumerTag[, requeue = true])`](#queuecancelconsumertag-requeue-true)
+  - [`queue.cancel(consumerTag[, requeue = true])`](#queuecancelconsumertag-requeue--true)
   - [`queue.close()`](#queueclose)
   - [`queue.consume(onMessage[, options, owner])`](#queueconsumeonmessage-options-owner)
   - [`queue.consumeNext()`](#queueconsumenext)
   - [`queue.delete([deleteOptions])`](#queuedeletedeleteoptions)
-  - [`queue.dismiss(onMessage[, requeue = true])`](#queuedismissonmessage-requeue-true)
+  - [`queue.dismiss(onMessage[, requeue = true])`](#queuedismissonmessage-requeue--true)
   - [`queue.get([consumeOptions])`](#queuegetconsumeoptions)
   - [`queue.getStats()`](#queuegetstats)
   - [`queue.getState()`](#queuegetstate)
-  - [`queue.nack(message[, allUpTo, requeue = true])`](#queuenackmessage-allupto-requeue-true)
-  - [`queue.nackAll([requeue = true])`](#queuenackallrequeue-true)
+  - [`queue.nack(message[, allUpTo, requeue = true])`](#queuenackmessage-allupto-requeue--true)
+  - [`queue.nackAll([requeue = true])`](#queuenackallrequeue--true)
   - [`queue.on(eventName, handler[, consumeOptions])`](#queueoneventname-handler-consumeoptions)
   - [`queue.off(eventName, handler)`](#queueoffeventname-handler)
   - [`queue.peek([ignoreDelivered])`](#queuepeekignoredelivered)
@@ -87,13 +87,13 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
   - [`queue.evictExpired()`](#queueevictexpired)
   - [`queue.queueMessage(fields[, content, properties])`](#queuequeuemessagefields-content-properties)
   - [`queue.recover([state])`](#queuerecoverstate)
-  - [`queue.reject(message[, requeue = true])`](#queuerejectmessage-requeue-true)
+  - [`queue.reject(message[, requeue = true])`](#queuerejectmessage-requeue--true)
   - [`queue.stop()`](#queuestop)
-  - [`queue.unbindConsumer(consumer[, requeue = true])`](#queueunbindconsumerconsumer-requeue-true)
+  - [`queue.unbindConsumer(consumer[, requeue = true])`](#queueunbindconsumerconsumer-requeue--true)
 - [Consumer](#consumer)
   - [`consumer.ackAll()`](#consumerackall)
   - [`consumer.nackAll([requeue])`](#consumernackallrequeue)
-  - [`consumer.cancel([requeue = true])`](#consumercancelrequeue-true)
+  - [`consumer.cancel([requeue = true])`](#consumercancelrequeue--true)
   - [`consumer.prefetch(numberOfMessages)`](#consumerprefetchnumberofmessages)
   - [`consumer.on(eventName, handler)`](#consumeroneventname-handler)
 - [Message](#message)
@@ -113,8 +113,6 @@ The api is inspired by the amusing [`amqplib`](https://github.com/squaremo/amqp.
 - [Message eviction](#message-eviction)
 
 <!-- /toc -->
-
-# API reference
 
 ## `new Broker([owner])`
 
@@ -338,7 +336,7 @@ Returns [consumer](#consumer).
 Cancel consumption by consumer tag.
 
 - `consumerTag`: consumer tag
-- `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue-true)
+- `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue--true)
 
 Returns true if consumer tag was found, and consequently false if not.
 
@@ -885,7 +883,7 @@ Returns:
 Dismiss first consumer with matching `onMessage` handler.
 
 - `onMessage`: message handler function
-- `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue-true)
+- `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue--true)
 
 ### `queue.get([consumeOptions])`
 
@@ -976,7 +974,7 @@ Recover queue, optionally from a previous [`queue.getState()`](#queuegetstate). 
 Unbind consumer instance.
 
 - `consumer`: consumer instance
-- `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue-true)
+- `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue--true)
 
 ## Consumer
 
@@ -1005,7 +1003,7 @@ Nack all messages currently held by consumer
 
 Cancel consumption and unsubscribe from queue
 
-- `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue-true)
+- `requeue`: optional boolean to requeue messages consumed by consumer, or [cancel options](#queuecancelconsumertag-requeue--true)
 
 ### `consumer.prefetch(numberOfMessages)`
 
