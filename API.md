@@ -390,7 +390,7 @@ Return serializable object containing durable exchanges, bindings, and durable q
 
 ### `broker.recover([state])`
 
-Recovers exchanges, bindings, and queues with messages. A state may be passed, preferably from [`getState()`](#brokergetstate). With no argument, restarts stopped exchanges and queues in place.
+Recovers exchanges, bindings, and queues with messages. A state may be passed, preferably from [`getState()`](#brokergetstateonlywithcontent). With no argument, restarts stopped exchanges and queues in place.
 
 ### `broker.getStats()`
 
